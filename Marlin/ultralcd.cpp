@@ -570,30 +570,7 @@ void lcd_set_home_offsets() {
       int distance = (int32_t)encoderPosition * BABYSTEP_MULTIPLICATOR;
       encoderPosition = 0;
       lcdDrawUpdate = LCDVIEW_REDRAW_NOW;
-      #if ENABLED(COREXY) || ENABLED(COREXZ)
-        #if ENABLED(BABYSTEP_XY)
-          switch(axis) {
-            case X_AXIS: // X on CoreXY and CoreXZ
-              babystepsTodo[A_AXIS] += distance * 2;
-              babystepsTodo[CORE_AXIS_2] += distance * 2;
-              break;
-            case CORE_AXIS_2: // Y on CoreXY, Z on CoreXZ
-              babystepsTodo[A_AXIS] += distance * 2;
-              babystepsTodo[CORE_AXIS_2] -= distance * 2;
-              break;
-            case CORE_AXIS_3: // Z on CoreXY, Y on CoreXZ
-              babystepsTodo[CORE_AXIS_3] += distance;
-              break;
-          }
-        #elif ENABLED(COREXZ)
-          babystepsTodo[A_AXIS] += distance * 2;
-          babystepsTodo[C_AXIS] -= distance * 2;
-        #else
-          babystepsTodo[Z_AXIS] += distance;
-        #endif
-      #else
-        babystepsTodo[axis] += distance;
-      #endif
+      babystepsTodo[axis] += distance;
 
       babysteps_done += distance;
     }

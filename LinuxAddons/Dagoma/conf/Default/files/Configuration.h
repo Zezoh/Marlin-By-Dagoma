@@ -351,11 +351,7 @@
 
 // @section machine
 
-// Uncomment this option to enable CoreXY kinematics
-//#define COREXY
 
-// Uncomment this option to enable CoreXZ kinematics
-//#define COREXZ
 
 // Enable this option for Toshiba steppers
 //#define CONFIG_STEPPERS_TOSHIBA
