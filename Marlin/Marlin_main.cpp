@@ -338,6 +338,8 @@ static char* seen_pointer;
 // Next immediate G-code command pointer (NULL if none).
 const char* queued_commands_P = NULL;
 
+static bool auto_home_on_boot_pending = false;
+
 const int sensitive_pins[] = SENSITIVE_PINS; ///< Sensitive pin list for M42.
 
 // Inactivity shutdown
@@ -10437,8 +10439,6 @@ void disable_all_steppers() {
     }
   }
 #endif
-
-static bool auto_home_on_boot_pending = false;
 
 #if ENABLED(SUMMON_PRINT_PAUSE)
 
