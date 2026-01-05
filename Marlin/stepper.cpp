@@ -493,7 +493,7 @@ inline void update_endstops() {
         #if ENABLED(HAS_Z_MIN_PROBE)
           #if ENABLED(EMERGENCY_STOP)
             #if ENABLED(DELTA) && ENABLED(ONE_BUTTON) // Delta
-              if ( (READ(ONE_BUTTON_PIN) ^ ONE_BUTTON_INVERTING) ) {
+              if (one_button_pressed()) {
                 SET_BIT(current_endstop_bits, Z_MIN_PROBE, 1 ); // Emulate endstops hit (here: Z_MIN)
                 trigger_emergency_stop = true;
               }
@@ -527,7 +527,9 @@ inline void update_endstops() {
         #if ENABLED(Z_MIN_PROBE_ENDSTOP) && DISABLED(Z_MIN_PROBE_USES_Z_MIN_ENDSTOP_PIN) && ENABLED(HAS_Z_MIN_PROBE)
           #if ENABLED( Z_MIN_MAGIC )
               if ( z_probe_is_active ) {
-                if (z_magic_hit_flag) {
+                const bool z_probe_moving = current_block->steps[_AXIS(Z)] > 0;
+
+                if (z_probe_moving && z_magic_hit_flag) {
                   reset_z_magic();
                   SET_BIT(current_endstop_bits, Z_MIN_PROBE, 1 );
                   old_endstop_bits = current_endstop_bits;
@@ -536,13 +538,13 @@ inline void update_endstops() {
                   SET_BIT(current_endstop_bits, Z_MIN_PROBE, 0 );
                 }
 
-                if (TEST_ENDSTOP(_ENDSTOP(Z, MIN_PROBE)) && current_block->steps[_AXIS(Z)] > 0) {
+                if (z_probe_moving && TEST_ENDSTOP(_ENDSTOP(Z, MIN_PROBE))) {
                   _SET_TRIGSTEPS(Z);
                   _ENDSTOP_HIT(Z);
                   step_events_completed = current_block->step_event_count;
                 }
 
-                if (TEST_ENDSTOP(Z_MIN_PROBE)) SBI(endstop_hit_bits, Z_MIN_PROBE);
+                if (z_probe_moving && TEST_ENDSTOP(Z_MIN_PROBE)) SBI(endstop_hit_bits, Z_MIN_PROBE);
 
               } // END z_probe_is_active
           #else

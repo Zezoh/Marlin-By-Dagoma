@@ -296,8 +296,9 @@ static void updateTemperaturesFromRawValues();
             checkExtruderAutoFans();
             #endif
             #if ENABLED(IS_MONO_FAN)
-            digitalWrite(FAN_PIN, MONO_FAN_MIN_PWM);
-            analogWrite(FAN_PIN, MONO_FAN_MIN_PWM);
+            const uint8_t pwm = mono_fan_pwm(MONO_FAN_MIN_PWM, input);
+            digitalWrite(FAN_PIN, pwm > 0 ? HIGH : LOW);
+            analogWrite(FAN_PIN, pwm);
             #endif
             #if ENABLED(PRINTER_HEAD_EASY)
             digitalWrite(PRINTER_HEAD_EASY_CONSTANT_FAN_PIN, 255);

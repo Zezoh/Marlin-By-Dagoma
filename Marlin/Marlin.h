@@ -341,6 +341,24 @@ extern bool axis_homed[3]; // axis[n].is_homed
   extern int fanSpeeds[FAN_COUNT];
 #endif
 
+#if ENABLED(IS_MONO_FAN)
+  FORCE_INLINE uint8_t mono_fan_pwm(const uint8_t requested, const float max_temp) {
+    if (max_temp < MONO_FAN_MIN_TEMP) return 0;
+    return (requested < MONO_FAN_MIN_PWM) ? MONO_FAN_MIN_PWM : requested;
+  }
+#endif
+
+#if ENABLED(ONE_BUTTON) || ENABLED(SUMMON_PRINT_PAUSE)
+  FORCE_INLINE bool one_button_pressed() {
+    #if ENABLED(ONE_BUTTON)
+      return READ(ONE_BUTTON_PIN) ^ ONE_BUTTON_INVERTING;
+    #else
+      return READ(SUMMON_PRINT_PAUSE_PIN) ^ SUMMON_PRINT_PAUSE_INVERTING;
+    #endif
+  }
+  FORCE_INLINE bool one_button_released() { return !one_button_pressed(); }
+#endif
+
 #if ENABLED(BARICUDA)
   extern int baricuda_valve_pressure;
   extern int baricuda_e_to_p_pressure;
