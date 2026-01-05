@@ -68,34 +68,6 @@ username@hostnmane:~/Marlin-By-Dagoma$ ./LinuxAddons/Dagoma/bin/restore_default_
 
 # Compilation
 
-## PlatformIO Core en ligne de commande
-
-Installer [PlatformIO Core](http://docs.platformio.org/en/stable/installation.html).
-
-Pour générer le hex:
-```console
-username@hostnmane:~/Marlin-By-Dagoma$ pio run -d Marlin
-```
-
-Pour générer le hex et flasher directement sur machine branchée:
-```console
-username@hostnmane:~/Marlin-By-Dagoma$ pio run -d Marlin -t upload
-```
-
-Le fichier hex est par défaut généré dans *./Marlin/.pioenvs/default/...* ou *./.pio/...*
-
-## Visual Studio Code (méthode recommandée)
-
-PlatformIO peut également être utilisé en tant qu'extension de [Visual Studio Code](https://code.visualstudio.com/).
-![Extension PlatformIO](/Documentation/vscode/pio.png)
-
-Une fois installé, il suffit d'ouvrir le dossier Marlin-By-Dagoma avec Visual Studio Code. Tous les outils de compilation sont alors disponibles graphiquement.
-![Commandes PlatformIO](/Documentation/vscode/compilation.png)
-
-Il est également possible d'appliquer la configuration de la machine via le terminal intégré à Visual Studio Code.
-Le script de configuration étant un script *bash*, il est nécessaire de choisir un terminal compatible. Sous **Windows**, il faudra donc utiliser *Git bash* ou encore le terminal fourni avec *PlatformIO*.
-![Terminal](/Documentation/vscode/terminal.png)
-
 ## Arduino IDE
 
 Après avoir appliqué la configuration correspondant à votre machine, ouvrez le dossier Marlin-By-Dagoma/Marlin dans ArduinoIDE puis compilez/téléversez selon les besoins.

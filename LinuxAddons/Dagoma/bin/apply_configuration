@@ -555,7 +555,6 @@ then
 	echo "Checking out back some known modified files ..."
 	git checkout Marlin/Configuration.h
 	git checkout Marlin/Configuration_adv.h
-	git checkout Marlin/platformio.ini
 	git checkout Marlin/pins.h
 	echo "Checking out back done."
 fi

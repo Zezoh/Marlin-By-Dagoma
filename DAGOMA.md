@@ -1,29 +1,16 @@
 
 # Marlin firmware
 
-Install and use platform-io.
+Use the Arduino IDE.
 
 ## Build
 
-First, configure required printer configuration, e.g:
+First, configure the required printer configuration, e.g:
 ```
 LinuxAddons/Dagoma/bin/apply_configuration -gcof E200
 ```
 
-Then compile:
-```
-pio run -d Marlin
-```
-
-Fresh compiled firmware is generated at the following path:
-```
-<THIS_PROJECT_SOURCES>/Marlin/.pioenvs/default/firmware.hex
-```
-
-Compile and flash (with a plugged board):
-```
-pio run -d Marlin -t upload
-```
+Then open `Marlin/Marlin.ino` in the Arduino IDE and compile or upload from the IDE.
 
 For more firmware configuration, use:
 ```
