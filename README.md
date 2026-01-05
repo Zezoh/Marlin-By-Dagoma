@@ -18,7 +18,6 @@ Future development (Marlin 1.2 and beyond) takes place in the [MarlinDev reposit
   - Please upgrade your IDE at least to Arduino 1.6.0. Thanks.
 
 - RC6 - 23 Apr 2016
-  - Completed support for CoreXY / CoreXZ in planner
   - Changes to positioning behavior
   - Various issues fixed. More details pending.
 
@@ -37,7 +36,6 @@ Future development (Marlin 1.2 and beyond) takes place in the [MarlinDev reposit
 
 - RC4 - 24 Mar 2016
   - Many lingering bugs and nagging issues addressed
-  - Improvements to LCD menus, CoreXY/CoreXZ, Delta, Bed Leveling, and more…
 
 - RC3 - 01 Dec 2015
   - A number of language sensitive strings have been revised
