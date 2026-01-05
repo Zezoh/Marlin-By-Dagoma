@@ -9922,12 +9922,15 @@ void mesh_plan_buffer_line(float x, float y, float z, const float e, float feed_
 
   inline bool prepare_move_delta(float target[NUM_AXIS]) {
     float difference[NUM_AXIS];
+    float segment[NUM_AXIS];
     for (int8_t i = 0; i < NUM_AXIS; i++) difference[i] = target[i] - current_position[i];
 
     float cartesian_mm = sqrt(sq(difference[X_AXIS]) + sq(difference[Y_AXIS]) + sq(difference[Z_AXIS]));
-    if (cartesian_mm < 0.000001) cartesian_mm = abs(difference[E_AXIS]);
+    if (cartesian_mm < 0.000001) cartesian_mm = fabs(difference[E_AXIS]);
     if (cartesian_mm < 0.000001) return false;
-    float seconds = 6000 * cartesian_mm / feedrate / feedrate_multiplier;
+    const float scaled_feedrate = feedrate * (feedrate_multiplier / 100.0f);
+    if (scaled_feedrate <= 0.0f) return false;
+    float seconds = cartesian_mm / (scaled_feedrate / 60.0f);
     int steps = max(1, int(delta_segments_per_second * seconds));
 
     // SERIAL_ECHOPGM("mm="); SERIAL_ECHO(cartesian_mm);
@@ -9939,12 +9942,12 @@ void mesh_plan_buffer_line(float x, float y, float z, const float e, float feed_
       float fraction = float(s) / float(steps);
 
       for (int8_t i = 0; i < NUM_AXIS; i++)
-        target[i] = current_position[i] + difference[i] * fraction;
+        segment[i] = current_position[i] + difference[i] * fraction;
 
-      calculate_delta(target);
+      calculate_delta(segment);
 
       #if ENABLED(AUTO_BED_LEVELING_FEATURE)
-        adjust_delta(target);
+        adjust_delta(segment);
       #endif
 
       //SERIAL_ECHOPGM("target[X_AXIS]="); SERIAL_ECHOLN(target[X_AXIS]);
@@ -9954,7 +9957,7 @@ void mesh_plan_buffer_line(float x, float y, float z, const float e, float feed_
       //SERIAL_ECHOPGM("delta[Y_AXIS]="); SERIAL_ECHOLN(delta[Y_AXIS]);
       //SERIAL_ECHOPGM("delta[Z_AXIS]="); SERIAL_ECHOLN(delta[Z_AXIS]);
 
-      plan_buffer_line(delta[X_AXIS], delta[Y_AXIS], delta[Z_AXIS], target[E_AXIS], feedrate / 60 * feedrate_multiplier / 100.0, active_extruder);
+      plan_buffer_line(delta[X_AXIS], delta[Y_AXIS], delta[Z_AXIS], segment[E_AXIS], feedrate / 60 * feedrate_multiplier / 100.0, active_extruder);
     }
     return true;
   }
