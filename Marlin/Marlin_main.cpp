@@ -1103,7 +1103,7 @@ void setup() {
 
   #if ENABLED(AUTO_HOME_ON_BOOT)
     #if !(ENABLED(DELTA_EXTRA) && ENABLED(ONE_BUTTON))
-      enqueue_and_echo_commands_P(PSTR("G28"));
+      auto_home_on_boot_pending = true;
     #endif
   #endif
 
@@ -1174,6 +1174,13 @@ void setup() {
  *  - Call LCD update
  */
 void loop() {
+  #if ENABLED(AUTO_HOME_ON_BOOT)
+    if (auto_home_on_boot_pending && commands_in_queue == 0) {
+      auto_home_on_boot_pending = false;
+      enqueue_and_echo_commands_P(PSTR("G28 X Y Z"));
+    }
+  #endif
+
   #if ENABLED(SDSUPPORT)
     #if ENABLED(ULTIPANEL)
       if (abort_sd_printing) {
@@ -10430,6 +10437,8 @@ void disable_all_steppers() {
     }
   }
 #endif
+
+static bool auto_home_on_boot_pending = false;
 
 #if ENABLED(SUMMON_PRINT_PAUSE)
 
