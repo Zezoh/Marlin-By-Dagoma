@@ -1101,6 +1101,12 @@ void setup() {
     #endif
   #endif
 
+  #if ENABLED(AUTO_HOME_ON_BOOT)
+    #if !(ENABLED(DELTA_EXTRA) && ENABLED(ONE_BUTTON))
+      enqueue_and_echo_commands_P(PSTR("G28"));
+    #endif
+  #endif
+
   #if ENABLED( ONE_LED )
     pinMode( ONE_LED_PIN, OUTPUT );
     one_led_off();
@@ -11029,8 +11035,9 @@ void manage_inactivity(bool ignore_stepper_queue/*=false*/) {
       }
       if (homeDebounceCount < HOME_DEBOUNCE_DELAY)
         homeDebounceCount++;
-      else
-        homeDebounceCount = 0;
+    }
+    else {
+      homeDebounceCount = 0;
     }
   #endif
 
