@@ -102,9 +102,6 @@
   #if DISABLED(ULTRA_LCD)
     #error BABYSTEPPING requires an LCD controller.
   #endif
-  #if ENABLED(SCARA)
-    #error BABYSTEPPING is not implemented for SCARA yet.
-  #endif
   #if ENABLED(DELTA) && ENABLED(BABYSTEP_XY)
     #error BABYSTEPPING only implemented for Z axis on deltabots.
   #endif
@@ -355,7 +352,7 @@
  * Dual X Carriage requirements
  */
 #if ENABLED(DUAL_X_CARRIAGE)
-  #if EXTRUDERS == 1 || ENABLED(COREXY) \
+  #if EXTRUDERS == 1 \
       || !HAS_X2_ENABLE || !HAS_X2_STEP || !HAS_X2_DIR \
       || !defined(X2_HOME_POS) || !defined(X2_MIN_POS) || !defined(X2_MAX_POS) \
       || !HAS_X_MAX
@@ -478,8 +475,6 @@
   #error Thermal Runaway Protection for hotends is now enabled with THERMAL_PROTECTION_HOTENDS.
 #elif DISABLED(THERMAL_PROTECTION_BED) && defined(THERMAL_PROTECTION_BED_PERIOD)
   #error Thermal Runaway Protection for the bed is now enabled with THERMAL_PROTECTION_BED.
-#elif ENABLED(COREXZ) && ENABLED(Z_LATE_ENABLE)
-  #error "Z_LATE_ENABLE can't be used with COREXZ."
 #elif defined(X_HOME_RETRACT_MM)
   #error [XYZ]_HOME_RETRACT_MM settings have been renamed [XYZ]_HOME_BUMP_MM.
 #elif defined(PROBE_SERVO_DEACTIVATION_DELAY)

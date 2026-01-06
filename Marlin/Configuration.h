@@ -107,13 +107,6 @@
 // For a Delta printer replace the configuration files with the files in the
 // example_configurations/delta directory.
 
-//===========================================================================
-//============================= SCARA Printer ===============================
-//===========================================================================
-// For a Scara printer replace the configuration files with the files in the
-// example_configurations/SCARA directory.
-//
-
 // @section info
 
 #if ENABLED(USE_AUTOMATIC_VERSIONING)
@@ -391,12 +384,6 @@
 //===========================================================================
 
 // @section machine
-
-// Uncomment this option to enable CoreXY kinematics
-//#define COREXY
-
-// Uncomment this option to enable CoreXZ kinematics
-//#define COREXZ
 
 //===========================================================================
 //============================== Delta Settings =============================

@@ -312,25 +312,6 @@
   #define Z_MAX_LENGTH (Z_MAX_POS - (Z_MIN_POS))
 
   /**
-   * CoreXY and CoreXZ
-   */
-  #if ENABLED(COREXY)
-    #define CORE_AXIS_2 B_AXIS
-    #define CORE_AXIS_3 Z_AXIS
-  #elif ENABLED(COREXZ)
-    #define CORE_AXIS_2 C_AXIS
-    #define CORE_AXIS_3 Y_AXIS
-  #endif
-
-  /**
-   * SCARA
-   */
-  #if ENABLED(SCARA)
-    #undef SLOWDOWN
-    #define QUICK_HOME //SCARA needs Quickhome
-  #endif
-
-  /**
    * AUTOSET LOCATIONS OF LIMIT SWITCHES
    */
   #if ENABLED(MANUAL_HOME_POSITIONS)  // Use manual limit switch locations

@@ -570,30 +570,7 @@ void lcd_set_home_offsets() {
       int distance = (int32_t)encoderPosition * BABYSTEP_MULTIPLICATOR;
       encoderPosition = 0;
       lcdDrawUpdate = LCDVIEW_REDRAW_NOW;
-      #if ENABLED(COREXY) || ENABLED(COREXZ)
-        #if ENABLED(BABYSTEP_XY)
-          switch(axis) {
-            case X_AXIS: // X on CoreXY and CoreXZ
-              babystepsTodo[A_AXIS] += distance * 2;
-              babystepsTodo[CORE_AXIS_2] += distance * 2;
-              break;
-            case CORE_AXIS_2: // Y on CoreXY, Z on CoreXZ
-              babystepsTodo[A_AXIS] += distance * 2;
-              babystepsTodo[CORE_AXIS_2] -= distance * 2;
-              break;
-            case CORE_AXIS_3: // Z on CoreXY, Y on CoreXZ
-              babystepsTodo[CORE_AXIS_3] += distance;
-              break;
-          }
-        #elif ENABLED(COREXZ)
-          babystepsTodo[A_AXIS] += distance * 2;
-          babystepsTodo[C_AXIS] -= distance * 2;
-        #else
-          babystepsTodo[Z_AXIS] += distance;
-        #endif
-      #else
-        babystepsTodo[axis] += distance;
-      #endif
+      babystepsTodo[axis] += distance;
 
       babysteps_done += distance;
     }
@@ -1460,7 +1437,7 @@ static void lcd_move_e(
  *
  */
 
-#if ENABLED(DELTA) || ENABLED(SCARA)
+#if ENABLED(DELTA)
   #define _MOVE_XYZ_ALLOWED (axis_homed[X_AXIS] && axis_homed[Y_AXIS] && axis_homed[Z_AXIS])
 #else
   #define _MOVE_XYZ_ALLOWED true
@@ -1971,10 +1948,6 @@ static void lcd_control_motion_menu() {
   MENU_ITEM_EDIT(float51, MSG_ESTEPS, &axis_steps_per_unit[E_AXIS], 5, 9999);
   #if ENABLED(ABORT_ON_ENDSTOP_HIT_FEATURE_ENABLED)
     MENU_ITEM_EDIT(bool, MSG_ENDSTOP_ABORT, &abort_on_endstop_hit);
-  #endif
-  #if ENABLED(SCARA)
-    MENU_ITEM_EDIT(float74, MSG_XSCALE, &axis_scaling[X_AXIS], 0.5, 2);
-    MENU_ITEM_EDIT(float74, MSG_YSCALE, &axis_scaling[Y_AXIS], 0.5, 2);
   #endif
   END_MENU();
 }
@@ -2503,7 +2476,7 @@ void lcd_update() {
 
       #if ENABLED(REPRAPWORLD_KEYPAD)
 
-        #if ENABLED(DELTA) || ENABLED(SCARA)
+        #if ENABLED(DELTA)
           #define _KEYPAD_MOVE_ALLOWED (axis_homed[X_AXIS] && axis_homed[Y_AXIS] && axis_homed[Z_AXIS])
         #else
           #define _KEYPAD_MOVE_ALLOWED true
