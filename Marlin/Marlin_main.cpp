@@ -3422,18 +3422,18 @@ inline void gcode_G28() {
         0.0
       },
       {
-        -COS_60 * delta_radius,
-        -SIN_60 * delta_radius,
+        -COS_60 * DELTA_PROBEABLE_RADIUS,
+        -SIN_60 * DELTA_PROBEABLE_RADIUS,
         0.0
       },
       {
         0.0,
-        -1.0 * delta_radius,
+        -1.0 * DELTA_PROBEABLE_RADIUS,
         0.0
       },
       {
-        COS_60 * delta_radius,
-        -SIN_60 * delta_radius,
+        COS_60 * DELTA_PROBEABLE_RADIUS,
+        -SIN_60 * DELTA_PROBEABLE_RADIUS,
         0.0
       },
       {
@@ -3442,18 +3442,18 @@ inline void gcode_G28() {
         0.0
       },
       {
-        delta_radius,
+        DELTA_PROBEABLE_RADIUS,
         0.0,
         0.0
       },
       {
-        SIN_60 * delta_radius,
-        COS_60 * delta_radius,
+        SIN_60 * DELTA_PROBEABLE_RADIUS,
+        COS_60 * DELTA_PROBEABLE_RADIUS,
         0.0
       },
       {
-        COS_60 * delta_radius,
-        SIN_60 * delta_radius,
+        COS_60 * DELTA_PROBEABLE_RADIUS,
+        SIN_60 * DELTA_PROBEABLE_RADIUS,
         0.0
       },
       {
@@ -3462,49 +3462,49 @@ inline void gcode_G28() {
         0.0
       },
       {
-        -COS_60 * delta_radius,
-        SIN_60 * delta_radius,
+        -COS_60 * DELTA_PROBEABLE_RADIUS,
+        SIN_60 * DELTA_PROBEABLE_RADIUS,
         0.0
       },
       {
-        -SIN_60 * delta_radius,
-        COS_60 * delta_radius,
+        -SIN_60 * DELTA_PROBEABLE_RADIUS,
+        COS_60 * DELTA_PROBEABLE_RADIUS,
         0.0
       },
       {
-        -delta_radius,
+        -DELTA_PROBEABLE_RADIUS,
         0.0,
         0.0
       },
       // Inner
       {
-        -SIN_60 * delta_radius / 2.0,
-        -COS_60 * delta_radius / 2.0,
+        -SIN_60 * DELTA_PROBEABLE_RADIUS / 2.0,
+        -COS_60 * DELTA_PROBEABLE_RADIUS / 2.0,
         0.0
       },
       {
         0.0,
-        -delta_radius / 2.0,
+        -DELTA_PROBEABLE_RADIUS / 2.0,
         0.0
       },
       {
-        SIN_60 * delta_radius / 2.0,
-        -COS_60 * delta_radius / 2.0,
+        SIN_60 * DELTA_PROBEABLE_RADIUS / 2.0,
+        -COS_60 * DELTA_PROBEABLE_RADIUS / 2.0,
         0.0
       },
       {
-        SIN_60 * delta_radius / 2.0,
-        COS_60 * delta_radius / 2.0,
+        SIN_60 * DELTA_PROBEABLE_RADIUS / 2.0,
+        COS_60 * DELTA_PROBEABLE_RADIUS / 2.0,
         0.0
       },
       {
         0.0,
-        delta_radius / 2.0,
+        DELTA_PROBEABLE_RADIUS / 2.0,
         0.0
       },
       {
-        -SIN_60 * delta_radius / 2.0,
-         COS_60 * delta_radius / 2.0,
+        -SIN_60 * DELTA_PROBEABLE_RADIUS / 2.0,
+         COS_60 * DELTA_PROBEABLE_RADIUS / 2.0,
         0.0
       },
       // Center
@@ -3850,7 +3850,7 @@ inline void gcode_G28() {
       for(i=0; i<PROBE_POINT_NUMBER; i++) {
         destination[ X_AXIS ] = probe_plan[i][0];
         destination[ Y_AXIS ] = probe_plan[i][1];
-        destination[ Z_AXIS ] = 10.0;
+        destination[ Z_AXIS ] = i ? current_position[Z_AXIS] : current_position[Z_AXIS] + Z_RAISE_BEFORE_PROBING;
         prepare_move();
         st_synchronize();
         probe_plan[i][2] = get_probed_Z_avg();
@@ -9358,79 +9358,86 @@ void clamp_to_software_endstops(float target[3]) {
     delta_diagonal_rod_2_tower_3 = sq(diagonal_rod + delta_diagonal_rod_trim_tower_3);
 
     #if HAS_DELTA_EXTRA
+      const float probe_radius = min(radius, (float)DELTA_PROBEABLE_RADIUS);
+      const float tower1_length = sqrt(sq(delta_tower1_x) + sq(delta_tower1_y));
+      const float tower2_length = sqrt(sq(delta_tower2_x) + sq(delta_tower2_y));
+      const float tower3_length = sqrt(sq(delta_tower3_x) + sq(delta_tower3_y));
+      const float tower1_scale = tower1_length > 0.0 ? min(1.0f, probe_radius / tower1_length) : 0.0;
+      const float tower2_scale = tower2_length > 0.0 ? min(1.0f, probe_radius / tower2_length) : 0.0;
+      const float tower3_scale = tower3_length > 0.0 ? min(1.0f, probe_radius / tower3_length) : 0.0;
       int i=0;
       // Outer
-      probe_plan[i][0] = delta_tower1_x;
-      probe_plan[i][1] = delta_tower1_y;
+      probe_plan[i][0] = delta_tower1_x * tower1_scale;
+      probe_plan[i][1] = delta_tower1_y * tower1_scale;
       i++;
 
-      probe_plan[i][0] = -COS_60 * radius;
-      probe_plan[i][1] = -SIN_60 * radius;
+      probe_plan[i][0] = -COS_60 * probe_radius;
+      probe_plan[i][1] = -SIN_60 * probe_radius;
       i++;
 
       probe_plan[i][0] = 0.0;
-      probe_plan[i][1] = -1.0 * radius;
+      probe_plan[i][1] = -1.0 * probe_radius;
       i++;
 
-      probe_plan[i][0] = COS_60 * radius;
-      probe_plan[i][1] = -SIN_60 * radius;
+      probe_plan[i][0] = COS_60 * probe_radius;
+      probe_plan[i][1] = -SIN_60 * probe_radius;
       i++;
 
-      probe_plan[i][0] = delta_tower2_x;
-      probe_plan[i][1] = delta_tower2_y;
+      probe_plan[i][0] = delta_tower2_x * tower2_scale;
+      probe_plan[i][1] = delta_tower2_y * tower2_scale;
       i++;
 
-      probe_plan[i][0] = radius;
+      probe_plan[i][0] = probe_radius;
       probe_plan[i][1] = 0.0;
       i++;
 
-      probe_plan[i][0] = SIN_60 * radius;
-      probe_plan[i][1] = COS_60 * radius;
+      probe_plan[i][0] = SIN_60 * probe_radius;
+      probe_plan[i][1] = COS_60 * probe_radius;
       i++;
 
-      probe_plan[i][0] = COS_60 * radius;
-      probe_plan[i][1] = SIN_60 * radius;
+      probe_plan[i][0] = COS_60 * probe_radius;
+      probe_plan[i][1] = SIN_60 * probe_radius;
       i++;
 
-      probe_plan[i][0] = delta_tower3_x;
-      probe_plan[i][1] = delta_tower3_y;
+      probe_plan[i][0] = delta_tower3_x * tower3_scale;
+      probe_plan[i][1] = delta_tower3_y * tower3_scale;
       i++;
 
-      probe_plan[i][0] = -COS_60 * radius;
-      probe_plan[i][1] = SIN_60 * radius;
+      probe_plan[i][0] = -COS_60 * probe_radius;
+      probe_plan[i][1] = SIN_60 * probe_radius;
       i++;
 
-      probe_plan[i][0] = -SIN_60 * radius;
-      probe_plan[i][1] = COS_60 * radius;
+      probe_plan[i][0] = -SIN_60 * probe_radius;
+      probe_plan[i][1] = COS_60 * probe_radius;
       i++;
 
-      probe_plan[i][0] = -radius;
+      probe_plan[i][0] = -probe_radius;
       probe_plan[i][1] = 0.0;
       i++;
 
       // Inner
-      probe_plan[i][0] = -SIN_60 * radius / 2.0;
-      probe_plan[i][1] = -COS_60 * radius / 2.0;
+      probe_plan[i][0] = -SIN_60 * probe_radius / 2.0;
+      probe_plan[i][1] = -COS_60 * probe_radius / 2.0;
       i++;
 
       probe_plan[i][0] = 0.0;
-      probe_plan[i][1] = -radius / 2.0;
+      probe_plan[i][1] = -probe_radius / 2.0;
       i++;
 
-      probe_plan[i][0] = SIN_60 * radius / 2.0;
-      probe_plan[i][1] = -COS_60 * radius / 2.0;
+      probe_plan[i][0] = SIN_60 * probe_radius / 2.0;
+      probe_plan[i][1] = -COS_60 * probe_radius / 2.0;
       i++;
 
-      probe_plan[i][0] = SIN_60 * radius / 2.0;
-      probe_plan[i][1] = COS_60 * radius / 2.0;
+      probe_plan[i][0] = SIN_60 * probe_radius / 2.0;
+      probe_plan[i][1] = COS_60 * probe_radius / 2.0;
       i++;
 
       probe_plan[i][0] = 0.0;
-      probe_plan[i][1] = radius / 2.0;
+      probe_plan[i][1] = probe_radius / 2.0;
       i++;
 
-      probe_plan[i][0] = -SIN_60 * radius / 2.0;
-      probe_plan[i][1] = COS_60 * radius / 2.0;
+      probe_plan[i][0] = -SIN_60 * probe_radius / 2.0;
+      probe_plan[i][1] = COS_60 * probe_radius / 2.0;
       i++;
 
       // Center
