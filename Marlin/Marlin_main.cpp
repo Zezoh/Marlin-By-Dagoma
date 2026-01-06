@@ -1869,11 +1869,13 @@ static void setup_for_endstop_move() {
       #if HAS_DELTA_EXTRA
         if (fast) {
           feedrate = homing_feedrate[Z_AXIS] / 2;
+          feedrate = min(feedrate, 1000.0f);
           SERIAL_ECHOPAIR("fast probing, feedrate = ", feedrate);
         }
         else {
       #endif
           feedrate = homing_feedrate[Z_AXIS] / 4;
+          feedrate = min(feedrate, 1000.0f);
           SERIAL_ECHOPAIR("slow probing, feedrate = ", feedrate);
       #if HAS_DELTA_EXTRA
         }
