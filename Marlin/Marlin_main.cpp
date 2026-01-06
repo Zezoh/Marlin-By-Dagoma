@@ -3563,9 +3563,17 @@ inline void gcode_G28() {
       float z_read[3] = { 67.0 };
       float z_avg = 0.0;
       bool fast_probe = fast;
+      bool first_sample = true;
 
       do {
+        if (first_sample && !fast_probe) {
+          set_destination_to_current();
+          destination[ Z_AXIS ] = min(67.0, current_position[Z_AXIS] + Z_RAISE_BEFORE_PROBING);
+          prepare_move();
+          st_synchronize();
+        }
         gcode_G30(fast_probe);
+        first_sample = false;
         if (!fast_probe) fast_probe = true;
 
         z_read[2] = z_read[1];
