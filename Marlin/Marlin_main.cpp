@@ -9362,9 +9362,9 @@ void clamp_to_software_endstops(float target[3]) {
       const float tower1_length = sqrt(sq(delta_tower1_x) + sq(delta_tower1_y));
       const float tower2_length = sqrt(sq(delta_tower2_x) + sq(delta_tower2_y));
       const float tower3_length = sqrt(sq(delta_tower3_x) + sq(delta_tower3_y));
-      const float tower1_scale = tower1_length > 0.0 ? (probe_radius / tower1_length) : 0.0;
-      const float tower2_scale = tower2_length > 0.0 ? (probe_radius / tower2_length) : 0.0;
-      const float tower3_scale = tower3_length > 0.0 ? (probe_radius / tower3_length) : 0.0;
+      const float tower1_scale = tower1_length > 0.0 ? min(1.0f, probe_radius / tower1_length) : 0.0;
+      const float tower2_scale = tower2_length > 0.0 ? min(1.0f, probe_radius / tower2_length) : 0.0;
+      const float tower3_scale = tower3_length > 0.0 ? min(1.0f, probe_radius / tower3_length) : 0.0;
       int i=0;
       // Outer
       probe_plan[i][0] = delta_tower1_x * tower1_scale;
