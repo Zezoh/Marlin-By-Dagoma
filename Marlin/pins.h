@@ -277,5 +277,25 @@
 
 #define HAS_DIGIPOTSS (PIN_EXISTS(DIGIPOTSS))
 
+#undef X_MAX_PIN
+#define X_MAX_PIN 2
+#undef X_MIN_PIN
+#define X_MIN_PIN -1
+#undef Y_MAX_PIN
+#define Y_MAX_PIN 15
+#undef Y_MIN_PIN
+#define Y_MIN_PIN -1
+#undef Z_MAX_PIN
+#define Z_MAX_PIN 19
+#undef Z_MIN_PIN
+#define Z_MIN_PIN -1
+#undef Z_MIN_PROBE_PIN
+#define Z_MIN_PROBE_PIN 69
+#undef FILRUNOUT_PIN
+#define FILRUNOUT_PIN 14
+#undef SUMMON_PRINT_PAUSE_PIN
+#define SUMMON_PRINT_PAUSE_PIN 3
+#undef ONE_BUTTON_PIN
+#define ONE_BUTTON_PIN SUMMON_PRINT_PAUSE_PIN
 #endif //__PINS_H
 

@@ -236,19 +236,21 @@
  * ************* SCARA End ***************
  *
  * ************ DAGOMA.FR Specific - This can change to suit future G-code regulations
- * M700 - WiFi: set the SSID to use.
- * M701 - WiFi: set the password and connect.
- * M702 - WiFi: report local IP address if WiFi is ready, otherwise 0.
- * M710 - WiFi: set the printer technical name.
- * M711 - WiFi: set the API URL to use.
- * M712 - WiFi: set the API key to use.
- * M720 - WiFi: echo a string on the serial interface.
- *
+ * M700 - Wifi : Set SSID to use.
+ * M701 - Wifi : Set Password to use and connect !
+ * M702 - Wifi : Get current local IP Address if wifi is ready, 0 otherwize.
+ * M710 - Wifi : Set printer technical name.
+ * M711 - Wifi : Set API Url to use.
+ * M712 - Wifi : Set API Key to use.
+ * M720 - Wifi : Echo the string in serial .
+
  * ************ DAGOMA.FR End ***************
  *
- * ************ Custom codes (may change with future G-code revisions)
- * M100 - Watch free memory (debug only).
- * M851 - Set Z probe Z offset (mm above extruder; always negative).
+ * ************ Custom codes - This can change to suit future G-code regulations
+ * M100 - Watch Free Memory (For Debugging Only)
+ * M851 - Set Z probe's Z offset (mm above extruder -- The value will always be negative)
+
+
  * M928 - Start SD logging (M928 filename.g) - ended by M29
  * M999 - Restart after being stopped by error
  *
@@ -263,7 +265,6 @@
   void gcode_M100();
 #endif
 
-// Memory usage helpers (used by M100 and debugging).
 #if ENABLED(SDSUPPORT)
   CardReader card;
 #endif
@@ -273,34 +274,33 @@
 #endif
 
 bool Running = true;
+
 uint8_t marlin_debug_flags = DEBUG_NONE;
 
-// Motion and position state
 static float feedrate = 1500.0, saved_feedrate;
 float current_position[NUM_AXIS] = { 0.0 };
 static float destination[NUM_AXIS] = { 0.0 };
 bool axis_known_position[3] = { false };
 bool axis_homed[3] = { false };
 
-// G-code queue and parser state
 static long gcode_N, gcode_LastN, Stopped_gcode_LastN = 0;
+
 static char* current_command, *current_command_args;
 static int cmd_queue_index_r = 0;
 static int cmd_queue_index_w = 0;
 static int commands_in_queue = 0;
 static char command_queue[BUFSIZE][MAX_CMD_SIZE];
 
-// Feedrate and extrusion scaling
 const float homing_feedrate[] = HOMING_FEEDRATE;
 bool axis_relative_modes[] = AXIS_RELATIVE_MODES;
-int feedrate_multiplier = 100; // 100% = 1.0, 200% = 2.0
+int feedrate_multiplier = 100; //100->1 200->2
 int saved_feedrate_multiplier;
 int extruder_multiplier[EXTRUDERS] = ARRAY_BY_EXTRUDERS1(100);
 bool volumetric_enabled = false;
 float filament_size[EXTRUDERS] = ARRAY_BY_EXTRUDERS1(DEFAULT_NOMINAL_FILAMENT_DIA);
 float volumetric_multiplier[EXTRUDERS] = ARRAY_BY_EXTRUDERS1(1.0);
 
-// The distance XYZ has been offset by G92. Reset by G28.
+// The distance that XYZ has been offset by G92. Reset by G28.
 float position_shift[3] = { 0 };
 
 // This offset is added to the configured home position.
@@ -318,7 +318,7 @@ float sw_endstop_max[3] = { X_MAX_POS, Y_MAX_POS, Z_MAX_POS };
 // The active extruder (tool). Set with T<extruder> command.
 uint8_t active_extruder = 0;
 
-// Relative mode flag (enable with G91, disable with G90).
+// Relative Mode. Enable with G91, disable with G90.
 static bool relative_mode = false;
 
 static bool enable_filrunout1 = true;
@@ -332,13 +332,13 @@ const char axis_codes[NUM_AXIS] = {'X', 'Y', 'Z', 'E'};
 
 static int serial_count = 0;
 
-// G-code parameter pointer used by code_seen(), code_value(), etc.
+// GCode parameter pointer used by code_seen(), code_value(), etc.
 static char* seen_pointer;
 
-// Next immediate G-code command pointer (NULL if none).
+// Next Immediate GCode Command pointer. NULL if none.
 const char* queued_commands_P = NULL;
 
-const int sensitive_pins[] = SENSITIVE_PINS; ///< Sensitive pin list for M42.
+const int sensitive_pins[] = SENSITIVE_PINS; ///< Sensitive pin list for M42
 
 // Inactivity shutdown
 millis_t previous_cmd_ms = 0;
@@ -428,7 +428,7 @@ static uint8_t target_extruder;
   #define SIN_30 COS_60
   #define COS_30 SIN_60
   float endstop_adj[3] = { 0 };
-  // These are the default values, and can be overridden with M665.
+  // these are the default values, can be overriden with M665
   float delta_radius = DELTA_RADIUS;
   float delta_tower1_x = -SIN_60 * (delta_radius + DELTA_RADIUS_TRIM_TOWER_1); // front left tower
   float delta_tower1_y = -COS_60 * (delta_radius + DELTA_RADIUS_TRIM_TOWER_1);
@@ -468,20 +468,20 @@ static uint8_t target_extruder;
 #endif
 
 #if ENABLED(FILAMENT_WIDTH_SENSOR)
-  // Variables for filament width sensor input
-  float filament_width_nominal = DEFAULT_NOMINAL_FILAMENT_DIA;  // Nominal filament width; changeable with M404.
-  bool filament_sensor = false;  // M405 enables filament_sensor control, M406 disables it.
-  float filament_width_meas = DEFAULT_MEASURED_FILAMENT_DIA; // Stores the measured filament diameter.
-  int8_t measurement_delay[MAX_MEASUREMENT_DELAY + 1]; // Ring buffer to delay measurement (store extruder factor after subtracting 100).
-  int filwidth_delay_index1 = 0;  // Index into ring buffer.
-  int filwidth_delay_index2 = -1;  // Index into ring buffer; -1 indicates it needs initialization.
-  int meas_delay_cm = MEASUREMENT_DELAY_CM;  // Distance delay setting.
+  //Variables for Filament Sensor input
+  float filament_width_nominal = DEFAULT_NOMINAL_FILAMENT_DIA;  //Set nominal filament width, can be changed with M404
+  bool filament_sensor = false;  //M405 turns on filament_sensor control, M406 turns it off
+  float filament_width_meas = DEFAULT_MEASURED_FILAMENT_DIA; //Stores the measured filament diameter
+  int8_t measurement_delay[MAX_MEASUREMENT_DELAY + 1]; //ring buffer to delay measurement  store extruder factor after subtracting 100
+  int filwidth_delay_index1 = 0;  //index into ring buffer
+  int filwidth_delay_index2 = -1;  //index into ring buffer - set to -1 on startup to indicate ring buffer needs to be initialized
+  int meas_delay_cm = MEASUREMENT_DELAY_CM;  //distance delay setting
 #endif
 
 #if ENABLED(FILAMENT_RUNOUT_SENSOR) || ENABLED(FILAMENT2_RUNOUT_SENSOR)
   static bool filament_ran_out = false;
-  const millis_t FRS_DEBOUNCE_DELAY = 250UL; // Filament runout sensor delay.
-  static millis_t frs_debounce_time = 0UL; // Filament runout sensor debounce timer.
+  const millis_t FRS_DEBOUNCE_DELAY = 250UL; // filament runout sensor delay
+  static millis_t frs_debounce_time = 0UL; // filament runout sensor debouncing count
 #endif
 
 #if ENABLED(FILAMENT_RUNOUT_SENSOR)
@@ -540,8 +540,8 @@ static bool send_ok[BUFSIZE];
 
 #if ENABLED(HOST_KEEPALIVE_FEATURE)
 
-  // States for managing Marlin/host communication.
-  // Marlin sends messages when blocked or busy.
+  // States for managing Marlin and host communication
+  // Marlin sends messages if blocked or busy
   enum MarlinBusyState {
     NOT_BUSY,           // Not in a handler
     IN_HANDLER,         // Processing a GCode
@@ -608,9 +608,9 @@ typedef struct {
 PrinterStates printer_states;
 
 /**
- * ---------------------------------------------------------------------------
- * Function declarations
- * ---------------------------------------------------------------------------
+ * ***************************************************************************
+ * ******************************** FUNCTIONS ********************************
+ * ***************************************************************************
  */
 
 void stop();
@@ -685,10 +685,6 @@ extern "C" {
 }
 #endif //!SDSUPPORT
 
-// ---------------------------------------------------------------------------
-// G-code queue helpers
-// ---------------------------------------------------------------------------
-
 /**
  * Inject the next "immediate" command, when possible.
  * Return true if any immediate commands remain to inject.
@@ -713,7 +709,7 @@ static bool drain_queued_commands_P() {
 
 /**
  * Test for all enqueued commands to be processed.
- * Return false while commands remain, true when all commands are done.
+ * return false if it remains command, true when all commands are done
  */
 bool enqueued_commands_finished__CALLABLE_FROM_LCD_ONLY() {
   if ( commands_in_queue > 0) {
@@ -737,7 +733,7 @@ void wait_all_commands_finished__CALLABLE_FROM_LCD_ONLY() {
 /**
  * Record one or many commands to run from program memory.
  * Aborts the current queue, if any.
- * Note: drain_queued_commands_P() must be called repeatedly to drain the commands afterwards.
+ * Note: drain_queued_commands_P() must be called repeatedly to drain the commands afterwards
  */
 void enqueue_and_echo_commands_P(const char* pgcode) {
   queued_commands_P = pgcode;
@@ -745,7 +741,7 @@ void enqueue_and_echo_commands_P(const char* pgcode) {
 }
 
 /**
- * Once a new command is in the ring buffer, call this to commit it.
+ * Once a new command is in the ring buffer, call this to commit it
  */
 inline void _commit_command(bool say_ok) {
   send_ok[cmd_queue_index_w] = say_ok;
@@ -755,7 +751,7 @@ inline void _commit_command(bool say_ok) {
 
 /**
  * Copy a command directly into the main command buffer, from RAM.
- * Returns true if the command was added.
+ * Returns true if successfully adds the command
  */
 inline bool _enqueuecommand(const char* cmd, bool say_ok=false) {
   if (*cmd == ';' || commands_in_queue >= BUFSIZE) return false;
@@ -907,6 +903,11 @@ void servo_init() {
   // Pre-declaration
   inline void set_notify_warning();
   inline void set_notify_not_calibrated();
+#endif
+
+#if ENABLED(ONE_BUTTON) || ENABLED(SUMMON_PRINT_PAUSE)
+  #define ONE_BUTTON_PRESSED  (READ( SUMMON_PRINT_PAUSE_PIN ) ^ SUMMON_PRINT_PAUSE_INVERTING)
+  #define ONE_BUTTON_RELEASED (!ONE_BUTTON_PRESSED)
 #endif
 
 #if ENABLED(DELTA_EXTRA) && ENABLED(Z_MIN_MAGIC)
@@ -1089,13 +1090,13 @@ void setup() {
       do {
          now = millis();
          delay( 100 );
-      } while( one_button_pressed() && PENDING( now, timeout ) );
+      } while( ONE_BUTTON_PRESSED && PENDING( now, timeout ) );
       if ( ELAPSED( now, timeout ) ) {
         printer_states.activity_state = ACTIVITY_STARTUP_CALIBRATION;
-        enqueue_and_echo_commands_P( PSTR("M106 S255\nD851") );
+        enqueue_and_echo_commands_P( PSTR("D851") );
       }
       else {
-        enqueue_and_echo_commands_P( PSTR("M106 S255\nG28") );
+        enqueue_and_echo_commands_P( PSTR("G28") );
         if (NOT_YET_CALIBRATED) set_notify_not_calibrated();
       }
     #endif
@@ -5950,13 +5951,25 @@ inline void gcode_M114() {
        zpos = count_position[Z_AXIS];
   CRITICAL_SECTION_END;
 
-  SERIAL_PROTOCOLPGM(MSG_COUNT_X);
+  #if ENABLED(COREXY) || ENABLED(COREXZ)
+    SERIAL_PROTOCOLPGM(MSG_COUNT_A);
+  #else
+    SERIAL_PROTOCOLPGM(MSG_COUNT_X);
+  #endif
   SERIAL_PROTOCOL(xpos);
 
-  SERIAL_PROTOCOLPGM(" Y:");
+  #if ENABLED(COREXY)
+    SERIAL_PROTOCOLPGM(" B:");
+  #else
+    SERIAL_PROTOCOLPGM(" Y:");
+  #endif
   SERIAL_PROTOCOL(ypos);
 
-  SERIAL_PROTOCOLPGM(" Z:");
+  #if ENABLED(COREXZ)
+    SERIAL_PROTOCOLPGM(" C:");
+  #else
+    SERIAL_PROTOCOLPGM(" Z:");
+  #endif
   SERIAL_PROTOCOL(zpos);
 
   SERIAL_EOL;
@@ -7143,7 +7156,7 @@ inline void gcode_M503() {
 
     void manage_long_press_filament_expulsion() {
       if ( !printer_states.pause_asked ) {
-        if (one_button_pressed()) {
+        if (ONE_BUTTON_PRESSED) {
           millis_t now = millis();
           if (long_press_timeout == 0UL) {
             long_press_timeout = now + LONG_PRESS_TIMEOUT;
@@ -8537,38 +8550,6 @@ inline void gcode_D999() {
   }
 }
 
-inline float probe_delta_point(const float x, const float y, const float z) {
-  destination[X_AXIS] = x;
-  destination[Y_AXIS] = y;
-  destination[Z_AXIS] = z;
-  prepare_move();
-  st_synchronize();
-  return get_probed_Z_avg();
-}
-
-inline void probe_towers_and_center(float &tower1, float &tower2, float &tower3, float &center) {
-  tower1 = probe_delta_point(delta_tower1_x, delta_tower1_y, 10.0f);
-  tower2 = probe_delta_point(delta_tower2_x, delta_tower2_y, 10.0f);
-  tower3 = probe_delta_point(delta_tower3_x, delta_tower3_y, 10.0f);
-  center = probe_delta_point(0.0f, 0.0f, 10.0f);
-}
-
-inline float mean_tower_altitude(const float tower1, const float tower2, const float tower3) {
-  return (tower1 + tower2 + tower3) / 3.0f;
-}
-
-inline void report_delta_probes(const float tower1, const float tower2, const float tower3, const float center) {
-  SERIAL_ECHOLNPGM( "R probed points:" );
-  SERIAL_ECHOPGM  ( "  T1: " );
-  SERIAL_ECHOLN   ( tower1 );
-  SERIAL_ECHOPGM  ( "  T2: " );
-  SERIAL_ECHOLN   ( tower2 );
-  SERIAL_ECHOPGM  ( "  T3: " );
-  SERIAL_ECHOLN   ( tower3 );
-  SERIAL_ECHOPGM  ( "   C: " );
-  SERIAL_ECHOLN   ( center );
-}
-
 inline void gcode_D851() {
 
   printer_states.activity_state = ACTIVITY_STARTUP_CALIBRATION;
@@ -8599,7 +8580,12 @@ inline void gcode_D851() {
   SERIAL_ECHOLN(home_offset[Z_AXIS]);
 
   float z_home_offset;
-  z_home_offset = probe_delta_point(0.0f, 0.0f, 70.0f);
+  destination[X_AXIS] = 0;
+  destination[Y_AXIS] = 0;
+  destination[Z_AXIS] = 70.0f;
+  prepare_move();
+  st_synchronize();
+  z_home_offset = get_probed_Z_avg();
 
   home_offset[Z_AXIS] = -z_home_offset - 4.0;
   update_software_endstops(Z_AXIS);
@@ -8615,7 +8601,29 @@ inline void gcode_D851() {
 
   float tower1_altitude, tower2_altitude, tower3_altitude, center_altitude;
 
-  probe_towers_and_center(tower1_altitude, tower2_altitude, tower3_altitude, center_altitude);
+  // TOWER 1
+  destination[X_AXIS] = delta_tower1_x;
+  destination[Y_AXIS] = delta_tower1_y;
+  destination[Z_AXIS] = 10.0f;
+  prepare_move();
+  st_synchronize();
+  tower1_altitude = get_probed_Z_avg();
+
+  // TOWER 2
+  destination[X_AXIS] = delta_tower2_x;
+  destination[Y_AXIS] = delta_tower2_y;
+  destination[Z_AXIS] = 10.0f;
+  prepare_move();
+  st_synchronize();
+  tower2_altitude = get_probed_Z_avg();
+
+  // TOWER 3
+  destination[X_AXIS] = delta_tower3_x;
+  destination[Y_AXIS] = delta_tower3_y;
+  destination[Z_AXIS] = 10.0f;
+  prepare_move();
+  st_synchronize();
+  tower3_altitude = get_probed_Z_avg();
 
   // Use last result as endstops adjust
   endstop_adj[0] = tower1_altitude /*+ zprobe_zoffset*/;
@@ -8633,10 +8641,50 @@ inline void gcode_D851() {
 
   feedrate = homing_feedrate[ Z_AXIS ];
 
-  probe_towers_and_center(tower1_altitude, tower2_altitude, tower3_altitude, center_altitude);
-  report_delta_probes(tower1_altitude, tower2_altitude, tower3_altitude, center_altitude);
+  // TOWER 1
+  destination[X_AXIS] = delta_tower1_x;
+  destination[Y_AXIS] = delta_tower1_y;
+  destination[Z_AXIS] = 10.0f;
+  prepare_move();
+  st_synchronize();
+  tower1_altitude = get_probed_Z_avg();
 
-  float mean_ref_plan_altitude = mean_tower_altitude(tower1_altitude, tower2_altitude, tower3_altitude);
+  // TOWER 2
+  destination[X_AXIS] = delta_tower2_x;
+  destination[Y_AXIS] = delta_tower2_y;
+  destination[Z_AXIS] = 10.0f;
+  prepare_move();
+  st_synchronize();
+  tower2_altitude = get_probed_Z_avg();
+
+  // TOWER 3
+  destination[X_AXIS] = delta_tower3_x;
+  destination[Y_AXIS] = delta_tower3_y;
+  destination[Z_AXIS] = 10.0f;
+  prepare_move();
+  st_synchronize();
+  tower3_altitude = get_probed_Z_avg();
+
+
+  // CENTER
+  destination[X_AXIS] = 0.0f;
+  destination[Y_AXIS] = 0.0f;
+  destination[Z_AXIS] = 10.0f;
+  prepare_move();
+  st_synchronize();
+  center_altitude = get_probed_Z_avg();
+
+  SERIAL_ECHOLNPGM( "R probed points:" );
+  SERIAL_ECHOPGM  ( "  T1: " );
+  SERIAL_ECHOLN   ( tower1_altitude );
+  SERIAL_ECHOPGM  ( "  T2: " );
+  SERIAL_ECHOLN   ( tower2_altitude );
+  SERIAL_ECHOPGM  ( "  T3: " );
+  SERIAL_ECHOLN   ( tower3_altitude );
+  SERIAL_ECHOPGM  ( "   C: " );
+  SERIAL_ECHOLN   ( center_altitude );
+
+  float mean_ref_plan_altitude = ( tower1_altitude + tower2_altitude + tower3_altitude ) / 3.0;
   float diff_center_altitude = center_altitude - mean_ref_plan_altitude;
 
   SERIAL_ECHOPGM( "Initial mean based difference: " );
@@ -8645,10 +8693,7 @@ inline void gcode_D851() {
   SERIAL_ECHOPGM( "Initial delta radius: " );
   SERIAL_ECHOLN ( delta_radius );
 
-  const uint8_t max_iterations = 10;
-  uint8_t iterations = 0;
-  while (abs(diff_center_altitude) > 0.05 && iterations < max_iterations) {
-    iterations++;
+  do {
     delta_radius -= 2.0 * diff_center_altitude;
 
     SERIAL_ECHOPGM( "Testing delta radius: " );
@@ -8656,21 +8701,55 @@ inline void gcode_D851() {
 
     gcode_M665();
 
-    probe_towers_and_center(tower1_altitude, tower2_altitude, tower3_altitude, center_altitude);
-    report_delta_probes(tower1_altitude, tower2_altitude, tower3_altitude, center_altitude);
+    destination[X_AXIS] = delta_tower1_x;
+    destination[Y_AXIS] = delta_tower1_y;
+    destination[Z_AXIS] = 10.0f;
+    prepare_move();
+    st_synchronize();
+    tower1_altitude = get_probed_Z_avg();
 
-    mean_ref_plan_altitude = mean_tower_altitude(tower1_altitude, tower2_altitude, tower3_altitude);
+    // TOWER 2
+    destination[X_AXIS] = delta_tower2_x;
+    destination[Y_AXIS] = delta_tower2_y;
+    destination[Z_AXIS] = 10.0f;
+    prepare_move();
+    st_synchronize();
+    tower2_altitude = get_probed_Z_avg();
+
+    // TOWER 3
+    destination[X_AXIS] = delta_tower3_x;
+    destination[Y_AXIS] = delta_tower3_y;
+    destination[Z_AXIS] = 10.0f;
+    prepare_move();
+    st_synchronize();
+    tower3_altitude = get_probed_Z_avg();
+
+    // CENTER
+    destination[X_AXIS] = 0.0f;
+    destination[Y_AXIS] = 0.0f;
+    destination[Z_AXIS] = 10.0f;
+    prepare_move();
+    st_synchronize();
+    center_altitude = get_probed_Z_avg();
+
+    SERIAL_ECHOLNPGM( "R probed points:" );
+    SERIAL_ECHOPGM  ( "  T1: " );
+    SERIAL_ECHOLN   ( tower1_altitude );
+    SERIAL_ECHOPGM  ( "  T2: " );
+    SERIAL_ECHOLN   ( tower2_altitude );
+    SERIAL_ECHOPGM  ( "  T3: " );
+    SERIAL_ECHOLN   ( tower3_altitude );
+    SERIAL_ECHOPGM  ( "   C: " );
+    SERIAL_ECHOLN   ( center_altitude );
+
+    mean_ref_plan_altitude = ( tower1_altitude + tower2_altitude + tower3_altitude ) / 3.0;
     diff_center_altitude = center_altitude - mean_ref_plan_altitude;
 
     SERIAL_ECHOPGM( "NEW Mean based difference: " );
     SERIAL_ECHOLN ( diff_center_altitude );
     SERIAL_ECHOPGM( "With delta radius: " );
     SERIAL_ECHOLN ( delta_radius );
-  }
-
-  if (iterations == max_iterations) {
-    SERIAL_ECHOLNPGM("Delta radius tuning reached iteration limit.");
-  }
+  } while( abs( diff_center_altitude ) > 0.05 );
 
 
   SERIAL_ECHOPGM( "Storing delta radius: " );
@@ -8683,10 +8762,49 @@ inline void gcode_D851() {
   gcode_G28();
   // Now, we need to adjust endstops offset with the corrected radius
 
-  probe_towers_and_center(tower1_altitude, tower2_altitude, tower3_altitude, center_altitude);
-  report_delta_probes(tower1_altitude, tower2_altitude, tower3_altitude, center_altitude);
+  // TOWER 1
+  destination[X_AXIS] = delta_tower1_x;
+  destination[Y_AXIS] = delta_tower1_y;
+  destination[Z_AXIS] = 10.0f;
+  prepare_move();
+  st_synchronize();
+  tower1_altitude = get_probed_Z_avg();
 
-  mean_ref_plan_altitude = mean_tower_altitude(tower1_altitude, tower2_altitude, tower3_altitude);
+  // TOWER 2
+  destination[X_AXIS] = delta_tower2_x;
+  destination[Y_AXIS] = delta_tower2_y;
+  destination[Z_AXIS] = 10.0f;
+  prepare_move();
+  st_synchronize();
+  tower2_altitude = get_probed_Z_avg();
+
+  // TOWER 3
+  destination[X_AXIS] = delta_tower3_x;
+  destination[Y_AXIS] = delta_tower3_y;
+  destination[Z_AXIS] = 10.0f;
+  prepare_move();
+  st_synchronize();
+  tower3_altitude = get_probed_Z_avg();
+
+  // CENTER
+  destination[X_AXIS] = 0.0f;
+  destination[Y_AXIS] = 0.0f;
+  destination[Z_AXIS] = 10.0f;
+  prepare_move();
+  st_synchronize();
+  center_altitude = get_probed_Z_avg();
+
+  SERIAL_ECHOLNPGM( "R probed points:" );
+  SERIAL_ECHOPGM  ( "  T1: " );
+  SERIAL_ECHOLN   ( tower1_altitude );
+  SERIAL_ECHOPGM  ( "  T2: " );
+  SERIAL_ECHOLN   ( tower2_altitude );
+  SERIAL_ECHOPGM  ( "  T3: " );
+  SERIAL_ECHOLN   ( tower3_altitude );
+  SERIAL_ECHOPGM  ( "   C: " );
+  SERIAL_ECHOLN   ( center_altitude );
+
+  mean_ref_plan_altitude = ( tower1_altitude + tower2_altitude + tower3_altitude ) / 3.0;
   diff_center_altitude = center_altitude - mean_ref_plan_altitude;
 
   SERIAL_ECHOPGM( "Mean based difference: " );
@@ -8711,10 +8829,49 @@ inline void gcode_D851() {
       // Take in account now
       gcode_G28();
 
-      probe_towers_and_center(tower1_altitude, tower2_altitude, tower3_altitude, center_altitude);
-      report_delta_probes(tower1_altitude, tower2_altitude, tower3_altitude, center_altitude);
+      // TOWER 1
+      destination[X_AXIS] = delta_tower1_x;
+      destination[Y_AXIS] = delta_tower1_y;
+      destination[Z_AXIS] = 10.0f;
+      prepare_move();
+      st_synchronize();
+      tower1_altitude = get_probed_Z_avg();
 
-      mean_ref_plan_altitude = mean_tower_altitude(tower1_altitude, tower2_altitude, tower3_altitude);
+      // TOWER 2
+      destination[X_AXIS] = delta_tower2_x;
+      destination[Y_AXIS] = delta_tower2_y;
+      destination[Z_AXIS] = 10.0f;
+      prepare_move();
+      st_synchronize();
+      tower2_altitude = get_probed_Z_avg();
+
+      // TOWER 3
+      destination[X_AXIS] = delta_tower3_x;
+      destination[Y_AXIS] = delta_tower3_y;
+      destination[Z_AXIS] = 10.0f;
+      prepare_move();
+      st_synchronize();
+      tower3_altitude = get_probed_Z_avg();
+
+      // CENTER
+      destination[X_AXIS] = 0.0f;
+      destination[Y_AXIS] = 0.0f;
+      destination[Z_AXIS] = 10.0f;
+      prepare_move();
+      st_synchronize();
+      center_altitude = get_probed_Z_avg();
+
+      SERIAL_ECHOLNPGM( "R probed points:" );
+      SERIAL_ECHOPGM  ( "  T1: " );
+      SERIAL_ECHOLN   ( tower1_altitude );
+      SERIAL_ECHOPGM  ( "  T2: " );
+      SERIAL_ECHOLN   ( tower2_altitude );
+      SERIAL_ECHOPGM  ( "  T3: " );
+      SERIAL_ECHOLN   ( tower3_altitude );
+      SERIAL_ECHOPGM  ( "   C: " );
+      SERIAL_ECHOLN   ( center_altitude );
+
+      mean_ref_plan_altitude = ( tower1_altitude + tower2_altitude + tower3_altitude ) / 3.0;
       diff_center_altitude = center_altitude - mean_ref_plan_altitude;
 
       SERIAL_ECHOPGM( "Mean based difference: " );
@@ -8738,17 +8895,20 @@ inline void gcode_D850() {
 }
 
 inline void gcode_D852() {
-  const ActivityState previous_state = printer_states.activity_state;
+
+  ActivityState previous_state = printer_states.activity_state;
   printer_states.activity_state = ACTIVITY_STARTUP_CALIBRATION;
+
+
 
   SERIAL_ECHOPGM("Z_MAGIC monitoring for ");
 
   millis_t monitoring_timeout = 0UL;
   if (code_seen('T')) {
-    const short seconds = code_value_short();
+    short seconds = code_value_short();
     monitoring_timeout = millis() + seconds * 1000UL;
 
-    SERIAL_ECHO(seconds);
+    SERIAL_ECHO( seconds );
     SERIAL_ECHOLNPGM("s");
   }
   else {
@@ -8777,12 +8937,12 @@ inline void gcode_D852() {
       SERIAL_ECHOPGM(" ");
 
       SERIAL_ECHOPGM("bias:");
-      if (z_magic_bias >= 0.0) SERIAL_ECHO(" ");
+      if (z_magic_bias>=0.0) SERIAL_ECHO(" ");
       SERIAL_ECHO   (z_magic_bias);
       SERIAL_ECHOPGM(" ");
 
       SERIAL_ECHOPGM("delta:");
-      if (z_magic_bias_delta >= 0.0) SERIAL_ECHO(" ");
+      if (z_magic_bias_delta>=0.0) SERIAL_ECHO(" ");
       SERIAL_ECHO   (z_magic_bias_delta);
       SERIAL_ECHOPGM(" ");
 
@@ -10431,7 +10591,7 @@ void disable_all_steppers() {
     // PAUSE PUSHED
     if (
       !printer_states.pause_asked
-      && one_button_pressed()
+      && ONE_BUTTON_PRESSED
     ) {
       SERIAL_ECHOLNPGM("Pause : Summoned by user bouton press");
       printer_states.pause_asked = true;
@@ -10453,7 +10613,7 @@ void disable_all_steppers() {
 
     if (printer_states.print_asked) {
       // The user has released the button
-      if (one_button_released()) {
+      if (ONE_BUTTON_RELEASED) {
         if (has_to_print_timeout == 0) {
           SERIAL_ECHOLNPGM("one button: Start pending: Checking sd card content");
           has_to_print_timeout = now + 2500UL;
@@ -10478,7 +10638,7 @@ void disable_all_steppers() {
       }
     }
     else { //!printer_states.print_asked
-      if (one_button_pressed()) {
+      if (ONE_BUTTON_PRESSED) {
         if (NOT_YET_CALIBRATED) {
           SERIAL_ERRORLNPGM("Printer not yet calibrated. Please calibrate.");
           set_notify_not_calibrated();
@@ -10821,14 +10981,10 @@ void idle(
   #endif
 
   #if ENABLED( Z_MIN_MAGIC ) && DISABLED(LONG_PRESS_SUPPORT)
-    const float tap_start_threshold = min(z_magic_threshold, -10.0f);
-    const float tap_min_threshold = max(tap_start_threshold * 2.0f, -40.0f);
-    const float tap_scratch_threshold = max(10.0f, -tap_start_threshold * 0.5f);
-
     if (enable_z_magic_tap) {
       // --------8<---------------------
       if (tt_state == WAITING_HIT_START) {
-        if (z_magic_bias_delta < tap_start_threshold) {
+        if (z_magic_bias_delta < -10.0) {
           tt_state = GO_DOWN;
           z_magic_need_to_timeout = now + 50UL; // GO_DOWN duration
           z_magic_bias_delta_min_reached = 0.0;
@@ -10838,7 +10994,7 @@ void idle(
       // --------8<---------------------
       // 'Boing' protector
       if (tt_state != WAITING_HIT_START && tt_state != DISABLE_DUE_TO_SCRATCH) {
-        if (z_magic_bias_delta > tap_scratch_threshold) {
+        if (z_magic_bias_delta > 10.0) {
           tt_state = DISABLE_DUE_TO_SCRATCH;
           z_magic_need_to_timeout = now + 1000UL;
         }
@@ -10848,7 +11004,7 @@ void idle(
         if (ELAPSED(now, z_magic_need_to_timeout)) {
           // Min Down Pick level collection finished
           // Let's check how deep the bed was went down
-          if (z_magic_bias_delta_min_reached < tap_min_threshold) {
+          if (z_magic_bias_delta_min_reached < -20.0) {
             tt_state = GO_UP;
             z_magic_need_to_timeout = now + 120UL; // GO_UP duration
           }
@@ -10912,12 +11068,8 @@ void idle(
         z_magic_multi_tap_timeout = now + 500UL;
       }
     }
-    else {
-      tt_state = WAITING_HIT_START;
-      z_magic_internal_tap_count = 0;
-      z_magic_tap_count = 0;
-    }
 
+    // Check to reset that, even if enable_z_magic_tap is disabled
     if (z_magic_tap_count > 0 && ELAPSED(now, z_magic_multi_tap_timeout)) {
       z_magic_tap_count = 0;
     }
@@ -11041,7 +11193,16 @@ void manage_inactivity(bool ignore_stepper_queue/*=false*/) {
         max_temp = max(max_temp, degHotend(cur_extruder));
 
       #if ENABLED(IS_MONO_FAN)
-        fanSpeeds[0] = mono_fan_pwm(fanSpeeds[0], max_temp);
+        short fs = 0;
+        if ( max_temp < MONO_FAN_MIN_TEMP ) {
+          fs = 0;
+        }
+        else {
+          fs = fanSpeeds[0];
+          NOLESS(fs, MONO_FAN_MIN_PWM);
+        }
+
+        fanSpeeds[0] = fs;
       #endif
 
       #if ENABLED(PRINTER_HEAD_EASY)

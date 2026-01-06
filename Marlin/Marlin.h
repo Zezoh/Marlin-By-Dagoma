@@ -207,8 +207,8 @@ void manage_inactivity(bool ignore_stepper_queue = false);
 /**
  * Axis indices as enumerated constants
  *
- * A_AXIS/B_AXIS/C_AXIS are used by core kinematics.
- * X_HEAD and Y_HEAD is used for systems that don't have a 1:1 relationship between X_AXIS and X Head movement.
+ * A_AXIS and B_AXIS are used by COREXY printers
+ * X_HEAD and Y_HEAD is used for systems that don't have a 1:1 relationship between X_AXIS and X Head movement, like CoreXY bots.
  */
 enum AxisEnum {X_AXIS = 0, A_AXIS = 0, Y_AXIS = 1, B_AXIS = 1, Z_AXIS = 2, C_AXIS = 2, E_AXIS = 3, X_HEAD = 4, Y_HEAD = 5, Z_HEAD = 5};
 
@@ -339,24 +339,6 @@ extern bool axis_homed[3]; // axis[n].is_homed
 
 #if FAN_COUNT > 0
   extern int fanSpeeds[FAN_COUNT];
-#endif
-
-#if ENABLED(IS_MONO_FAN)
-  FORCE_INLINE uint8_t mono_fan_pwm(const uint8_t requested, const float max_temp) {
-    if (max_temp < MONO_FAN_MIN_TEMP) return 0;
-    return (requested < MONO_FAN_MIN_PWM) ? MONO_FAN_MIN_PWM : requested;
-  }
-#endif
-
-#if ENABLED(ONE_BUTTON) || ENABLED(SUMMON_PRINT_PAUSE)
-  FORCE_INLINE bool one_button_pressed() {
-    #if ENABLED(ONE_BUTTON)
-      return READ(ONE_BUTTON_PIN) ^ ONE_BUTTON_INVERTING;
-    #else
-      return READ(SUMMON_PRINT_PAUSE_PIN) ^ SUMMON_PRINT_PAUSE_INVERTING;
-    #endif
-  }
-  FORCE_INLINE bool one_button_released() { return !one_button_pressed(); }
 #endif
 
 #if ENABLED(BARICUDA)

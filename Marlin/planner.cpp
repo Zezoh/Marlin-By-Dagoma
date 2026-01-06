@@ -123,7 +123,7 @@ unsigned long axis_steps_per_sqr_second[NUM_AXIS];
 //============ semi-private variables, used in inline functions =============
 //===========================================================================
 
-block_t block_buffer[BLOCK_BUFFER_SIZE];            // A ring buffer for motion instructions
+block_t block_buffer[BLOCK_BUFFER_SIZE];            // A ring buffer for motion instfructions
 volatile unsigned char block_buffer_head;           // Index of the next block to be pushed
 volatile unsigned char block_buffer_tail;           // Index of the block to process now
 
@@ -618,10 +618,23 @@ float junction_deviation = 0.1;
   block->busy = false;
 
   // Number of steps for each axis
-  // default non-h-bot planning
-  block->steps[X_AXIS] = labs(dx);
-  block->steps[Y_AXIS] = labs(dy);
-  block->steps[Z_AXIS] = labs(dz);
+  #if ENABLED(COREXY)
+    // corexy planning
+    // these equations follow the form of the dA and dB equations on http://www.corexy.com/theory.html
+    block->steps[A_AXIS] = labs(dx + dy);
+    block->steps[B_AXIS] = labs(dx - dy);
+    block->steps[Z_AXIS] = labs(dz);
+  #elif ENABLED(COREXZ)
+    // corexz planning
+    block->steps[A_AXIS] = labs(dx + dz);
+    block->steps[Y_AXIS] = labs(dy);
+    block->steps[C_AXIS] = labs(dx - dz);
+  #else
+    // default non-h-bot planning
+    block->steps[X_AXIS] = labs(dx);
+    block->steps[Y_AXIS] = labs(dy);
+    block->steps[Z_AXIS] = labs(dz);
+  #endif
 
   block->steps[E_AXIS] = labs(de);
   block->steps[E_AXIS] *= volumetric_multiplier[extruder];
@@ -643,19 +656,49 @@ float junction_deviation = 0.1;
 
   // Compute direction bits for this block
   uint8_t db = 0;
-  if (dx < 0) SBI(db, X_AXIS);
-  if (dy < 0) SBI(db, Y_AXIS);
-  if (dz < 0) SBI(db, Z_AXIS);
+  #if ENABLED(COREXY)
+    if (dx < 0) SBI(db, X_HEAD); // Save the real Extruder (head) direction in X Axis
+    if (dy < 0) SBI(db, Y_HEAD); // ...and Y
+    if (dz < 0) SBI(db, Z_AXIS);
+    if (dx + dy < 0) SBI(db, A_AXIS); // Motor A direction
+    if (dx - dy < 0) SBI(db, B_AXIS); // Motor B direction
+  #elif ENABLED(COREXZ)
+    if (dx < 0) SBI(db, X_HEAD); // Save the real Extruder (head) direction in X Axis
+    if (dy < 0) SBI(db, Y_AXIS);
+    if (dz < 0) SBI(db, Z_HEAD); // ...and Z
+    if (dx + dz < 0) SBI(db, A_AXIS); // Motor A direction
+    if (dx - dz < 0) SBI(db, C_AXIS); // Motor B direction
+  #else
+    if (dx < 0) SBI(db, X_AXIS);
+    if (dy < 0) SBI(db, Y_AXIS);
+    if (dz < 0) SBI(db, Z_AXIS);
+  #endif
   if (de < 0) SBI(db, E_AXIS);
   block->direction_bits = db;
 
   block->active_extruder = extruder;
 
   //enable active axes
-  if (block->steps[X_AXIS]) enable_x();
-  if (block->steps[Y_AXIS]) enable_y();
-  #if DISABLED(Z_LATE_ENABLE)
-    if (block->steps[Z_AXIS]) enable_z();
+  #if ENABLED(COREXY)
+    if (block->steps[A_AXIS] || block->steps[B_AXIS]) {
+      enable_x();
+      enable_y();
+    }
+    #if DISABLED(Z_LATE_ENABLE)
+      if (block->steps[Z_AXIS]) enable_z();
+    #endif
+  #elif ENABLED(COREXZ)
+    if (block->steps[A_AXIS] || block->steps[C_AXIS]) {
+      enable_x();
+      enable_z();
+    }
+    if (block->steps[Y_AXIS]) enable_y();
+  #else
+    if (block->steps[X_AXIS]) enable_x();
+    if (block->steps[Y_AXIS]) enable_y();
+    #if DISABLED(Z_LATE_ENABLE)
+      if (block->steps[Z_AXIS]) enable_z();
+    #endif
   #endif
 
   // Enable extruder(s)
@@ -736,12 +779,31 @@ float junction_deviation = 0.1;
   /**
    * This part of the code calculates the total length of the movement.
    * For cartesian bots, the X_AXIS is the real X movement and same for Y_AXIS.
-   * Use XYZ displacement to calculate the total movement length and apply the desired speed.
+   * But for corexy bots, that is not true. The "X_AXIS" and "Y_AXIS" motors (that should be named to A_AXIS
+   * and B_AXIS) cannot be used for X and Y length, because A=X+Y and B=X-Y.
+   * So we need to create other 2 "AXIS", named X_HEAD and Y_HEAD, meaning the real displacement of the Head.
+   * Having the real displacement of the head, we can calculate the total movement length and apply the desired speed.
    */
-  float delta_mm[4];
-  delta_mm[X_AXIS] = dx / axis_steps_per_unit[X_AXIS];
-  delta_mm[Y_AXIS] = dy / axis_steps_per_unit[Y_AXIS];
-  delta_mm[Z_AXIS] = dz / axis_steps_per_unit[Z_AXIS];
+  #if ENABLED(COREXY)
+    float delta_mm[6];
+    delta_mm[X_HEAD] = dx / axis_steps_per_unit[A_AXIS];
+    delta_mm[Y_HEAD] = dy / axis_steps_per_unit[B_AXIS];
+    delta_mm[Z_AXIS] = dz / axis_steps_per_unit[Z_AXIS];
+    delta_mm[A_AXIS] = (dx + dy) / axis_steps_per_unit[A_AXIS];
+    delta_mm[B_AXIS] = (dx - dy) / axis_steps_per_unit[B_AXIS];
+  #elif ENABLED(COREXZ)
+    float delta_mm[6];
+    delta_mm[X_HEAD] = dx / axis_steps_per_unit[A_AXIS];
+    delta_mm[Y_AXIS] = dy / axis_steps_per_unit[Y_AXIS];
+    delta_mm[Z_HEAD] = dz / axis_steps_per_unit[C_AXIS];
+    delta_mm[A_AXIS] = (dx + dz) / axis_steps_per_unit[A_AXIS];
+    delta_mm[C_AXIS] = (dx - dz) / axis_steps_per_unit[C_AXIS];
+  #else
+    float delta_mm[4];
+    delta_mm[X_AXIS] = dx / axis_steps_per_unit[X_AXIS];
+    delta_mm[Y_AXIS] = dy / axis_steps_per_unit[Y_AXIS];
+    delta_mm[Z_AXIS] = dz / axis_steps_per_unit[Z_AXIS];
+  #endif
   delta_mm[E_AXIS] = (de / axis_steps_per_unit[E_AXIS]) * volumetric_multiplier[extruder] * extruder_multiplier[extruder] / 100.0;
 
   if (block->steps[X_AXIS] <= MIN_STEPS_PER_SEGMENT && block->steps[Y_AXIS] <= MIN_STEPS_PER_SEGMENT && block->steps[Z_AXIS] <= MIN_STEPS_PER_SEGMENT) {
@@ -749,7 +811,13 @@ float junction_deviation = 0.1;
   }
   else {
     block->millimeters = sqrt(
-      square(delta_mm[X_AXIS]) + square(delta_mm[Y_AXIS]) + square(delta_mm[Z_AXIS])
+      #if ENABLED(COREXY)
+        square(delta_mm[X_HEAD]) + square(delta_mm[Y_HEAD]) + square(delta_mm[Z_AXIS])
+      #elif ENABLED(COREXZ)
+        square(delta_mm[X_HEAD]) + square(delta_mm[Y_AXIS]) + square(delta_mm[Z_HEAD])
+      #else
+        square(delta_mm[X_AXIS]) + square(delta_mm[Y_AXIS]) + square(delta_mm[Z_AXIS])
+      #endif
     );
   }
   float inverse_millimeters = 1.0 / block->millimeters;  // Inverse millimeters to remove multiple divides
@@ -1025,6 +1093,8 @@ float junction_deviation = 0.1;
 
   /**
    * Get the XYZ position of the steppers as a vector_3.
+   *
+   * On CORE machines XYZ is derived from ABC.
    */
   vector_3 plan_get_position() {
     vector_3 position = vector_3(st_get_axis_position_mm(X_AXIS), st_get_axis_position_mm(Y_AXIS), st_get_axis_position_mm(Z_AXIS));
@@ -1043,6 +1113,8 @@ float junction_deviation = 0.1;
 
 /**
  * Directly set the planner XYZ position (hence the stepper positions).
+ *
+ * On CORE machines stepper ABC will be translated from the given XYZ.
  */
 #if ENABLED(AUTO_BED_LEVELING_FEATURE) || ENABLED(MESH_BED_LEVELING)
   void plan_set_position(float x, float y, float z, const float& e)
