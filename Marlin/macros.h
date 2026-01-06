@@ -23,24 +23,39 @@
 #ifndef MACROS_H
 #define MACROS_H
 
+// --------------------------------------------------------------------------
+// String helpers
+// --------------------------------------------------------------------------
 // Macros to make a string from a macro
 #define STRINGIFY_(M) #M
 #define STRINGIFY(M) STRINGIFY_(M)
 
+// --------------------------------------------------------------------------
+// Bit manipulation
+// --------------------------------------------------------------------------
 // Macros for bit masks
 #define TEST(n,b) (((n)&_BV(b))!=0)
 #define SBI(n,b) (n |= _BV(b))
 #define CBI(n,b) (n &= ~_BV(b))
 #define SET_BIT(n,b,value) (n) ^= ((-value)^(n)) & (_BV(b))
 
+// --------------------------------------------------------------------------
+// Math helpers
+// --------------------------------------------------------------------------
 // Macros for maths shortcuts
 #define RADIANS(d) ((d)*M_PI/180.0)
 #define DEGREES(r) ((r)*180.0/M_PI)
 
+// --------------------------------------------------------------------------
+// Bounds helpers
+// --------------------------------------------------------------------------
 // Macros to contrain values
 #define NOLESS(v,n) do{ if (v < n) v = n; }while(0)
 #define NOMORE(v,n) do{ if (v > n) v = n; }while(0)
 
+// --------------------------------------------------------------------------
+// Option testing
+// --------------------------------------------------------------------------
 // Macros to support option testing
 #define _CAT(a, ...) a ## __VA_ARGS__
 #define SWITCH_ENABLED_false 0
@@ -51,11 +66,17 @@
 #define ENABLED(b) _CAT(SWITCH_ENABLED_, b)
 #define DISABLED(b) (!_CAT(SWITCH_ENABLED_, b))
 
+// --------------------------------------------------------------------------
+// Comparators and counts
+// --------------------------------------------------------------------------
 #define WITHIN(V,L,H) ((V) >= (L) && (V) <= (H))
 #define NUMERIC(a) ((a) >= '0' && '9' >= (a))
 #define NUMERIC_SIGNED(a) (NUMERIC(a) || (a) == '-')
 #define COUNT(a) (sizeof(a)/sizeof(*a))
 
+// --------------------------------------------------------------------------
+// Array helpers
+// --------------------------------------------------------------------------
 // Macros for initializing arrays
 #define ARRAY_4(v1, v2, v3, v4, ...)         { v1, v2, v3, v4 }
 #define ARRAY_3(v1, v2, v3, ...)             { v1, v2, v3 }
@@ -65,8 +86,14 @@
 #define _ARRAY_N(N, ...) ARRAY_ ##N(__VA_ARGS__)
 #define ARRAY_N(N, ...) _ARRAY_N(N, __VA_ARGS__)
 
+// --------------------------------------------------------------------------
+// Pin helpers
+// --------------------------------------------------------------------------
 #define PIN_EXISTS(PN) (defined(PN ##_PIN) && PN ##_PIN >= 0)
 
+// --------------------------------------------------------------------------
+// Time helpers
+// --------------------------------------------------------------------------
 #define PENDING(NOW,SOON) ((long)(NOW-(SOON))<0)
 #define ELAPSED(NOW,SOON) (!PENDING(NOW,SOON))
 
