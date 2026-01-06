@@ -3583,7 +3583,14 @@ inline void gcode_G28() {
         st_synchronize();
 
         if ( destination[ Z_AXIS ] > 66.90 ) {
-          int i=10; do { idle(true); delay(100); } while(--i);
+          int i=10; do {
+            #if ENABLED(FILAMENTCHANGEENABLE)
+              idle(true);
+            #else
+              idle();
+            #endif
+            delay(100);
+          } while(--i);
           all_points_are_good = false;
         }
         else {
@@ -6707,7 +6714,7 @@ inline void gcode_M503() {
   #endif
 #endif
 
-#if ENABLED(FILAMENTCHANGEENABLE)
+#if ENABLED(FILAMENTCHANGEENABLE) || ENABLED(FILAMENT_RUNOUT_SENSOR) || ENABLED(FILAMENT2_RUNOUT_SENSOR)
 
   #if ENABLED(AUTO_FILAMENT_CHANGE) && DISABLED(Z_MIN_MAGIC)
     #define LONG_PRESS_SUPPORT
@@ -7231,7 +7238,14 @@ inline void gcode_M503() {
         if (current_filament_present(active_extruder)) {
 
           // Wait
-          int i=30; do{ delay(100); idle(true); } while(i--);
+          int i=30; do {
+            delay(100);
+            #if ENABLED(FILAMENTCHANGEENABLE)
+              idle(true);
+            #else
+              idle();
+            #endif
+          } while(i--);
 
           // Retract
           if(code_seen('R')) {
@@ -7431,7 +7445,11 @@ inline void gcode_M503() {
         // We need to wait the user pulling-out the filament
         while(current_filament_present(active_extruder)) {
           if(previous_activity_state != ACTIVITY_IDLE) {
-            idle(true);
+            #if ENABLED(FILAMENTCHANGEENABLE)
+              idle(true);
+            #else
+              idle();
+            #endif
           } else {
             exit_pause_asked = true;
             break;
@@ -7586,7 +7604,11 @@ inline void gcode_M503() {
         printer_states.hotend_state = HOTEND_COOL;
       }
 
-      idle(true);
+      #if ENABLED(FILAMENTCHANGEENABLE)
+        idle(true);
+      #else
+        idle();
+      #endif
 
       //
       // 'Listen' for exit actions
@@ -7594,7 +7616,12 @@ inline void gcode_M503() {
         #if ENABLED(LONG_PRESS_SUPPORT)
           long_press_timeout = now + LONG_PRESS_TIMEOUT;
           do {
-            delay(100); idle(true);
+            delay(100);
+            #if ENABLED(FILAMENTCHANGEENABLE)
+              idle(true);
+            #else
+              idle();
+            #endif
             now = millis();
           } while( digitalRead(pin_number) == target && PENDING(now, long_press_timeout) );
           if ( digitalRead(pin_number) == target && ELAPSED(now, long_press_timeout) ) {
@@ -8595,7 +8622,12 @@ inline void gcode_D853() {
       current_position[E_AXIS] -= step;
     }
     destination[E_AXIS] = current_position[E_AXIS];
-    RUNPLAN;
+    #if ENABLED(DELTA)
+      calculate_delta(destination);
+      plan_buffer_line(delta[X_AXIS], delta[Y_AXIS], delta[Z_AXIS], destination[E_AXIS], feedrate/60.0, active_extruder);
+    #else
+      line_to_destination(feedrate);
+    #endif
   } while( fabsf(destination[E_AXIS] - destination_e_to_reach) > step && current_filament_present(active_extruder));
   st_synchronize();
 
@@ -10335,7 +10367,7 @@ inline void manage_printer_states() {
       manage_filament2_auto_insertion();
     #endif
 
-    #if ENABLED(LONG_PRESS_SUPPORT)
+    #if ENABLED(FILAMENTCHANGEENABLE) && ENABLED(LONG_PRESS_SUPPORT)
       // Long press support
       manage_long_press_filament_expulsion();
     #elif ENABLED(Z_MIN_MAGIC) && HAS_DELTA_EXTRA
