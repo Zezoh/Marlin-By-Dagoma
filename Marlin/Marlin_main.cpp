@@ -3562,9 +3562,11 @@ inline void gcode_G28() {
       bool all_points_are_good = false;
       float z_read[3] = { 67.0 };
       float z_avg = 0.0;
+      bool fast_probe = fast;
 
       do {
-        gcode_G30(fast);
+        gcode_G30(fast_probe);
+        if (!fast_probe) fast_probe = true;
 
         z_read[2] = z_read[1];
         z_read[1] = z_read[0];
