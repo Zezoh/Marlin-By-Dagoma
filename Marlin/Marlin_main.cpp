@@ -336,7 +336,7 @@ millis_t previous_cmd_ms = 0;
 static millis_t max_inactive_time = 0;
 static millis_t stepper_inactive_time = (DEFAULT_STEPPER_DEACTIVE_TIME) * 1000UL;
 
-#if ENABLED(IS_MONO_FAN) || ENABLED(PRINTER_HEAD_EASY)
+#if HAS_MONO_FAN
 static millis_t next_fan_auto_regulation_check = 0;
 #endif
 
@@ -441,7 +441,7 @@ static uint8_t target_extruder;
     float bed_level[AUTO_BED_LEVELING_GRID_POINTS][AUTO_BED_LEVELING_GRID_POINTS];
   #endif
 
-  #if ENABLED( DELTA_EXTRA )
+  #if HAS_DELTA_EXTRA
     bool postcompute_tri_ready = false;
     float z_smooth_tri_leveling_height = 0.0;
     #if ENABLED( SDSUPPORT )
@@ -499,7 +499,7 @@ inline bool current_filament_present(uint8_t e) {
   return (e == 0) ? FILAMENT_PRESENT : FILAMENT2_PRESENT;
 }
 
-#if ENABLED(SUMMON_PRINT_PAUSE)
+#if HAS_SUMMON_PRINT_PAUSE
   static bool print_pause_summoned = false;
 #endif
 #if ENABLED(U8GLIB_SSD1306) && ENABLED(INTELLIGENT_LCD_REFRESH_RATE)
@@ -876,7 +876,7 @@ void servo_init() {
   void enableStepperDrivers() { pinMode(STEPPER_RESET_PIN, INPUT); }  // set to input, which allows it to be pulled high by pullups
 #endif
 
-#if ENABLED( ONE_LED )
+#if HAS_ONE_LED
   inline void one_led_on() {
     digitalWrite( ONE_LED_PIN, true ^ ONE_LED_INVERTING );
   }
@@ -890,12 +890,7 @@ void servo_init() {
   inline void set_notify_not_calibrated();
 #endif
 
-#if ENABLED(ONE_BUTTON) || ENABLED(SUMMON_PRINT_PAUSE)
-  #define ONE_BUTTON_PRESSED  (READ( SUMMON_PRINT_PAUSE_PIN ) ^ SUMMON_PRINT_PAUSE_INVERTING)
-  #define ONE_BUTTON_RELEASED (!ONE_BUTTON_PRESSED)
-#endif
-
-#if ENABLED(DELTA_EXTRA) && ENABLED(Z_MIN_MAGIC)
+#if HAS_DELTA_EXTRA && ENABLED(Z_MIN_MAGIC)
     #define NOT_YET_CALIBRATED \
       ( \
         endstop_adj[X_AXIS] == 0 && \
@@ -1042,7 +1037,7 @@ void setup() {
     SECOND_SERIAL.begin( SECOND_SERIAL_BAUDRATE );
   #endif
 
-  #if ENABLED(SUMMON_PRINT_PAUSE) && SUMMON_PRINT_PAUSE_PIN != X_MIN_PIN && SUMMON_PRINT_PAUSE_PIN != Y_MAX_PIN && SUMMON_PRINT_PAUSE_PIN != Z_MIN_PIN
+  #if HAS_SUMMON_PRINT_PAUSE && SUMMON_PRINT_PAUSE_PIN != X_MIN_PIN && SUMMON_PRINT_PAUSE_PIN != Y_MAX_PIN && SUMMON_PRINT_PAUSE_PIN != Z_MIN_PIN
     SET_INPUT(SUMMON_PRINT_PAUSE_PIN);
     WRITE(SUMMON_PRINT_PAUSE_PIN, HIGH);
   #elif ENABLED(ONE_BUTTON)
@@ -1067,7 +1062,7 @@ void setup() {
     printer_states.in_critical_section = false;
   #endif
 
-  #if ENABLED( DELTA_EXTRA )
+  #if HAS_DELTA_EXTRA
     #if ENABLED( ONE_BUTTON )
       // Read the button state here
       millis_t now = millis();
@@ -1087,7 +1082,7 @@ void setup() {
     #endif
   #endif
 
-  #if ENABLED( ONE_LED )
+  #if HAS_ONE_LED
     pinMode( ONE_LED_PIN, OUTPUT );
     one_led_off();
   #endif
@@ -1178,7 +1173,7 @@ void loop() {
 
   if (commands_in_queue < BUFSIZE) get_available_commands();
 
-  #if ENABLED(SDSUPPORT) && DISABLED(DELTA_EXTRA)
+  #if ENABLED(SDSUPPORT) && !HAS_DELTA_EXTRA
     card.checkautostart(false);
   #endif
 
@@ -1888,7 +1883,7 @@ static void setup_for_endstop_move() {
         #endif
         // - Reset the board
         while( true ) {
-          #if ENABLED(ONE_LED)
+          #if HAS_ONE_LED
             one_led_on();
             delay(150);
             one_led_off();
@@ -1916,7 +1911,7 @@ static void setup_for_endstop_move() {
       #endif
 
       // move down slowly until you find the bed
-      #if ENABLED(DELTA_EXTRA)
+      #if HAS_DELTA_EXTRA
         if (fast) {
           feedrate = homing_feedrate[Z_AXIS] / 2;
           SERIAL_ECHOPAIR("fast probing, feedrate = ", feedrate);
@@ -1925,7 +1920,7 @@ static void setup_for_endstop_move() {
       #endif
           feedrate = homing_feedrate[Z_AXIS] / 4;
           SERIAL_ECHOPAIR("slow probing, feedrate = ", feedrate);
-      #if ENABLED(DELTA_EXTRA)
+      #if HAS_DELTA_EXTRA
         }
       #endif
       log_z_magic_raw_value = true;
@@ -3461,7 +3456,7 @@ inline void gcode_G28() {
     SERIAL_PROTOCOLLNPGM(" position out of range.");
   }
 
-  #if ENABLED( DELTA_EXTRA )
+  #if HAS_DELTA_EXTRA
 
     #define PROBE_POINT_NUMBER 19 // 12 outer, 6 inner, 1 center
     // Numbered from cardinal X tower, counter-clockwize to cardinal Z tower
@@ -4482,7 +4477,7 @@ inline void gcode_G28() {
     /**
      * G30: Do a single Z probe at the current XY
      */
-    #if ENABLED(DELTA_EXTRA)
+    #if HAS_DELTA_EXTRA
     inline void gcode_G30(bool fast/*default is declared above*/) {
     #else
     inline void gcode_G30() {
@@ -4499,7 +4494,7 @@ inline void gcode_G28() {
 
       feedrate = homing_feedrate[Z_AXIS];
 
-      #if ENABLED(DELTA_EXTRA)
+      #if HAS_DELTA_EXTRA
         run_z_probe(fast);
       #else
         run_z_probe();
@@ -6939,7 +6934,7 @@ inline void gcode_M503() {
     #define RUNPLAN line_to_destination(feedrate);
   #endif
 
-  #if ENABLED(DELTA_EXTRA) && ENABLED(Z_MIN_MAGIC) && DISABLED(LONG_PRESS_SUPPORT)
+  #if HAS_DELTA_EXTRA && ENABLED(Z_MIN_MAGIC) && DISABLED(LONG_PRESS_SUPPORT)
 
     inline void manage_tap_tap() {
       if ( !printer_states.pause_asked ) {
@@ -7020,7 +7015,7 @@ inline void gcode_M503() {
                 }
                 else {
                   printer_states.pause_asked = false;
-                  #if DISABLED(DELTA_EXTRA) && ENABLED(SDSUPPORT)
+                  #if !HAS_DELTA_EXTRA && ENABLED(SDSUPPORT)
                     enqueue_and_echo_commands_P(PSTR(SD_FINISHED_RELEASECOMMAND));
                   #endif
                 }
@@ -7030,7 +7025,7 @@ inline void gcode_M503() {
                 enqueue_and_echo_commands_P(PSTR(FILAMENTCHANGE_EXTRACTION_SCRIPT));
               } else {
                 printer_states.pause_asked = false;
-                #if DISABLED(DELTA_EXTRA) && ENABLED(SDSUPPORT)
+                #if !HAS_DELTA_EXTRA && ENABLED(SDSUPPORT)
                   enqueue_and_echo_commands_P(PSTR(SD_FINISHED_RELEASECOMMAND));
                 #endif
               }
@@ -7186,7 +7181,7 @@ inline void gcode_M503() {
 
     // Security: Clamp Z height
     // We need to not go higher than max height ...
-    #if ENABLED(DELTA_EXTRA)
+    #if HAS_DELTA_EXTRA
       // Take in account the shperical dome
       NOMORE(z_heat_from, (sw_endstop_max[Z_AXIS]-FILAMENTCHANGE_DELTA_Z_DOME_SECURITY_DISTANCE));
       NOMORE(z_heat_to, (sw_endstop_max[Z_AXIS]-FILAMENTCHANGE_DELTA_Z_DOME_SECURITY_DISTANCE));
@@ -7728,13 +7723,13 @@ inline void gcode_M503() {
       //
       if (ELAPSED(now, next_low_latency_checks)) {
         // Do we abort the print
-        #if ENABLED( DELTA_EXTRA )
+        #if HAS_DELTA_EXTRA
           // Only checked every 2.5s
           // Detected if sd is out
           if ( IS_SD_PRINTING && !card.stillPluggedIn() ) {
             // Abort current print
             while( true ) {
-              #if ENABLED(ONE_LED)
+              #if HAS_ONE_LED
                 one_led_on();
                 delay(150);
                 one_led_off();
@@ -7838,7 +7833,7 @@ inline void gcode_M503() {
       ) {
         SERIAL_ECHOLNPGM( "exit_pause_asked: no filament" );
         exit_pause_asked = false;
-        #if ENABLED(ONE_LED)
+        #if HAS_ONE_LED
           set_notify_warning();
         #endif
       }
@@ -7887,7 +7882,7 @@ inline void gcode_M503() {
       float z_destination = previous_position[Z_AXIS];
       z_destination += FILAMENTCHANGE_Z_HOP_MM;
 
-      #if ENABLED(DELTA_EXTRA)
+      #if HAS_DELTA_EXTRA
         // Take in account the shperical dome
         NOMORE(z_destination, (sw_endstop_max[Z_AXIS]-FILAMENTCHANGE_DELTA_Z_DOME_SECURITY_DISTANCE));
       #else
@@ -7942,7 +7937,7 @@ inline void gcode_M503() {
     printer_states.pause_asked = false;
     printer_states.activity_state = previous_activity_state;
 
-    #if DISABLED(DELTA_EXTRA) && ENABLED(SDSUPPORT)
+    #if !HAS_DELTA_EXTRA && ENABLED(SDSUPPORT)
       if (previous_activity_state != ACTIVITY_PRINTING) {
         enqueue_and_echo_commands_P(PSTR(SD_FINISHED_RELEASECOMMAND));
       }
@@ -8322,7 +8317,7 @@ inline void gcode_T(uint8_t tmp_extruder) {
   }
 }
 
-#if ENABLED( DELTA_EXTRA )
+#if HAS_DELTA_EXTRA
 
 inline void abort_sd_printing() {
   commands_in_queue = 0;
@@ -8720,7 +8715,10 @@ inline void gcode_D851() {
 
 #if ENABLED(Z_MIN_MAGIC)
 inline void gcode_D850() {
-  if (code_seen('V')) z_magic_threshold = code_value();
+  if (code_seen('V')) {
+    z_magic_threshold = code_value();
+    if (z_magic_threshold > 0.0f) z_magic_threshold = -z_magic_threshold;
+  }
   SERIAL_ECHOPAIR("z_magic_threshold = ", z_magic_threshold);
   SERIAL_EOL;
 }
@@ -9472,7 +9470,7 @@ void process_next_command() {
           gcode_D720(); // ECHO
           break;
         #endif
-      #if ENABLED( DELTA_EXTRA )
+      #if HAS_DELTA_EXTRA
         case 410:
           gcode_D410();
           break;
@@ -9578,7 +9576,7 @@ void clamp_to_software_endstops(float target[3]) {
     delta_diagonal_rod_2_tower_2 = sq(diagonal_rod + delta_diagonal_rod_trim_tower_2);
     delta_diagonal_rod_2_tower_3 = sq(diagonal_rod + delta_diagonal_rod_trim_tower_3);
 
-    #if ENABLED( DELTA_EXTRA )
+    #if HAS_DELTA_EXTRA
       int i=0;
       // Outer
       probe_plan[i][0] = delta_tower1_x;
@@ -9700,7 +9698,7 @@ void clamp_to_software_endstops(float target[3]) {
 
     // Adjust print surface height by linear interpolation over the bed_level array.
     void adjust_delta(float cartesian[3]) {
-      #if DISABLED( DELTA_EXTRA )
+      #if !HAS_DELTA_EXTRA
         if (delta_grid_spacing[0] == 0 || delta_grid_spacing[1] == 0) return; // G29 not done!
 
         int half = (AUTO_BED_LEVELING_GRID_POINTS - 1) / 2;
@@ -10235,7 +10233,7 @@ void disable_all_steppers() {
 
 #endif
 
-#if ENABLED(ONE_LED)
+#if HAS_ONE_LED
 
   int state_blink = 0;
   millis_t next_one_led_tick = 0;
@@ -10308,7 +10306,7 @@ void disable_all_steppers() {
   }
 #endif
 
-#if ENABLED(SUMMON_PRINT_PAUSE)
+#if HAS_SUMMON_PRINT_PAUSE
 
   inline void manage_pause_summoner() {
     // PAUSE PUSHED
@@ -10325,7 +10323,7 @@ void disable_all_steppers() {
 
 #endif // SUMMON_PRINT_PAUSE
 
-#if ENABLED(ONE_BUTTON) && ENABLED(DELTA_EXTRA)
+#if ENABLED(ONE_BUTTON) && HAS_DELTA_EXTRA
 
   inline void manage_one_button_start_print() {
     if (printer_states.pause_asked) return;
@@ -10341,7 +10339,7 @@ void disable_all_steppers() {
           SERIAL_ECHOLNPGM("one button: Start pending: Checking sd card content");
           has_to_print_timeout = now + 2500UL;
 
-          #if ENABLED(ONE_LED)
+          #if HAS_ONE_LED
             one_led_on();
           #endif
 
@@ -10352,7 +10350,7 @@ void disable_all_steppers() {
         if (ELAPSED(now, has_to_print_timeout)) {
           // sd.checkautostart did not found some interesting file on sd card
           SERIAL_ECHOLNPGM("one button: Start aborted: No suitable file on sd card");
-          #if ENABLED(ONE_LED)
+          #if HAS_ONE_LED
             set_notify_warning();
           #endif
           printer_states.print_asked = false;
@@ -10389,7 +10387,7 @@ inline void manage_filament1_auto_insertion() {
       printer_states.filament_state == FILAMENT_OUT
       && FILAMENT_PRESENT
     ) {
-      #if ENABLED(DELTA_EXTRA)
+      #if HAS_DELTA_EXTRA
         if (NOT_YET_CALIBRATED) {
           SERIAL_ERRORLNPGM("Printer not yet calibrated. Please calibrate.");
           set_notify_not_calibrated();
@@ -10444,7 +10442,7 @@ inline void manage_filament1_auto_insertion() {
         printer_states.pause_asked = true;
 
         if (!printer_states.homed) {
-          #if ENABLED(DELTA_EXTRA)
+          #if HAS_DELTA_EXTRA
             // Home all axis
           #else
             // Home only X, Y axis
@@ -10477,7 +10475,7 @@ inline void manage_filament2_auto_insertion() {
       printer_states.filament2_state == FILAMENT_OUT
       && FILAMENT2_PRESENT
     ) {
-      #if ENABLED(DELTA_EXTRA)
+      #if HAS_DELTA_EXTRA
         if (NOT_YET_CALIBRATED) {
           SERIAL_ERRORLNPGM("Printer not yet calibrated. Please calibrate.");
           set_notify_not_calibrated();
@@ -10532,7 +10530,7 @@ inline void manage_filament2_auto_insertion() {
         printer_states.pause_asked = true;
 
         if (!printer_states.homed) {
-          #if ENABLED(DELTA_EXTRA)
+          #if HAS_DELTA_EXTRA
             // Home all axis
           #else
             // Home only X, Y axis
@@ -10568,7 +10566,7 @@ inline void manage_printer_states() {
     enable_z_magic_tap = (printer_states.activity_state != ACTIVITY_PRINTING) && !printer_states.probing;
   #endif
 
-  #if ENABLED(ONE_LED)
+  #if HAS_ONE_LED
     manage_one_led();
   #endif
 
@@ -10578,7 +10576,7 @@ inline void manage_printer_states() {
   // Conditional stuff
   // -----------------
   if (printer_states.activity_state == ACTIVITY_IDLE) {
-    #if ENABLED(ONE_BUTTON) && ENABLED(DELTA_EXTRA)
+    #if ENABLED(ONE_BUTTON) && HAS_DELTA_EXTRA
       manage_one_button_start_print();
     #endif
     #if ENABLED(FILAMENT_RUNOUT_SENSOR) && HAS_FILRUNOUT
@@ -10591,7 +10589,7 @@ inline void manage_printer_states() {
     #if ENABLED(LONG_PRESS_SUPPORT)
       // Long press support
       manage_long_press_filament_expulsion();
-    #elif ENABLED(Z_MIN_MAGIC) && ENABLED(DELTA_EXTRA)
+    #elif ENABLED(Z_MIN_MAGIC) && HAS_DELTA_EXTRA
       // Alternatively to long press support, we can tap-tap
       manage_tap_tap();
     #endif
@@ -10630,7 +10628,7 @@ inline void manage_printer_states() {
   }
 
   if (printer_states.activity_state == ACTIVITY_PRINTING) {
-    #if ENABLED(SUMMON_PRINT_PAUSE)
+    #if HAS_SUMMON_PRINT_PAUSE
       manage_pause_summoner();
     #endif
 
@@ -10843,19 +10841,19 @@ void manage_inactivity(bool ignore_stepper_queue/*=false*/) {
       && !ignore_stepper_queue && !blocks_queued()) {
     #if ENABLED(DISABLE_INACTIVE_X)
       disable_x();
-      #if ENABLED(DELTA_EXTRA)
+      #if HAS_DELTA_EXTRA
         axis_homed[X_AXIS] = false;
       #endif
     #endif
     #if ENABLED(DISABLE_INACTIVE_Y)
       disable_y();
-      #if ENABLED(DELTA_EXTRA)
+      #if HAS_DELTA_EXTRA
         axis_homed[Y_AXIS] = false;
       #endif
     #endif
     #if ENABLED(DISABLE_INACTIVE_Z)
       disable_z();
-      #if ENABLED(DELTA_EXTRA)
+      #if HAS_DELTA_EXTRA
         axis_homed[Z_AXIS] = false;
       #endif
     #endif
@@ -10909,7 +10907,7 @@ void manage_inactivity(bool ignore_stepper_queue/*=false*/) {
     }
   #endif
 
-  #if ENABLED(IS_MONO_FAN) || ENABLED(PRINTER_HEAD_EASY)
+  #if HAS_MONO_FAN
     if ( ELAPSED(ms, next_fan_auto_regulation_check) ) {
       float max_temp = 0.0;
       for (int8_t cur_extruder = 0; cur_extruder < HOTENDS; ++cur_extruder)
@@ -11029,7 +11027,7 @@ void kill(const char* lcd_msg) {
     UNUSED(lcd_msg);
   #endif
 
-  #if ENABLED( DELTA_EXTRA )
+  #if HAS_DELTA_EXTRA
     #if ENABLED( SDSUPPORT )
       // Dump error msg onto sd card
       abort_sd_printing();
@@ -11085,7 +11083,7 @@ void kill(const char* lcd_msg) {
   // FMC small patch to update the LCD before ending
   sei();   // enable interrupts
   for (int i = 5; i--; lcd_update()) delay(200); // Wait a short time
-  #if DISABLED( ONE_LED )
+  #if !HAS_ONE_LED
     cli();   // disable interrupts
   #else
     // In-case of not already initialized
@@ -11096,7 +11094,7 @@ void kill(const char* lcd_msg) {
     #if ENABLED(USE_WATCHDOG)
       watchdog_reset();
     #endif
-    #if ENABLED( ONE_LED )
+    #if HAS_ONE_LED
       one_led_on();
       delay(70);
       one_led_off();

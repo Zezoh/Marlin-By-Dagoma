@@ -451,12 +451,12 @@ inline void update_endstops() {
         #if ENABLED(HAS_Z_MIN_PROBE)
           #if ENABLED(EMERGENCY_STOP)
             #if ENABLED(DELTA) && ENABLED(ONE_BUTTON) // Delta
-              if ( (READ(ONE_BUTTON_PIN) ^ ONE_BUTTON_INVERTING) ) {
+              if (ONE_BUTTON_PRESSED) {
                 SET_BIT(current_endstop_bits, Z_MIN_PROBE, 1 ); // Emulate endstops hit (here: Z_MIN)
                 trigger_emergency_stop = true;
               }
-            #elif ENABLED(SUMMON_PRINT_PAUSE) // E200 Neva-like (with pause button)
-              if ( (READ(SUMMON_PRINT_PAUSE_PIN) ^ SUMMON_PRINT_PAUSE_INVERTING) ) {
+            #elif HAS_SUMMON_PRINT_PAUSE // E200 Neva-like (with pause button)
+              if (ONE_BUTTON_PRESSED) {
                 SET_BIT(current_endstop_bits, Z_MIN_PROBE, 1 ); // Emulate endstops hit (here: Z_MIN)
                 trigger_emergency_stop = true;
               }
@@ -994,7 +994,7 @@ void st_init() {
   #endif
 
   #if HAS_X_MAX
-    #if ENABLED(DELTA_EXTRA)
+    #if HAS_DELTA_EXTRA
       pinMode(X_MAX_PIN, INPUT_PULLUP);
     #else
       SET_INPUT(X_MAX_PIN);
@@ -1005,7 +1005,7 @@ void st_init() {
   #endif
 
   #if HAS_Y_MAX
-    #if ENABLED(DELTA_EXTRA)
+    #if HAS_DELTA_EXTRA
       pinMode(Y_MAX_PIN, INPUT_PULLUP);
     #else
       SET_INPUT(Y_MAX_PIN);
@@ -1016,7 +1016,7 @@ void st_init() {
   #endif
 
   #if HAS_Z_MAX
-    #if ENABLED(DELTA_EXTRA)
+    #if HAS_DELTA_EXTRA
       pinMode(Z_MAX_PIN, INPUT_PULLUP);
     #else
       SET_INPUT(Z_MAX_PIN);

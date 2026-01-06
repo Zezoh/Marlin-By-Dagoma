@@ -736,7 +736,7 @@ static void lcd_tune_menu() {
   // Change filament
   //
   #if ENABLED(FILAMENTCHANGEENABLE)
-    #if ENABLED(SUMMON_PRINT_PAUSE)
+    #if HAS_SUMMON_PRINT_PAUSE
       MENU_ITEM(gcode, MSG_FILAMENTCHANGE, PSTR(FILAMENT_RUNOUT_SCRIPT));
     #else
       MENU_ITEM(gcode, MSG_FILAMENTCHANGE, PSTR("M600 PA"));
