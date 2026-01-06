@@ -3578,7 +3578,7 @@ inline void gcode_G28() {
         }
         
         set_destination_to_current();
-        destination[ Z_AXIS ] = min( 67.0, destination[ Z_AXIS ] + 5.0 );
+        destination[ Z_AXIS ] = min(67.0, Z_RAISE_BETWEEN_PROBINGS + home_offset[Z_AXIS]);
         prepare_move();
         st_synchronize();
 
@@ -3850,7 +3850,7 @@ inline void gcode_G28() {
       for(i=0; i<PROBE_POINT_NUMBER; i++) {
         destination[ X_AXIS ] = probe_plan[i][0];
         destination[ Y_AXIS ] = probe_plan[i][1];
-        destination[ Z_AXIS ] = 10.0;
+        destination[ Z_AXIS ] = Z_RAISE_BEFORE_PROBING + home_offset[Z_AXIS];
         prepare_move();
         st_synchronize();
         probe_plan[i][2] = get_probed_Z_avg();
