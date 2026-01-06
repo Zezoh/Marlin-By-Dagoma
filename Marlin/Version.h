@@ -50,14 +50,14 @@
 #define PROTOCOL_VERSION "1.0"
 
 /**
- * Defines a generic printer name to be output to the LCD after booting Marlin.
+ * Defines a generic printer name to be output after booting Marlin.
  */
 #define MACHINE_NAME "3D Printer"
 
 /**
  * The SOURCE_CODE_URL is the location where users will find the Marlin Source
- * Code which is installed on the device. In most cases —unless the manufacturer
- * has a distinct Github fork— the Source Code URL should just be the main
+ * Code which is installed on the device. In most cases - unless the manufacturer
+ * has a distinct Github fork - the Source Code URL should just be the main
  * Marlin repository.
  */
 #define SOURCE_CODE_URL "https://github.com/dagoma3d/Marlin-By-Dagoma"

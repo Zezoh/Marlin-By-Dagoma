@@ -21,7 +21,7 @@
  */
 
 /**
- * MKS BASE 1.0 – Arduino Mega2560 with RAMPS v1.4 pin assignments
+ * MKS BASE 1.0 - Arduino Mega2560 with RAMPS v1.4 pin assignments
  */
 
 #include "pins_RAMPS_14_EFB.h"

@@ -48,7 +48,6 @@
 #include "stepper.h"
 #include "planner.h"
 #include "temperature.h"
-#include "ultralcd.h"
 #include "language.h"
 #include "cardreader.h"
 #include "speed_lookuptable.h"
@@ -295,12 +294,7 @@ void endstops_hit_on_purpose() { endstop_hit_bits = 0; }
 
 void checkHitEndstops() {
   if (endstop_hit_bits) {
-    #if ENABLED(ULTRA_LCD)
-      char chrX = ' ', chrY = ' ', chrZ = ' ', chrP = ' ';
-      #define _SET_STOP_CHAR(A,C) (chr## A = C)
-    #else
-      #define _SET_STOP_CHAR(A,C) ;
-    #endif
+    #define _SET_STOP_CHAR(A,C) do {} while (0)
 
     #define _ENDSTOP_HIT_ECHO(A,C) do{ \
       SERIAL_ECHOPAIR(" " STRINGIFY(A) ":", endstops_trigsteps[A ##_AXIS] / axis_steps_per_unit[A ##_AXIS]); \
@@ -321,12 +315,6 @@ void checkHitEndstops() {
       if (TEST(endstop_hit_bits, Z_MIN_PROBE)) _ENDSTOP_HIT_ECHO(P, 'P');
     #endif
     SERIAL_EOL;
-
-    #if ENABLED(ULTRA_LCD)
-      char msg[3 * strlen(MSG_LCD_ENDSTOPS) + 8 + 1]; // Room for a UTF 8 string
-      sprintf_P(msg, PSTR(MSG_LCD_ENDSTOPS " %c %c %c %c"), chrX, chrY, chrZ, chrP);
-      lcd_setstatus(msg);
-    #endif
 
     endstops_hit_on_purpose();
 
@@ -371,22 +359,7 @@ inline void update_endstops() {
   // TEST_ENDSTOP: test the old and the current status of an endstop
   #define TEST_ENDSTOP(ENDSTOP) (TEST(current_endstop_bits, ENDSTOP) && TEST(old_endstop_bits, ENDSTOP))
 
-  #if ENABLED(COREXY) || ENABLED(COREXZ)
-
-    #define _SET_TRIGSTEPS(AXIS) do { \
-        float axis_pos = count_position[_AXIS(AXIS)]; \
-        if (_AXIS(AXIS) == A_AXIS) \
-          axis_pos = (axis_pos + count_position[CORE_AXIS_2]) / 2; \
-        else if (_AXIS(AXIS) == CORE_AXIS_2) \
-          axis_pos = (count_position[A_AXIS] - axis_pos) / 2; \
-        endstops_trigsteps[_AXIS(AXIS)] = axis_pos; \
-      } while(0)
-
-  #else
-
-    #define _SET_TRIGSTEPS(AXIS) endstops_trigsteps[_AXIS(AXIS)] = count_position[_AXIS(AXIS)]
-
-  #endif // COREXY || COREXZ
+  #define _SET_TRIGSTEPS(AXIS) endstops_trigsteps[_AXIS(AXIS)] = count_position[_AXIS(AXIS)]
 
   #define UPDATE_ENDSTOP(AXIS,MINMAX) do { \
       SET_ENDSTOP_BIT(AXIS, MINMAX); \
@@ -397,14 +370,7 @@ inline void update_endstops() {
       } \
     } while(0)
 
-  #if ENABLED(COREXY) || ENABLED(COREXZ)
-    // Head direction in -X axis for CoreXY and CoreXZ bots.
-    // If Delta1 == -Delta2, the movement is only in Y or Z axis
-    if ((current_block->steps[A_AXIS] != current_block->steps[CORE_AXIS_2]) || (TEST(out_bits, A_AXIS) == TEST(out_bits, CORE_AXIS_2))) {
-      if (TEST(out_bits, X_HEAD))
-  #else
     if (TEST(out_bits, X_AXIS))   // stepping along -X axis (regular Cartesian bot)
-  #endif
       { // -direction
         #if ENABLED(DUAL_X_CARRIAGE)
           // with 2 x-carriages, endstops are only checked in the homing direction for the active extruder
@@ -427,18 +393,8 @@ inline void update_endstops() {
             #endif
           }
       }
-  #if ENABLED(COREXY) || ENABLED(COREXZ)
-    }
-  #endif
 
-  #if ENABLED(COREXY)
-    // Head direction in -Y axis for CoreXY bots.
-    // If DeltaX == DeltaY, the movement is only in X axis
-    if ((current_block->steps[A_AXIS] != current_block->steps[B_AXIS]) || (TEST(out_bits, A_AXIS) != TEST(out_bits, B_AXIS))) {
-      if (TEST(out_bits, Y_HEAD))
-  #else
       if (TEST(out_bits, Y_AXIS))   // -direction
-  #endif
       { // -direction
         #if HAS_Y_MIN
           UPDATE_ENDSTOP(Y, MIN);
@@ -449,18 +405,8 @@ inline void update_endstops() {
           UPDATE_ENDSTOP(Y, MAX);
         #endif
       }
-  #if ENABLED(COREXY)
-    }
-  #endif
 
-  #if ENABLED(COREXZ)
-    // Head direction in -Z axis for CoreXZ bots.
-    // If DeltaX == DeltaZ, the movement is only in X axis
-    if ((current_block->steps[A_AXIS] != current_block->steps[C_AXIS]) || (TEST(out_bits, A_AXIS) != TEST(out_bits, C_AXIS))) {
-      if (TEST(out_bits, Z_HEAD))
-  #else
       if (TEST(out_bits, Z_AXIS))
-  #endif
       { // z -direction
         #if HAS_Z_MIN
 
@@ -493,12 +439,12 @@ inline void update_endstops() {
         #if ENABLED(HAS_Z_MIN_PROBE)
           #if ENABLED(EMERGENCY_STOP)
             #if ENABLED(DELTA) && ENABLED(ONE_BUTTON) // Delta
-              if ( (READ(ONE_BUTTON_PIN) ^ ONE_BUTTON_INVERTING) ) {
+              if (ONE_BUTTON_PRESSED) {
                 SET_BIT(current_endstop_bits, Z_MIN_PROBE, 1 ); // Emulate endstops hit (here: Z_MIN)
                 trigger_emergency_stop = true;
               }
-            #elif ENABLED(SUMMON_PRINT_PAUSE) // E200 Neva-like (with pause button)
-              if ( (READ(SUMMON_PRINT_PAUSE_PIN) ^ SUMMON_PRINT_PAUSE_INVERTING) ) {
+            #elif HAS_SUMMON_PRINT_PAUSE // E200 Neva-like (with pause button)
+              if (ONE_BUTTON_PRESSED) {
                 SET_BIT(current_endstop_bits, Z_MIN_PROBE, 1 ); // Emulate endstops hit (here: Z_MIN)
                 trigger_emergency_stop = true;
               }
@@ -581,9 +527,6 @@ inline void update_endstops() {
           #endif // !Z_DUAL_ENDSTOPS
         #endif // Z_MAX_PIN
       }
-  #if ENABLED(COREXZ)
-    }
-  #endif
   old_endstop_bits = current_endstop_bits;
 }
 
@@ -646,9 +589,6 @@ FORCE_INLINE unsigned short calc_timer(unsigned short step_rate) {
 
 /**
  * Set the stepper direction of each axis
- *
- *   X_AXIS=A_AXIS and Y_AXIS=B_AXIS for COREXY
- *   X_AXIS=A_AXIS and Z_AXIS=C_AXIS for COREXZ
  */
 void set_stepper_direction() {
 
@@ -1042,7 +982,7 @@ void st_init() {
   #endif
 
   #if HAS_X_MAX
-    #if ENABLED(DELTA_EXTRA)
+    #if HAS_DELTA_EXTRA
       pinMode(X_MAX_PIN, INPUT_PULLUP);
     #else
       SET_INPUT(X_MAX_PIN);
@@ -1053,7 +993,7 @@ void st_init() {
   #endif
 
   #if HAS_Y_MAX
-    #if ENABLED(DELTA_EXTRA)
+    #if HAS_DELTA_EXTRA
       pinMode(Y_MAX_PIN, INPUT_PULLUP);
     #else
       SET_INPUT(Y_MAX_PIN);
@@ -1064,7 +1004,7 @@ void st_init() {
   #endif
 
   #if HAS_Z_MAX
-    #if ENABLED(DELTA_EXTRA)
+    #if HAS_DELTA_EXTRA
       pinMode(Z_MAX_PIN, INPUT_PULLUP);
     #else
       SET_INPUT(Z_MAX_PIN);
@@ -1178,31 +1118,14 @@ void st_synchronize() { while (blocks_queued()) idle(); }
  * Set the stepper positions directly in steps
  *
  * The input is based on the typical per-axis XYZ steps.
- * For CORE machines XYZ needs to be translated to ABC.
- *
  * This allows st_get_axis_position_mm to correctly
  * derive the current XYZ position later on.
  */
 void st_set_position(const long& x, const long& y, const long& z, const long& e) {
   CRITICAL_SECTION_START;
-
-  #if ENABLED(COREXY)
-    // corexy positioning
-    // these equations follow the form of the dA and dB equations on http://www.corexy.com/theory.html
-    count_position[A_AXIS] = x + y;
-    count_position[B_AXIS] = x - y;
-    count_position[Z_AXIS] = z;
-  #elif ENABLED(COREXZ)
-    // corexz planning
-    count_position[A_AXIS] = x + z;
-    count_position[Y_AXIS] = y;
-    count_position[C_AXIS] = x - z;
-  #else
-    // default non-h-bot planning
-    count_position[X_AXIS] = x;
-    count_position[Y_AXIS] = y;
-    count_position[Z_AXIS] = z;
-  #endif
+  count_position[X_AXIS] = x;
+  count_position[Y_AXIS] = y;
+  count_position[Z_AXIS] = z;
 
   count_position[E_AXIS] = e;
   CRITICAL_SECTION_END;
@@ -1226,25 +1149,10 @@ long st_get_position(AxisEnum axis) {
 
 /**
  * Get an axis position according to stepper position(s)
- * For CORE machines apply translation from ABC to XYZ.
  */
 float st_get_axis_position_mm(AxisEnum axis) {
   float axis_steps;
-  #if ENABLED(COREXY) | ENABLED(COREXZ)
-    if (axis == X_AXIS || axis == CORE_AXIS_2) {
-      CRITICAL_SECTION_START;
-      long pos1 = count_position[A_AXIS],
-           pos2 = count_position[CORE_AXIS_2];
-      CRITICAL_SECTION_END;
-      // ((a1+a2)+(a1-a2))/2 -> (a1+a2+a1-a2)/2 -> (a1+a1)/2 -> a1
-      // ((a1+a2)-(a1-a2))/2 -> (a1+a2-a1+a2)/2 -> (a2+a2)/2 -> a2
-      axis_steps = (pos1 + ((axis == X_AXIS) ? pos2 : -pos2)) / 2.0f;
-    }
-    else
-      axis_steps = st_get_position(axis);
-  #else
-    axis_steps = st_get_position(axis);
-  #endif
+  axis_steps = st_get_position(axis);
   return axis_steps / axis_steps_per_unit[axis];
 }
 

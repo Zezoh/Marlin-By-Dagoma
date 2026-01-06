@@ -36,7 +36,7 @@ public:
 
   void initsd();
   void write_command(char *buf);
-  #if ENABLED( DELTA_EXTRA )
+  #if HAS_DELTA_EXTRA
   bool writePGM(const char *bufPGM);
   bool stillPluggedIn();
   #endif

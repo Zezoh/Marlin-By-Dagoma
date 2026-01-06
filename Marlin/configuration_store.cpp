@@ -79,14 +79,6 @@
  * Z_DUAL_ENDSTOPS:
  *  283  M666 Z    z_endstop_adj (float)
  *
- * ULTIPANEL:
- *  287  M145 S0 H plaPreheatHotendTemp (int)
- *  289  M145 S0 B plaPreheatHPBTemp (int)
- *  291  M145 S0 F plaPreheatFanSpeed (int)
- *  293  M145 S1 H absPreheatHotendTemp (int)
- *  295  M145 S1 B absPreheatHPBTemp (int)
- *  297  M145 S1 F absPreheatFanSpeed (int)
- *
  * PIDTEMP:
  *  299  M301 E0 PIDC  Kp[0], Ki[0], Kd[0], Kc[0] (float x4)
  *  315  M301 E1 PIDC  Kp[1], Ki[1], Kd[1], Kc[1] (float x4)
@@ -96,12 +88,6 @@
  *
  * PIDTEMPBED:
  *  365  M304 PID  bedKp, bedKi, bedKd (float x3)
- *
- * DOGLCD:
- *  377  M250 C    lcd_contrast (int)
- *
- * SCARA:
- *  379  M365 XYZ  axis_scaling (float x3)
  *
  * FWRETRACT:
  *  391  M209 S    autoretract_enabled (bool)
@@ -127,7 +113,6 @@
 #include "language.h"
 #include "planner.h"
 #include "temperature.h"
-#include "ultralcd.h"
 #include "configuration_store.h"
 
 #if ENABLED(MESH_BED_LEVELING)
@@ -243,18 +228,6 @@ void Config_StoreSettings()
     EEPROM_WRITE_VAR(i, dummy);
 #endif
 
-#if DISABLED(ULTIPANEL)
-  int plaPreheatHotendTemp = PLA_PREHEAT_HOTEND_TEMP, plaPreheatHPBTemp = PLA_PREHEAT_HPB_TEMP, plaPreheatFanSpeed = PLA_PREHEAT_FAN_SPEED,
-      absPreheatHotendTemp = ABS_PREHEAT_HOTEND_TEMP, absPreheatHPBTemp = ABS_PREHEAT_HPB_TEMP, absPreheatFanSpeed = ABS_PREHEAT_FAN_SPEED;
-#endif // !ULTIPANEL
-
-  EEPROM_WRITE_VAR(i, plaPreheatHotendTemp);
-  EEPROM_WRITE_VAR(i, plaPreheatHPBTemp);
-  EEPROM_WRITE_VAR(i, plaPreheatFanSpeed);
-  EEPROM_WRITE_VAR(i, absPreheatHotendTemp);
-  EEPROM_WRITE_VAR(i, absPreheatHPBTemp);
-  EEPROM_WRITE_VAR(i, absPreheatFanSpeed);
-
   for (uint8_t e = 0; e < 4; e++)
   {
 
@@ -296,17 +269,11 @@ void Config_StoreSettings()
   EEPROM_WRITE_VAR(i, bedKi);
   EEPROM_WRITE_VAR(i, bedKd);
 
-#if DISABLED(HAS_LCD_CONTRAST)
-  const int lcd_contrast = 32;
-#endif
-  EEPROM_WRITE_VAR(i, lcd_contrast);
+  const int reserved_display_contrast = 32;
+  EEPROM_WRITE_VAR(i, reserved_display_contrast);
 
-#if ENABLED(SCARA)
-  EEPROM_WRITE_VAR(i, axis_scaling); // 3 floats
-#else
   dummy = 1.0f;
   EEPROM_WRITE_VAR(i, dummy);
-#endif
 
 #if ENABLED(FWRETRACT)
   EEPROM_WRITE_VAR(i, autoretract_enabled);
@@ -440,18 +407,6 @@ void Config_RetrieveSettings()
       EEPROM_READ_VAR(i, dummy);
 #endif
 
-#if DISABLED(ULTIPANEL)
-    int plaPreheatHotendTemp, plaPreheatHPBTemp, plaPreheatFanSpeed,
-        absPreheatHotendTemp, absPreheatHPBTemp, absPreheatFanSpeed;
-#endif
-
-    EEPROM_READ_VAR(i, plaPreheatHotendTemp);
-    EEPROM_READ_VAR(i, plaPreheatHPBTemp);
-    EEPROM_READ_VAR(i, plaPreheatFanSpeed);
-    EEPROM_READ_VAR(i, absPreheatHotendTemp);
-    EEPROM_READ_VAR(i, absPreheatHPBTemp);
-    EEPROM_READ_VAR(i, absPreheatFanSpeed);
-
 #if ENABLED(PIDTEMP)
     for (uint8_t e = 0; e < 4; e++)
     {                            // 4 = max extruders currently supported by Marlin
@@ -503,16 +458,10 @@ void Config_RetrieveSettings()
         EEPROM_READ_VAR(i, dummy); // bedKi, bedKd
     }
 
-#if DISABLED(HAS_LCD_CONTRAST)
-    int lcd_contrast;
-#endif
-    EEPROM_READ_VAR(i, lcd_contrast);
+    int reserved_display_contrast;
+    EEPROM_READ_VAR(i, reserved_display_contrast);
 
-#if ENABLED(SCARA)
-    EEPROM_READ_VAR(i, axis_scaling); // 3 floats
-#else
     EEPROM_READ_VAR(i, dummy);
-#endif
 
 #if ENABLED(FWRETRACT)
     EEPROM_READ_VAR(i, autoretract_enabled);
@@ -578,10 +527,6 @@ void Config_ResetDefault(bool resetZMagicThreshold)
     axis_steps_per_unit[i] = tmp1[i];
     max_feedrate[i] = tmp2[i];
     max_acceleration_units_per_sq_second[i] = tmp3[i];
-#if ENABLED(SCARA)
-    if (i < COUNT(axis_scaling))
-      axis_scaling[i] = 1;
-#endif
   }
 
   // steps per sq second need to be updated to agree with the units per sq second
@@ -617,19 +562,6 @@ void Config_ResetDefault(bool resetZMagicThreshold)
   recalc_delta_settings(delta_radius, delta_diagonal_rod);
 #elif ENABLED(Z_DUAL_ENDSTOPS)
   z_endstop_adj = 0;
-#endif
-
-#if ENABLED(ULTIPANEL)
-  plaPreheatHotendTemp = PLA_PREHEAT_HOTEND_TEMP;
-  plaPreheatHPBTemp = PLA_PREHEAT_HPB_TEMP;
-  plaPreheatFanSpeed = PLA_PREHEAT_FAN_SPEED;
-  absPreheatHotendTemp = ABS_PREHEAT_HOTEND_TEMP;
-  absPreheatHPBTemp = ABS_PREHEAT_HPB_TEMP;
-  absPreheatFanSpeed = ABS_PREHEAT_FAN_SPEED;
-#endif
-
-#if ENABLED(HAS_LCD_CONTRAST)
-  lcd_contrast = DEFAULT_LCD_CONTRAST;
 #endif
 
 #if ENABLED(PIDTEMP)
@@ -719,19 +651,6 @@ void Config_PrintSettings(bool forReplay)
   SERIAL_EOL;
 
   CONFIG_ECHO_START;
-
-#if ENABLED(SCARA)
-  if (!forReplay)
-  {
-    SERIAL_ECHOLNPGM("Scaling factors:");
-    CONFIG_ECHO_START;
-  }
-  SERIAL_ECHOPAIR("  M365 X", axis_scaling[X_AXIS]);
-  SERIAL_ECHOPAIR(" Y", axis_scaling[Y_AXIS]);
-  SERIAL_ECHOPAIR(" Z", axis_scaling[Z_AXIS]);
-  SERIAL_EOL;
-  CONFIG_ECHO_START;
-#endif // SCARA
 
   if (!forReplay)
   {
@@ -849,24 +768,6 @@ void Config_PrintSettings(bool forReplay)
   SERIAL_EOL;
 #endif // DELTA
 
-#if ENABLED(ULTIPANEL)
-  CONFIG_ECHO_START;
-  if (!forReplay)
-  {
-    SERIAL_ECHOLNPGM("Material heatup parameters:");
-    CONFIG_ECHO_START;
-  }
-  SERIAL_ECHOPAIR("  M145 S0 H", plaPreheatHotendTemp);
-  SERIAL_ECHOPAIR(" B", plaPreheatHPBTemp);
-  SERIAL_ECHOPAIR(" F", plaPreheatFanSpeed);
-  SERIAL_EOL;
-  CONFIG_ECHO_START;
-  SERIAL_ECHOPAIR("  M145 S1 H", absPreheatHotendTemp);
-  SERIAL_ECHOPAIR(" B", absPreheatHPBTemp);
-  SERIAL_ECHOPAIR(" F", absPreheatFanSpeed);
-  SERIAL_EOL;
-#endif // ULTIPANEL
-
 #if HAS_PID_HEATING
 
   CONFIG_ECHO_START;
@@ -918,17 +819,6 @@ void Config_PrintSettings(bool forReplay)
 #endif
 
 #endif // PIDTEMP || PIDTEMPBED
-
-#if ENABLED(HAS_LCD_CONTRAST)
-  CONFIG_ECHO_START;
-  if (!forReplay)
-  {
-    SERIAL_ECHOLNPGM("LCD Contrast:");
-    CONFIG_ECHO_START;
-  }
-  SERIAL_ECHOPAIR("  M250 C", lcd_contrast);
-  SERIAL_EOL;
-#endif
 
 #if ENABLED(FWRETRACT)
 

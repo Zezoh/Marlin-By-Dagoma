@@ -25,43 +25,14 @@
 
 #include "Configuration.h"
 
-#define GENERATE_LANGUAGE_INCLUDE(M)  STRINGIFY_(language_##M.h)
-
-
 // NOTE: IF YOU CHANGE LANGUAGE FILES OR MERGE A FILE WITH CHANGES
 //
-//   ==> ALWAYS TRY TO COMPILE MARLIN WITH/WITHOUT "ULTIPANEL" / "ULTRALCD" / "SDSUPPORT" #define IN "Configuration.h"
-//   ==> ALSO TRY ALL AVAILABLE LANGUAGE OPTIONS
-// See also https://github.com/MarlinFirmware/Marlin/wiki/LCD-Language
+//   ==> ALWAYS TRY TO COMPILE MARLIN WITH/WITHOUT "SDSUPPORT" #define IN "Configuration.h"
 
 // Languages
 // en         English
-// pl         Polish
-// fr         French
-// de         German
-// es         Spanish
-// ru         Russian
-// bg         Bulgarian
-// it         Italian
-// pt         Portuguese
-// pt_utf8    Portuguese (UTF8)
-// pt-br      Portuguese (Brazilian)
-// pt-br_utf8 Portuguese (Brazilian UTF8)
-// fi         Finnish
-// an         Aragonese
-// nl         Dutch
-// gl         Galician
-// ca         Catalan
-// eu         Basque-Euskera
-// kana       Japanese
-// kana_utf8  Japanese (UTF8)
-// cn         Chinese
-// cz         Czech
 
-// fallback if no language is set, don't change
-#ifndef LANGUAGE_INCLUDE
-  #define LANGUAGE_INCLUDE GENERATE_LANGUAGE_INCLUDE(en)
-#endif
+#include "language_en.h"
 
 #if ENABLED(USE_AUTOMATIC_VERSIONING)
   #include "_Version.h"
@@ -93,7 +64,7 @@
   #define WEBSITE_URL DEFAULT_WEBSITE_URL
 #endif
 
-// Common LCD messages
+// Common messages
 
   /* nothing here yet */
 
@@ -234,14 +205,5 @@
 #define MSG_DEBUG_DRYRUN                    "DRYRUN"
 #define MSG_DEBUG_COMMUNICATION             "COMMUNICATION"
 #define MSG_DEBUG_LEVELING                  "LEVELING"
-
-// LCD Menu Messages
-
-#if DISABLED(DISPLAY_CHARSET_HD44780_JAPAN) && DISABLED(DISPLAY_CHARSET_HD44780_WESTERN) && DISABLED(DISPLAY_CHARSET_HD44780_CYRILLIC)
-  #define DISPLAY_CHARSET_HD44780_JAPAN
-#endif
-
-#include LANGUAGE_INCLUDE
-#include "language_en.h"
 
 #endif //__LANGUAGE_H

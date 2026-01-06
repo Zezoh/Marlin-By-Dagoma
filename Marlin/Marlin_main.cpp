@@ -32,6 +32,11 @@
  *  - http://reprap.org/pipermail/reprap-dev/2011-May/003323.html
  */
 
+// --------------------------------------------------------------------------
+// Includes
+// --------------------------------------------------------------------------
+
+// Core firmware headers
 #include "Marlin.h"
 
 #if ENABLED(AUTO_BED_LEVELING_FEATURE)
@@ -45,7 +50,7 @@
   #include "mesh_bed_leveling.h"
 #endif
 
-#include "ultralcd.h"
+// Core subsystems
 #include "planner.h"
 #include "stepper.h"
 #include "temperature.h"
@@ -54,7 +59,6 @@
 #include "language.h"
 #include "pins_arduino.h"
 #include "math.h"
-#include "buzzer.h"
 
 #if ENABLED(USE_WATCHDOG)
   #include "watchdog.h"
@@ -85,6 +89,10 @@
   #include "HardwareSerial.h"
 #endif
 
+// --------------------------------------------------------------------------
+// G-code reference
+// --------------------------------------------------------------------------
+
 /**
  * Look here for descriptions of G-codes:
  *  - http://linuxcnc.org/handbook/gcode/g-code.html
@@ -98,167 +106,144 @@
  * Implemented Codes
  * -----------------
  *
- * "G" Codes
+ * G Codes
+ *   G0, G1  - Coordinated movement X Y Z E
+ *   G2, G3  - CW/CCW arc
+ *   G4      - Dwell S<seconds> or P<milliseconds>
+ *   G10     - Retract filament (FWRETRACT)
+ *   G11     - Recover filament (FWRETRACT)
+ *   G28     - Home one or more axes
+ *   G29     - Detailed Z probe / bed leveling (ABL or mesh)
+ *   G30     - Single Z probe at current XY (ABL without sled)
+ *   G31     - Dock sled (Z_PROBE_SLED)
+ *   G32     - Undock sled (Z_PROBE_SLED)
+ *   G90     - Use absolute coordinates
+ *   G91     - Use relative coordinates
+ *   G92     - Set current position
  *
- * G0  -> G1
- * G1  - Coordinated Movement X Y Z E
- * G2  - CW ARC
- * G3  - CCW ARC
- * G4  - Dwell S<seconds> or P<milliseconds>
- * G10 - retract filament according to settings of M207
- * G11 - retract recover filament according to settings of M208
- * G28 - Home one or more axes
- * G29 - Detailed Z probe, probes the bed at 3 or more points.  Will fail if you haven't homed yet.
- * G30 - Single Z probe, probes bed at current XY location.
- * G31 - Dock sled (Z_PROBE_SLED only)
- * G32 - Undock sled (Z_PROBE_SLED only)
- * G90 - Use Absolute Coordinates
- * G91 - Use Relative Coordinates
- * G92 - Set current position to coordinates given
+ * M Codes
+ *   M0, M1  - Stop and wait for user input
+ *   M17     - Enable stepper motors
+ *   M18     - Disable stepper motors (compatibility for M84)
+ *   M20     - List SD card (SDSUPPORT)
+ *   M21     - Init SD card (SDSUPPORT)
+ *   M22     - Release SD card (SDSUPPORT)
+ *   M23     - Select SD file (SDSUPPORT)
+ *   M24     - Start/resume SD print (SDSUPPORT)
+ *   M25     - Pause SD print (SDSUPPORT)
+ *   M26     - Set SD position in bytes (SDSUPPORT)
+ *   M27     - Report SD print status (SDSUPPORT)
+ *   M28     - Start SD write (SDSUPPORT)
+ *   M29     - Stop SD write (SDSUPPORT)
+ *   M30     - Delete file from SD (SDSUPPORT)
+ *   M31     - Report elapsed time since SD print or M109
+ *   M32     - Select file and start SD print (SDSUPPORT)
+ *   M33     - Get long filename path (SDSUPPORT, LONG_FILENAME_HOST_SUPPORT)
+ *   M42     - Change pin status (Px Sy)
+ *   M48     - Measure Z probe repeatability (ABL + Z probe test)
+ *   M75     - Start print timer
+ *   M76     - Pause print timer
+ *   M77     - Stop print timer
+ *   M80     - Turn on power supply (HAS_POWER_SWITCH)
+ *   M81     - Turn off power supply
+ *   M82     - Set E codes absolute (default)
+ *   M83     - Set E codes relative
+ *   M84     - Disable steppers with optional S<seconds> timeout
+ *   M85     - Set inactivity shutdown timer
+ *   M92     - Set axis steps per unit
+ *   M100    - Memory watcher (M100_FREE_MEMORY_WATCHER)
+ *   M104    - Set extruder target temperature
+ *   M105    - Read current temperature
+ *   M106    - Fan on
+ *   M107    - Fan off
+ *   M109    - Wait for extruder temperature (heat or cool)
+ *   M110    - Set current line number
+ *   M111    - Set debug flags
+ *   M112    - Emergency stop
+ *   M113    - Set host keepalive interval (HOST_KEEPALIVE_FEATURE)
+ *   M114    - Report current position
+ *   M115    - Report capabilities
+ *   M119    - Report endstop states
+ *   M120    - Enable endstop detection
+ *   M121    - Disable endstop detection
+ *   M126    - Solenoid air valve open (BARICUDA, HEATER_1)
+ *   M127    - Solenoid air valve closed (BARICUDA, HEATER_1)
+ *   M128    - EtoP open (BARICUDA, HEATER_2)
+ *   M129    - EtoP closed (BARICUDA, HEATER_2)
+ *   M140    - Set bed target temperature
+ *   M150    - Set BlinkM color (BLINKM)
+ *   M155    - I2C status report (EXPERIMENTAL_I2CBUS)
+ *   M156    - I2C device reset (EXPERIMENTAL_I2CBUS)
+ *   M190    - Wait for bed temperature
+ *   M200    - Set filament diameter (E units to cubic mm)
+ *   M201    - Set maximum acceleration for print moves
+ *   M203    - Set maximum feedrate
+ *   M204    - Set default acceleration
+ *   M205    - Advanced settings (jerk, min feedrates)
+ *   M206    - Set additional homing offset
+ *   M207    - Set retract length (FWRETRACT)
+ *   M208    - Set recover length (FWRETRACT)
+ *   M209    - Enable automatic retract detection (FWRETRACT)
+ *   M218    - Set hotend offset (multiple extruders)
+ *   M220    - Set speed factor override
+ *   M221    - Set extrude factor override
+ *   M226    - Wait on pin state
+ *   M240    - Trigger camera (CHDK or PHOTOGRAPH)
+ *   M280    - Set servo position (HAS_SERVOS)
+ *   M301    - Set hotend PID (PIDTEMP)
+ *   M302    - Allow cold extrudes (PREVENT_DANGEROUS_EXTRUDE)
+ *   M303    - PID autotune
+ *   M304    - Set bed PID (PIDTEMPBED)
+ *   M350    - Set microstepping mode (HAS_MICROSTEPS)
+ *   M351    - Toggle MS1/MS2 pins (HAS_MICROSTEPS)
+ *   M400    - Finish all moves
+ *   M401    - Deploy probe (servo or Allen key, no sled)
+ *   M402    - Stow probe (servo or Allen key, no sled)
+ *   M404    - Set nominal filament width (FILAMENT_WIDTH_SENSOR)
+ *   M405    - Enable filament width sensor (FILAMENT_WIDTH_SENSOR)
+ *   M406    - Disable filament width sensor (FILAMENT_WIDTH_SENSOR)
+ *   M407    - Report filament width (FILAMENT_WIDTH_SENSOR)
+ *   M410    - Quickstop
+ *   M420    - Enable/disable mesh bed leveling (MESH_BED_LEVELING)
+ *   M421    - Set mesh bed leveling Z coordinate (MESH_BED_LEVELING)
+ *   M428    - Apply current position to home offset
+ *   M500    - Store settings in EEPROM
+ *   M501    - Read settings from EEPROM
+ *   M502    - Restore default settings
+ *   M503    - Report current settings
+ *   M540    - Set endstop abort on hit (ABORT_ON_ENDSTOP_HIT_FEATURE_ENABLED)
+ *   M600    - Filament change (FILAMENTCHANGEENABLE)
+ *   M605    - Set dual X carriage mode (DUAL_X_CARRIAGE)
+ *   M665    - Set delta configuration (DELTA)
+ *   M666    - Set delta/dual endstop adjustment (DELTA or Z_DUAL_ENDSTOPS)
+ *   M907    - Set digital trimpot motor current
+ *   M908    - Control digital trimpot (HAS_DIGIPOTSS or DAC_STEPPER_CURRENT)
+ *   M909    - Report digipot/DAC current (DAC_STEPPER_CURRENT)
+ *   M910    - Commit digipot/DAC value (DAC_STEPPER_CURRENT)
+ *   M928    - Start SD write (SDSUPPORT)
+ *   M999    - Restart after being stopped
+ *   M<custom> - Set Z probe offset (CUSTOM_M_CODE_SET_Z_PROBE_OFFSET)
  *
- * "M" Codes
+ * D Codes
+ *   D130    - Tool change position data (EXTRUDERS > 1)
+ *   D131    - Tool change load data (EXTRUDERS > 1)
+ *   D410    - Delta calibration helper (HAS_DELTA_EXTRA)
+ *   D700    - WiFi SSID (WIFI_PRINT)
+ *   D701    - WiFi password (WIFI_PRINT)
+ *   D702    - WiFi status (WIFI_PRINT)
+ *   D710    - WiFi tech name (WIFI_PRINT)
+ *   D711    - WiFi API URL (WIFI_PRINT)
+ *   D712    - WiFi API key (WIFI_PRINT)
+ *   D720    - WiFi echo (WIFI_PRINT)
+ *   D850    - Delta probe plan (HAS_DELTA_EXTRA)
+ *   D851    - Delta geometry report (HAS_DELTA_EXTRA)
+ *   D852    - Delta tower angle report (HAS_DELTA_EXTRA)
+ *   D853    - Delta endstop report (HAS_DELTA_EXTRA)
+ *   D888    - Delta calibration results (HAS_DELTA_EXTRA)
+ *   D999    - Delta configuration status (HAS_DELTA_EXTRA)
  *
- * M0   - Unconditional stop - Wait for user to press a button on the LCD (Only if ULTRA_LCD is enabled)
- * M1   - Same as M0
- * M17  - Enable/Power all stepper motors
- * M18  - Disable all stepper motors; same as M84
- * M20  - List SD card
- * M21  - Init SD card
- * M22  - Release SD card
- * M23  - Select SD file (M23 filename.g)
- * M24  - Start/resume SD print
- * M25  - Pause SD print
- * M26  - Set SD position in bytes (M26 S12345)
- * M27  - Report SD print status
- * M28  - Start SD write (M28 filename.g)
- * M29  - Stop SD write
- * M30  - Delete file from SD (M30 filename.g)
- * M31  - Output time since last M109 or SD card start to serial
- * M32  - Select file and start SD print (Can be used _while_ printing from SD card files):
- *        syntax "M32 /path/filename#", or "M32 S<startpos bytes> !filename#"
- *        Call gcode file : "M32 P !filename#" and return to caller file after finishing (similar to #include).
- *        The '#' is necessary when calling from within sd files, as it stops buffer prereading
- * M33  - Get the longname version of a path
- * M42  - Change pin status via gcode Use M42 Px Sy to set pin x to value y, when omitting Px the onboard led will be used.
- * M48  - Measure Z_Probe repeatability. M48 [P # of points] [X position] [Y position] [V_erboseness #] [E_ngage Probe] [L # of legs of travel]
- * M80  - Turn on Power Supply
- * M81  - Turn off Power Supply
- * M82  - Set E codes absolute (default)
- * M83  - Set E codes relative while in Absolute Coordinates (G90) mode
- * M84  - Disable steppers until next move,
- *        or use S<seconds> to specify an inactivity timeout, after which the steppers will be disabled.  S0 to disable the timeout.
- * M85  - Set inactivity shutdown timer with parameter S<seconds>. To disable set zero (default)
- * M92  - Set axis_steps_per_unit - same syntax as G92
- * M104 - Set extruder target temp
- * M105 - Read current temp
- * M106 - Fan on
- * M107 - Fan off
- * M109 - Sxxx Wait for extruder current temp to reach target temp. Waits only when heating
- *        Rxxx Wait for extruder current temp to reach target temp. Waits when heating and cooling
- *        IF AUTOTEMP is enabled, S<mintemp> B<maxtemp> F<factor>. Exit autotemp by any M109 without F
- * M110 - Set the current line number
- * M111 - Set debug flags with S<mask>. See flag bits defined in Marlin.h.
- * M112 - Emergency stop
- * M113 - Get or set the timeout interval for Host Keepalive "busy" messages
- * M114 - Output current position to serial port
- * M115 - Capabilities string
- * M117 - Display a message on the controller screen
- * M119 - Output Endstop status to serial port
- * M120 - Enable endstop detection
- * M121 - Disable endstop detection
- * M126 - Solenoid Air Valve Open (BariCUDA support by jmil)
- * M127 - Solenoid Air Valve Closed (BariCUDA vent to atmospheric pressure by jmil)
- * M128 - EtoP Open (BariCUDA EtoP = electricity to air pressure transducer by jmil)
- * M129 - EtoP Closed (BariCUDA EtoP = electricity to air pressure transducer by jmil)
- * M140 - Set bed target temp
- * M145 - Set the heatup state H<hotend> B<bed> F<fan speed> for S<material> (0=PLA, 1=ABS)
- * M150 - Set BlinkM Color Output R: Red<0-255> U(!): Green<0-255> B: Blue<0-255> over i2c, G for green does not work.
- * M190 - Sxxx Wait for bed current temp to reach target temp. Waits only when heating
- *        Rxxx Wait for bed current temp to reach target temp. Waits when heating and cooling
- * M200 - set filament diameter and set E axis units to cubic millimeters (use S0 to set back to millimeters).:D<millimeters>-
- * M201 - Set max acceleration in units/s^2 for print moves (M201 X1000 Y1000)
- * M202 - Set max acceleration in units/s^2 for travel moves (M202 X1000 Y1000) Unused in Marlin!!
- * M203 - Set maximum feedrate that your machine can sustain (M203 X200 Y200 Z300 E10000) in mm/sec
- * M204 - Set default acceleration: P for Printing moves, R for Retract only (no X, Y, Z) moves and T for Travel (non printing) moves (ex. M204 P800 T3000 R9000) in mm/sec^2
- * M205 -  advanced settings:  minimum travel speed S=while printing T=travel only,  B=minimum segment time X= maximum xy jerk, Z=maximum Z jerk, E=maximum E jerk
- * M206 - Set additional homing offset
- * M207 - Set retract length S[positive mm] F[feedrate mm/min] Z[additional zlift/hop], stays in mm regardless of M200 setting
- * M208 - Set recover=unretract length S[positive mm surplus to the M207 S*] F[feedrate mm/min]
- * M209 - S<1=true/0=false> enable automatic retract detect if the slicer did not support G10/11: every normal extrude-only move will be classified as retract depending on the direction.
- * M218 - Set hotend offset (in mm): T<extruder_number> X<offset_on_X> Y<offset_on_Y>
- * M220 - Set speed factor override percentage: S<factor in percent>
- * M221 - Set extrude factor override percentage: S<factor in percent>
- * M226 - Wait until the specified pin reaches the state required: P<pin number> S<pin state>
- * M240 - Trigger a camera to take a photograph
- * M250 - Set LCD contrast C<contrast value> (value 0..63)
- * M280 - Set servo position absolute. P: servo index, S: angle or microseconds
- * M300 - Play beep sound S<frequency Hz> P<duration ms>
- * M301 - Set PID parameters P I and D
- * M302 - Allow cold extrudes, or set the minimum extrude S<temperature>.
- * M303 - PID relay autotune S<temperature> sets the target temperature. (default target temperature = 150C)
- * M304 - Set bed PID parameters P I and D
- * M380 - Activate solenoid on active extruder
- * M381 - Disable all solenoids
- * M400 - Finish all moves
- * M401 - Lower Z probe if present
- * M402 - Raise Z probe if present
- * M404 - N<dia in mm> Enter the nominal filament width (3mm, 1.75mm ) or will display nominal filament width without parameters
- * M405 - Turn on Filament Sensor extrusion control.  Optional D<delay in cm> to set delay in centimeters between sensor and extruder
- * M406 - Turn off Filament Sensor extrusion control
- * M407 - Display measured filament diameter
- * M410 - Quickstop. Abort all the planned moves
- * M420 - Enable/Disable Mesh Leveling (with current values) S1=enable S0=disable
- * M421 - Set a single Z coordinate in the Mesh Leveling grid. X<mm> Y<mm> Z<mm>
- * M428 - Set the home_offset logically based on the current_position
- * M500 - Store parameters in EEPROM
- * M501 - Read parameters from EEPROM (if you need reset them after you changed them temporarily).
- * M502 - Revert to the default "factory settings". You still need to store them in EEPROM afterwards if you want to.
- * M503 - Print the current settings (from memory not from EEPROM). Use S0 to leave off headings.
- * M540 - Use S[0|1] to enable or disable the stop SD card print on endstop hit (requires ABORT_ON_ENDSTOP_HIT_FEATURE_ENABLED)
- * M600 - Pause for filament change X[pos] Y[pos] Z[relative lift] E[initial retract] L[later retract distance for removal]
- * M665 - Set delta configurations: L<diagonal rod> R<delta radius> S<segments/s>
- * M666 - Set delta endstop adjustment
- * M605 - Set dual x-carriage movement mode: S<mode> [ X<duplication x-offset> R<duplication temp offset> ]
- * M907 - Set digital trimpot motor current using axis codes.
- * M908 - Control digital trimpot directly.
- * M909 - DAC_STEPPER_CURRENT: Print digipot/DAC current value
- * M910 - DAC_STEPPER_CURRENT: Commit digipot/DAC value to external EEPROM via I2C
- * M350 - Set microstepping mode.
- * M351 - Toggle MS1 MS2 pins directly.
- *
- * ************ SCARA Specific - This can change to suit future G-code regulations
- * M360 - SCARA calibration: Move to cal-position ThetaA (0 deg calibration)
- * M361 - SCARA calibration: Move to cal-position ThetaB (90 deg calibration - steps per degree)
- * M362 - SCARA calibration: Move to cal-position PsiA (0 deg calibration)
- * M363 - SCARA calibration: Move to cal-position PsiB (90 deg calibration - steps per degree)
- * M364 - SCARA calibration: Move to cal-position PSIC (90 deg to Theta calibration position)
- * M365 - SCARA calibration: Scaling factor, X, Y, Z axis
- * ************* SCARA End ***************
- *
- * ************ DAGOMA.FR Specific - This can change to suit future G-code regulations
- * M700 - Wifi : Set SSID to use.
- * M701 - Wifi : Set Password to use and connect !
- * M702 - Wifi : Get current local IP Address if wifi is ready, 0 otherwize.
- * M710 - Wifi : Set printer technical name.
- * M711 - Wifi : Set API Url to use.
- * M712 - Wifi : Set API Key to use.
- * M720 - Wifi : Echo the string in serial .
-
- * ************ DAGOMA.FR End ***************
- *
- * ************ Custom codes - This can change to suit future G-code regulations
- * M100 - Watch Free Memory (For Debugging Only)
- * M851 - Set Z probe's Z offset (mm above extruder -- The value will always be negative)
-
-
- * M928 - Start SD logging (M928 filename.g) - ended by M29
- * M999 - Restart after being stopped by error
- *
- * "T" Codes
- *
- * T0-T3 - Select a tool by index (usually an extruder) [ F<mm/min> ]
- *
-
+ * T Codes
+ *   T0-T3   - Select a tool by index (usually an extruder) [ F<mm/min> ]
  */
 
 #if ENABLED(M100_FREE_MEMORY_WATCHER)
@@ -345,7 +330,7 @@ millis_t previous_cmd_ms = 0;
 static millis_t max_inactive_time = 0;
 static millis_t stepper_inactive_time = (DEFAULT_STEPPER_DEACTIVE_TIME) * 1000UL;
 
-#if ENABLED(IS_MONO_FAN) || ENABLED(PRINTER_HEAD_EASY)
+#if HAS_MONO_FAN
 static millis_t next_fan_auto_regulation_check = 0;
 #endif
 
@@ -406,7 +391,7 @@ static uint8_t target_extruder;
 
 #endif // FWRETRACT
 
-#if ENABLED(ULTIPANEL) && HAS_POWER_SWITCH
+#if HAS_POWER_SWITCH
   bool powersupply =
     #if ENABLED(PS_DEFAULT_OFF)
       false
@@ -450,7 +435,7 @@ static uint8_t target_extruder;
     float bed_level[AUTO_BED_LEVELING_GRID_POINTS][AUTO_BED_LEVELING_GRID_POINTS];
   #endif
 
-  #if ENABLED( DELTA_EXTRA )
+  #if HAS_DELTA_EXTRA
     bool postcompute_tri_ready = false;
     float z_smooth_tri_leveling_height = 0.0;
     #if ENABLED( SDSUPPORT )
@@ -459,12 +444,6 @@ static uint8_t target_extruder;
   #endif
 #else
   static bool home_all_axis = true;
-#endif
-
-#if ENABLED(SCARA)
-  float delta_segments_per_second = SCARA_SEGMENTS_PER_SECOND;
-  static float delta[3] = { 0 };
-  float axis_scaling[3] = { 1, 1, 1 };    // Build size scaling, default to 1
 #endif
 
 #if ENABLED(FILAMENT_WIDTH_SENSOR)
@@ -514,15 +493,9 @@ inline bool current_filament_present(uint8_t e) {
   return (e == 0) ? FILAMENT_PRESENT : FILAMENT2_PRESENT;
 }
 
-#if ENABLED(SUMMON_PRINT_PAUSE)
+#if HAS_SUMMON_PRINT_PAUSE
   static bool print_pause_summoned = false;
 #endif
-#if ENABLED(U8GLIB_SSD1306) && ENABLED(INTELLIGENT_LCD_REFRESH_RATE)
-  static float last_intelligent_z_lcd_update = 0;
-  static float last_intelligent_F_lcd_update = 0;
-  static bool last_intelligent_F_authorized_lcd_update = false;
-#endif
-
 static bool send_ok[BUFSIZE];
 
 #if HAS_SERVOS
@@ -558,6 +531,10 @@ static bool send_ok[BUFSIZE];
   #define host_keepalive() ;
   #define KEEPALIVE_STATE(n) ;
 #endif // HOST_KEEPALIVE_FEATURE
+
+// --------------------------------------------------------------------------
+// Printer state tracking
+// --------------------------------------------------------------------------
 
 typedef enum {
    ACTIVITY_IDLE
@@ -608,9 +585,9 @@ typedef struct {
 PrinterStates printer_states;
 
 /**
- * ***************************************************************************
- * ******************************** FUNCTIONS ********************************
- * ***************************************************************************
+ * --------------------------------------------------------------------------
+ * Forward declarations and shared helpers
+ * --------------------------------------------------------------------------
  */
 
 void stop();
@@ -620,6 +597,7 @@ void process_next_command();
 
 void plan_arc(float target[NUM_AXIS], float* offset, uint8_t clockwise);
 
+// Serial echo helpers for common types.
 void serial_echopair_P(const char* s_P, int v)           { serialprintPGM(s_P); SERIAL_ECHO(v); }
 void serial_echopair_P(const char* s_P, long v)          { serialprintPGM(s_P); SERIAL_ECHO(v); }
 void serial_echopair_P(const char* s_P, float v)         { serialprintPGM(s_P); SERIAL_ECHO(v); }
@@ -647,7 +625,7 @@ void gcode_M114();
   #define DEBUG_POS(PREFIX,VAR) do{ SERIAL_ECHOPGM(PREFIX); print_xyz(" > " STRINGIFY(VAR), VAR); }while(0)
 #endif
 
-#if ENABLED(DELTA) || ENABLED(SCARA)
+#if ENABLED(DELTA)
   inline void sync_plan_position_delta() {
     #if ENABLED(DEBUG_LEVELING_FEATURE)
       if (DEBUGGING(LEVELING)) DEBUG_POS("sync_plan_position_delta", current_position);
@@ -665,6 +643,7 @@ void gcode_M114();
   extern volatile bool z_probe_is_active;
 #endif
 
+// Free-memory helper for diagnostics.
 #if ENABLED(SDSUPPORT)
   #include "SdFatUtil.h"
   int freeMemory() { return SdFatUtil::FreeRam(); }
@@ -684,6 +663,10 @@ extern "C" {
   }
 }
 #endif //!SDSUPPORT
+
+// --------------------------------------------------------------------------
+// Command queue helpers
+// --------------------------------------------------------------------------
 
 /**
  * Inject the next "immediate" command, when possible.
@@ -705,29 +688,6 @@ static bool drain_queued_commands_P() {
     }
   }
   return (queued_commands_P != NULL);      // return whether any more remain
-}
-
-/**
- * Test for all enqueued commands to be processed.
- * return false if it remains command, true when all commands are done
- */
-bool enqueued_commands_finished__CALLABLE_FROM_LCD_ONLY() {
-  if ( commands_in_queue > 0) {
-    process_next_command();
-    cmd_queue_index_r = (cmd_queue_index_r + 1) % BUFSIZE;
-    commands_in_queue--;
-    return false;
-  }
-  return true;
-}
-
-/**
- * Wait for all enqueued commands to be processed.
- */
-void wait_all_commands_finished__CALLABLE_FROM_LCD_ONLY() {
-  while (!enqueued_commands_finished__CALLABLE_FROM_LCD_ONLY()) {
-    idle();
-  }
 }
 
 /**
@@ -891,7 +851,7 @@ void servo_init() {
   void enableStepperDrivers() { pinMode(STEPPER_RESET_PIN, INPUT); }  // set to input, which allows it to be pulled high by pullups
 #endif
 
-#if ENABLED( ONE_LED )
+#if HAS_ONE_LED
   inline void one_led_on() {
     digitalWrite( ONE_LED_PIN, true ^ ONE_LED_INVERTING );
   }
@@ -905,12 +865,7 @@ void servo_init() {
   inline void set_notify_not_calibrated();
 #endif
 
-#if ENABLED(ONE_BUTTON) || ENABLED(SUMMON_PRINT_PAUSE)
-  #define ONE_BUTTON_PRESSED  (READ( SUMMON_PRINT_PAUSE_PIN ) ^ SUMMON_PRINT_PAUSE_INVERTING)
-  #define ONE_BUTTON_RELEASED (!ONE_BUTTON_PRESSED)
-#endif
-
-#if ENABLED(DELTA_EXTRA) && ENABLED(Z_MIN_MAGIC)
+#if HAS_DELTA_EXTRA && ENABLED(Z_MIN_MAGIC)
     #define NOT_YET_CALIBRATED \
       ( \
         endstop_adj[X_AXIS] == 0 && \
@@ -927,16 +882,16 @@ void servo_init() {
  *  - Print startup messages and diagnostics
  *  - Get EEPROM or default settings
  *  - Initialize managers for:
- *    • temperature
- *    • planner
- *    • watchdog
- *    • stepper
- *    • photo pin
- *    • servos
- *    • LCD controller
- *    • Digipot I2C
- *    • Z probe sled
- *    • status LEDs
+ *    - temperature
+ *    - planner
+ *    - watchdog
+ *    - stepper
+ *    - photo pin
+ *    - servos
+ *    - Controller
+ *    - Digipot I2C
+ *    - Z probe sled
+ *    - status LEDs
  */
 void setup() {
 
@@ -996,12 +951,10 @@ void setup() {
   // loads data from EEPROM if available else uses defaults (and resets step acceleration rate)
   Config_RetrieveSettings();
 
-  lcd_init();
-
   tp_init();    // Initialize temperature loop
   plan_init();  // Initialize planner;
 
-  #if ENABLED(DELTA) || ENABLED(SCARA)
+  #if ENABLED(DELTA)
     // Vital to init kinematic equivalent for X0 Y0 Z0
     sync_plan_position_delta();
   #endif
@@ -1057,7 +1010,7 @@ void setup() {
     SECOND_SERIAL.begin( SECOND_SERIAL_BAUDRATE );
   #endif
 
-  #if ENABLED(SUMMON_PRINT_PAUSE) && SUMMON_PRINT_PAUSE_PIN != X_MIN_PIN && SUMMON_PRINT_PAUSE_PIN != Y_MAX_PIN && SUMMON_PRINT_PAUSE_PIN != Z_MIN_PIN
+  #if HAS_SUMMON_PRINT_PAUSE && SUMMON_PRINT_PAUSE_PIN != X_MIN_PIN && SUMMON_PRINT_PAUSE_PIN != Y_MAX_PIN && SUMMON_PRINT_PAUSE_PIN != Z_MIN_PIN
     SET_INPUT(SUMMON_PRINT_PAUSE_PIN);
     WRITE(SUMMON_PRINT_PAUSE_PIN, HIGH);
   #elif ENABLED(ONE_BUTTON)
@@ -1082,7 +1035,7 @@ void setup() {
     printer_states.in_critical_section = false;
   #endif
 
-  #if ENABLED( DELTA_EXTRA )
+  #if HAS_DELTA_EXTRA
     #if ENABLED( ONE_BUTTON )
       // Read the button state here
       millis_t now = millis();
@@ -1102,7 +1055,7 @@ void setup() {
     #endif
   #endif
 
-  #if ENABLED( ONE_LED )
+  #if HAS_ONE_LED
     pinMode( ONE_LED_PIN, OUTPUT );
     one_led_off();
   #endif
@@ -1166,25 +1119,10 @@ void setup() {
  *  - Call heater manager
  *  - Call inactivity manager
  *  - Call endstop manager
- *  - Call LCD update
+ *  - Call update routines
  */
 void loop() {
   #if ENABLED(SDSUPPORT)
-    #if ENABLED(ULTIPANEL)
-      if (abort_sd_printing) {
-        abort_sd_printing = false;
-        card.sdprinting = false;
-        card.closefile();
-        clear_command_queue();
-        quickStop();
-        print_job_timer.stop();
-        disable_all_heaters();
-        #if FAN_COUNT > 0
-          for (uint8_t i = 0; i < FAN_COUNT; i++) fanSpeeds[i] = 0;
-        #endif
-        cancel_heatup = true;
-      }
-    #endif
   #endif // SDSUPPORT
 
   #if ENABLED( WIFI_PRINT )
@@ -1193,7 +1131,7 @@ void loop() {
 
   if (commands_in_queue < BUFSIZE) get_available_commands();
 
-  #if ENABLED(SDSUPPORT) && DISABLED(DELTA_EXTRA)
+  #if ENABLED(SDSUPPORT) && !HAS_DELTA_EXTRA
     card.checkautostart(false);
   #endif
 
@@ -1302,7 +1240,6 @@ inline void get_serial_commands() {
       #if ENABLED( WIFI_PRINT )
         if ( strncmp( command, "REDY:", 4 ) == 0 ) {
           // Do stuff with that ?
-          lcd_setstatus( command + 5 );
           continue;
         }
       #endif // END WIFI_PRINT
@@ -1377,7 +1314,6 @@ inline void get_serial_commands() {
             case 2:
             case 3:
               SERIAL_ERRORLNPGM(MSG_ERR_STOPPED);
-              LCD_MESSAGEPGM(MSG_STOPPED);
               break;
           }
         }
@@ -1480,7 +1416,6 @@ inline void get_serial_commands() {
           sprintf_P(time, PSTR("%i " MSG_END_HOUR " %i " MSG_END_MINUTE), hours, minutes);
           SERIAL_ECHO_START;
           SERIAL_ECHOLN(time);
-          lcd_setstatus(time, true);
           card.printingHasFinished();
           #if DISABLED(ONE_BUTTON)
           card.checkautostart(true);
@@ -1700,48 +1635,6 @@ static void set_axis_is_at_home(AxisEnum axis) {
     }
   #endif
 
-  #if ENABLED(SCARA)
-
-    if (axis == X_AXIS || axis == Y_AXIS) {
-
-      float homeposition[3];
-      for (int i = 0; i < 3; i++) homeposition[i] = base_home_pos(i);
-
-      // SERIAL_ECHOPGM("homeposition[x]= "); SERIAL_ECHO(homeposition[0]);
-      // SERIAL_ECHOPGM("homeposition[y]= "); SERIAL_ECHOLN(homeposition[1]);
-
-      /**
-       * Works out real Homeposition angles using inverse kinematics,
-       * and calculates homing offset using forward kinematics
-       */
-      calculate_delta(homeposition);
-
-      // SERIAL_ECHOPGM("base Theta= "); SERIAL_ECHO(delta[X_AXIS]);
-      // SERIAL_ECHOPGM(" base Psi+Theta="); SERIAL_ECHOLN(delta[Y_AXIS]);
-
-      for (int i = 0; i < 2; i++) delta[i] -= home_offset[i];
-
-      // SERIAL_ECHOPGM("addhome X="); SERIAL_ECHO(home_offset[X_AXIS]);
-      // SERIAL_ECHOPGM(" addhome Y="); SERIAL_ECHO(home_offset[Y_AXIS]);
-      // SERIAL_ECHOPGM(" addhome Theta="); SERIAL_ECHO(delta[X_AXIS]);
-      // SERIAL_ECHOPGM(" addhome Psi+Theta="); SERIAL_ECHOLN(delta[Y_AXIS]);
-
-      calculate_SCARA_forward_Transform(delta);
-
-      // SERIAL_ECHOPGM("Delta X="); SERIAL_ECHO(delta[X_AXIS]);
-      // SERIAL_ECHOPGM(" Delta Y="); SERIAL_ECHOLN(delta[Y_AXIS]);
-
-      current_position[axis] = delta[axis];
-
-      /**
-       * SCARA home positions are based on configuration since the actual
-       * limits are determined by the inverse kinematic transform.
-       */
-      sw_endstop_min[axis] = base_min_pos(axis); // + (delta[axis] - base_home_pos(axis));
-      sw_endstop_max[axis] = base_max_pos(axis); // + (delta[axis] - base_home_pos(axis));
-    }
-    else
-  #endif
   {
     current_position[axis] = base_home_pos(axis) + home_offset[axis];
     update_software_endstops(axis);
@@ -1945,7 +1838,7 @@ static void setup_for_endstop_move() {
         #endif
         // - Reset the board
         while( true ) {
-          #if ENABLED(ONE_LED)
+          #if HAS_ONE_LED
             one_led_on();
             delay(150);
             one_led_off();
@@ -1973,7 +1866,7 @@ static void setup_for_endstop_move() {
       #endif
 
       // move down slowly until you find the bed
-      #if ENABLED(DELTA_EXTRA)
+      #if HAS_DELTA_EXTRA
         if (fast) {
           feedrate = homing_feedrate[Z_AXIS] / 2;
           SERIAL_ECHOPAIR("fast probing, feedrate = ", feedrate);
@@ -1982,7 +1875,7 @@ static void setup_for_endstop_move() {
       #endif
           feedrate = homing_feedrate[Z_AXIS] / 4;
           SERIAL_ECHOPAIR("slow probing, feedrate = ", feedrate);
-      #if ENABLED(DELTA_EXTRA)
+      #if HAS_DELTA_EXTRA
         }
       #endif
       log_z_magic_raw_value = true;
@@ -2211,7 +2104,6 @@ static void setup_for_endstop_move() {
           if (IsRunning()) {
             SERIAL_ERROR_START;
             SERIAL_ERRORLNPGM("Z-Probe failed to engage!");
-            LCD_ALERTMESSAGEPGM("Err: ZPROBE");
           }
           stop();
         }
@@ -2317,7 +2209,6 @@ static void setup_for_endstop_move() {
           if (IsRunning()) {
             SERIAL_ERROR_START;
             SERIAL_ERRORLNPGM("Z-Probe failed to retract!");
-            LCD_ALERTMESSAGEPGM("Err: ZPROBE");
           }
           stop();
         }
@@ -2499,7 +2390,6 @@ static void setup_for_endstop_move() {
 
 #if ENABLED(Z_PROBE_SLED) || ENABLED(Z_SAFE_HOMING) || ENABLED(AUTO_BED_LEVELING_FEATURE)
   static void axis_unhomed_error() {
-    LCD_MESSAGEPGM(MSG_YX_UNHOMED);
     SERIAL_ECHO_START;
     SERIAL_ECHOLNPGM(MSG_YX_UNHOMED);
   }
@@ -2948,7 +2838,6 @@ inline void gcode_G4() {
   refresh_cmd_timeout();
   codenum += previous_cmd_ms;  // keep track of when we started waiting
 
-  if (!lcd_hasstatus()) LCD_MESSAGEPGM(MSG_DWELL);
 
   while (PENDING(millis(), codenum)) idle();
 }
@@ -3140,9 +3029,7 @@ inline void gcode_G28() {
 
         current_position[X_AXIS] = destination[X_AXIS];
         current_position[Y_AXIS] = destination[Y_AXIS];
-        #if DISABLED(SCARA)
-          current_position[Z_AXIS] = destination[Z_AXIS];
-        #endif
+        current_position[Z_AXIS] = destination[Z_AXIS];
 
         #if ENABLED(DEBUG_LEVELING_FEATURE)
           if (DEBUGGING(LEVELING)) DEBUG_POS("> QUICK_HOME 2", current_position);
@@ -3262,7 +3149,6 @@ inline void gcode_G28() {
                 HOMEAXIS(Z);
               }
               else {
-                LCD_MESSAGEPGM(MSG_ZPROBE_OUT);
                 SERIAL_ECHO_START;
                 SERIAL_ECHOLNPGM(MSG_ZPROBE_OUT);
               }
@@ -3296,10 +3182,6 @@ inline void gcode_G28() {
     sync_plan_position();
 
   #endif // else DELTA
-
-  #if ENABLED(SCARA)
-    sync_plan_position_delta();
-  #endif
 
   #if ENABLED(ENDSTOPS_ONLY_FOR_HOMING)
     enable_endstops(false);
@@ -3524,7 +3406,7 @@ inline void gcode_G28() {
     SERIAL_PROTOCOLLNPGM(" position out of range.");
   }
 
-  #if ENABLED( DELTA_EXTRA )
+  #if HAS_DELTA_EXTRA
 
     #define PROBE_POINT_NUMBER 19 // 12 outer, 6 inner, 1 center
     // Numbered from cardinal X tower, counter-clockwize to cardinal Z tower
@@ -3540,18 +3422,18 @@ inline void gcode_G28() {
         0.0
       },
       {
-        -COS_60 * delta_radius,
-        -SIN_60 * delta_radius,
+        -COS_60 * DELTA_PROBEABLE_RADIUS,
+        -SIN_60 * DELTA_PROBEABLE_RADIUS,
         0.0
       },
       {
         0.0,
-        -1.0 * delta_radius,
+        -1.0 * DELTA_PROBEABLE_RADIUS,
         0.0
       },
       {
-        COS_60 * delta_radius,
-        -SIN_60 * delta_radius,
+        COS_60 * DELTA_PROBEABLE_RADIUS,
+        -SIN_60 * DELTA_PROBEABLE_RADIUS,
         0.0
       },
       {
@@ -3560,18 +3442,18 @@ inline void gcode_G28() {
         0.0
       },
       {
-        delta_radius,
+        DELTA_PROBEABLE_RADIUS,
         0.0,
         0.0
       },
       {
-        SIN_60 * delta_radius,
-        COS_60 * delta_radius,
+        SIN_60 * DELTA_PROBEABLE_RADIUS,
+        COS_60 * DELTA_PROBEABLE_RADIUS,
         0.0
       },
       {
-        COS_60 * delta_radius,
-        SIN_60 * delta_radius,
+        COS_60 * DELTA_PROBEABLE_RADIUS,
+        SIN_60 * DELTA_PROBEABLE_RADIUS,
         0.0
       },
       {
@@ -3580,49 +3462,49 @@ inline void gcode_G28() {
         0.0
       },
       {
-        -COS_60 * delta_radius,
-        SIN_60 * delta_radius,
+        -COS_60 * DELTA_PROBEABLE_RADIUS,
+        SIN_60 * DELTA_PROBEABLE_RADIUS,
         0.0
       },
       {
-        -SIN_60 * delta_radius,
-        COS_60 * delta_radius,
+        -SIN_60 * DELTA_PROBEABLE_RADIUS,
+        COS_60 * DELTA_PROBEABLE_RADIUS,
         0.0
       },
       {
-        -delta_radius,
+        -DELTA_PROBEABLE_RADIUS,
         0.0,
         0.0
       },
       // Inner
       {
-        -SIN_60 * delta_radius / 2.0,
-        -COS_60 * delta_radius / 2.0,
+        -SIN_60 * DELTA_PROBEABLE_RADIUS / 2.0,
+        -COS_60 * DELTA_PROBEABLE_RADIUS / 2.0,
         0.0
       },
       {
         0.0,
-        -delta_radius / 2.0,
+        -DELTA_PROBEABLE_RADIUS / 2.0,
         0.0
       },
       {
-        SIN_60 * delta_radius / 2.0,
-        -COS_60 * delta_radius / 2.0,
+        SIN_60 * DELTA_PROBEABLE_RADIUS / 2.0,
+        -COS_60 * DELTA_PROBEABLE_RADIUS / 2.0,
         0.0
       },
       {
-        SIN_60 * delta_radius / 2.0,
-        COS_60 * delta_radius / 2.0,
+        SIN_60 * DELTA_PROBEABLE_RADIUS / 2.0,
+        COS_60 * DELTA_PROBEABLE_RADIUS / 2.0,
         0.0
       },
       {
         0.0,
-        delta_radius / 2.0,
+        DELTA_PROBEABLE_RADIUS / 2.0,
         0.0
       },
       {
-        -SIN_60 * delta_radius / 2.0,
-         COS_60 * delta_radius / 2.0,
+        -SIN_60 * DELTA_PROBEABLE_RADIUS / 2.0,
+         COS_60 * DELTA_PROBEABLE_RADIUS / 2.0,
         0.0
       },
       // Center
@@ -3701,7 +3583,14 @@ inline void gcode_G28() {
         st_synchronize();
 
         if ( destination[ Z_AXIS ] > 66.90 ) {
-          int i=10; do { idle(true); delay(100); } while(--i);
+          int i=10; do {
+            #if ENABLED(FILAMENTCHANGEENABLE)
+              idle(true);
+            #else
+              idle();
+            #endif
+            delay(100);
+          } while(--i);
           all_points_are_good = false;
         }
         else {
@@ -3961,7 +3850,7 @@ inline void gcode_G28() {
       for(i=0; i<PROBE_POINT_NUMBER; i++) {
         destination[ X_AXIS ] = probe_plan[i][0];
         destination[ Y_AXIS ] = probe_plan[i][1];
-        destination[ Z_AXIS ] = 10.0;
+        destination[ Z_AXIS ] = i ? current_position[Z_AXIS] : current_position[Z_AXIS] + Z_RAISE_BEFORE_PROBING;
         prepare_move();
         st_synchronize();
         probe_plan[i][2] = get_probed_Z_avg();
@@ -4545,7 +4434,7 @@ inline void gcode_G28() {
     /**
      * G30: Do a single Z probe at the current XY
      */
-    #if ENABLED(DELTA_EXTRA)
+    #if HAS_DELTA_EXTRA
     inline void gcode_G30(bool fast/*default is declared above*/) {
     #else
     inline void gcode_G30() {
@@ -4562,7 +4451,7 @@ inline void gcode_G28() {
 
       feedrate = homing_feedrate[Z_AXIS];
 
-      #if ENABLED(DELTA_EXTRA)
+      #if HAS_DELTA_EXTRA
         run_z_probe(fast);
       #else
         run_z_probe();
@@ -4617,7 +4506,7 @@ inline void gcode_G92() {
     }
   }
   if (didXYZ) {
-    #if ENABLED(DELTA) || ENABLED(SCARA)
+    #if ENABLED(DELTA)
       sync_plan_position_delta();
     #else
       sync_plan_position();
@@ -4628,67 +4517,42 @@ inline void gcode_G92() {
   }
 }
 
-#if ENABLED(ULTIPANEL)
+/**
+ * M0: Unconditional stop
+ * M1: Conditional stop
+ */
+inline void gcode_M0_M1() {
+  char* args = current_command_args;
 
-  /**
-   * M0: // M0 - Unconditional stop - Wait for user button press on LCD
-   * M1: // M1 - Conditional stop - Wait for user button press on LCD
-   */
-  inline void gcode_M0_M1() {
-    char* args = current_command_args;
-
-    uint8_t test_value = 12;
-    SERIAL_ECHOPAIR("TEST", test_value);
-
-    millis_t codenum = 0;
-    bool hasP = false, hasS = false;
-    if (code_seen('P')) {
-      codenum = code_value_short(); // milliseconds to wait
-      hasP = codenum > 0;
-    }
-    if (code_seen('S')) {
-      codenum = code_value() * 1000UL; // seconds to wait
-      hasS = codenum > 0;
-    }
-
-    if (!hasP && !hasS && *args != '\0')
-      lcd_setstatus(args, true);
-    else {
-      LCD_MESSAGEPGM(MSG_USERWAIT);
-      #if ENABLED(LCD_PROGRESS_BAR) && PROGRESS_MSG_EXPIRE > 0
-        dontExpireStatus();
-      #endif
-    }
-
-    lcd_ignore_click();
-    st_synchronize();
-    refresh_cmd_timeout();
-    if (codenum > 0) {
-      codenum += previous_cmd_ms;  // wait until this time for a click
-      KEEPALIVE_STATE(PAUSED_FOR_USER);
-      while (PENDING(millis(), codenum) && !lcd_clicked()) idle();
-      KEEPALIVE_STATE(IN_HANDLER);
-      lcd_ignore_click(false);
-    }
-    else {
-      if (!lcd_detected()) return;
-      KEEPALIVE_STATE(PAUSED_FOR_USER);
-      while (!lcd_clicked()) idle();
-      KEEPALIVE_STATE(IN_HANDLER);
-    }
-    if (IS_SD_PRINTING)
-      LCD_MESSAGEPGM(MSG_RESUMING);
-    else
-      LCD_MESSAGEPGM(WELCOME_MSG);
+  millis_t codenum = 0;
+  bool hasP = false, hasS = false;
+  if (code_seen('P')) {
+    codenum = code_value_short(); // milliseconds to wait
+    hasP = codenum > 0;
+  }
+  if (code_seen('S')) {
+    codenum = code_value() * 1000UL; // seconds to wait
+    hasS = codenum > 0;
   }
 
-#endif // ULTIPANEL
+  if (!hasP && !hasS && *args != '\0') {
+    SERIAL_ECHOLN(args);
+  }
+
+  st_synchronize();
+  refresh_cmd_timeout();
+  if (codenum > 0) {
+    codenum += previous_cmd_ms;  // wait until this time
+    KEEPALIVE_STATE(PAUSED_FOR_USER);
+    while (PENDING(millis(), codenum)) idle();
+    KEEPALIVE_STATE(IN_HANDLER);
+  }
+}
 
 /**
  * M17: Enable power on all stepper motors
  */
 inline void gcode_M17() {
-  LCD_MESSAGEPGM(MSG_NO_MOVE);
   enable_all_steppers();
 }
 
@@ -4791,7 +4655,6 @@ inline void gcode_M31() {
   sprintf_P(time, PSTR("%i min, %i sec"), min, sec);
   SERIAL_ECHO_START;
   SERIAL_ECHOLN(time);
-  lcd_setstatus(time);
   autotempShutdown();
 }
 
@@ -5235,7 +5098,6 @@ inline void gcode_M104() {
      */
     if (temp <= (EXTRUDE_MINTEMP)/2) {
       print_job_timer.stop();
-      LCD_MESSAGEPGM(WELCOME_MSG);
     }
     /**
      * We do not check if the timer is already running because this check will
@@ -5244,7 +5106,6 @@ inline void gcode_M104() {
      */
     else print_job_timer.start();
 
-    if (temp > degHotend(target_extruder)) LCD_MESSAGEPGM(MSG_HEATING);
   }
 }
 
@@ -5473,7 +5334,7 @@ inline void manage_blocking_heat(
  *       Y progress from Y position (V must be provided if y is present)
  *       Z progress from Z position (W must be provided if Z is present)
  *       U progress from X to U position
- *       V progress from Y to V pôsition
+ *       V progress from Y to V position
  *       W progress from Z to W position
  */
 inline void gcode_M109() {
@@ -5501,7 +5362,6 @@ inline void gcode_M109() {
      */
     if (temp <= (EXTRUDE_MINTEMP)/2) {
       print_job_timer.stop();
-      LCD_MESSAGEPGM(WELCOME_MSG);
     }
     /**
      * We do not check if the timer is already running because this check will
@@ -5510,7 +5370,6 @@ inline void gcode_M109() {
      */
     else print_job_timer.start();
 
-    if (temp > degHotend(target_extruder)) LCD_MESSAGEPGM(MSG_HEATING);
   }
 
   #if ENABLED(AUTOTEMP)
@@ -5564,7 +5423,6 @@ inline void gcode_M109() {
     x_from, x_to, y_from, y_to, z_from, z_to
   );
 
-  LCD_MESSAGEPGM(MSG_HEATING_COMPLETE);
 }
 
 #if HAS_TEMP_BED
@@ -5576,7 +5434,6 @@ inline void gcode_M109() {
   inline void gcode_M190() {
     if (DEBUGGING(DRYRUN)) return;
 
-    LCD_MESSAGEPGM(MSG_BED_HEATING);
     bool no_wait_for_cooling = code_seen('S');
     if (no_wait_for_cooling || code_seen('R')) setTargetBed(code_value());
 
@@ -5636,7 +5493,6 @@ inline void gcode_M109() {
       #endif //TEMP_BED_RESIDENCY_TIME > 0
 
     } while (!cancel_heatup && TEMP_BED_CONDITIONS);
-    LCD_MESSAGEPGM(MSG_BED_DONE);
   }
 
 #endif // HAS_TEMP_BED
@@ -5747,62 +5603,6 @@ inline void gcode_M140() {
   if (code_seen('S')) setTargetBed(code_value());
 }
 
-#if ENABLED(ULTIPANEL)
-
-  /**
-   * M145: Set the heatup state for a material in the LCD menu
-   *   S<material> (0=PLA, 1=ABS)
-   *   H<hotend temp>
-   *   B<bed temp>
-   *   F<fan speed>
-   */
-  inline void gcode_M145() {
-    int8_t material = code_seen('S') ? code_value_short() : 0;
-    if (material < 0 || material > 1) {
-      SERIAL_ERROR_START;
-      SERIAL_ERRORLNPGM(MSG_ERR_MATERIAL_INDEX);
-    }
-    else {
-      int v;
-      switch (material) {
-        case 0:
-          if (code_seen('H')) {
-            v = code_value_short();
-            plaPreheatHotendTemp = constrain(v, EXTRUDE_MINTEMP, HEATER_0_MAXTEMP - 15);
-          }
-          if (code_seen('F')) {
-            v = code_value_short();
-            plaPreheatFanSpeed = constrain(v, 0, 255);
-          }
-          #if TEMP_SENSOR_BED != 0
-            if (code_seen('B')) {
-              v = code_value_short();
-              plaPreheatHPBTemp = constrain(v, BED_MINTEMP, BED_MAXTEMP - 15);
-            }
-          #endif
-          break;
-        case 1:
-          if (code_seen('H')) {
-            v = code_value_short();
-            absPreheatHotendTemp = constrain(v, EXTRUDE_MINTEMP, HEATER_0_MAXTEMP - 15);
-          }
-          if (code_seen('F')) {
-            v = code_value_short();
-            absPreheatFanSpeed = constrain(v, 0, 255);
-          }
-          #if TEMP_SENSOR_BED != 0
-            if (code_seen('B')) {
-              v = code_value_short();
-              absPreheatHPBTemp = constrain(v, BED_MINTEMP, BED_MAXTEMP - 15);
-            }
-          #endif
-          break;
-      }
-    }
-  }
-
-#endif
-
 #if HAS_POWER_SWITCH
 
   /**
@@ -5820,11 +5620,7 @@ inline void gcode_M140() {
       OUT_WRITE(SUICIDE_PIN, HIGH);
     #endif
 
-    #if ENABLED(ULTIPANEL)
-      powersupply = true;
-      LCD_MESSAGEPGM(WELCOME_MSG);
-      lcd_update();
-    #endif
+    powersupply = true;
   }
 
 #endif // HAS_POWER_SWITCH
@@ -5851,12 +5647,8 @@ inline void gcode_M81() {
   #elif HAS_POWER_SWITCH
     OUT_WRITE(PS_ON_PIN, PS_ON_ASLEEP);
   #endif
-  #if ENABLED(ULTIPANEL)
-    #if HAS_POWER_SWITCH
-      powersupply = false;
-    #endif
-    LCD_MESSAGEPGM(MACHINE_NAME " " MSG_OFF ".");
-    lcd_update();
+  #if HAS_POWER_SWITCH
+    powersupply = false;
   #endif
 }
 
@@ -5951,48 +5743,17 @@ inline void gcode_M114() {
        zpos = count_position[Z_AXIS];
   CRITICAL_SECTION_END;
 
-  #if ENABLED(COREXY) || ENABLED(COREXZ)
-    SERIAL_PROTOCOLPGM(MSG_COUNT_A);
-  #else
-    SERIAL_PROTOCOLPGM(MSG_COUNT_X);
-  #endif
+  SERIAL_PROTOCOLPGM(MSG_COUNT_X);
   SERIAL_PROTOCOL(xpos);
 
-  #if ENABLED(COREXY)
-    SERIAL_PROTOCOLPGM(" B:");
-  #else
-    SERIAL_PROTOCOLPGM(" Y:");
-  #endif
+  SERIAL_PROTOCOLPGM(" Y:");
   SERIAL_PROTOCOL(ypos);
 
-  #if ENABLED(COREXZ)
-    SERIAL_PROTOCOLPGM(" C:");
-  #else
-    SERIAL_PROTOCOLPGM(" Z:");
-  #endif
+  SERIAL_PROTOCOLPGM(" Z:");
   SERIAL_PROTOCOL(zpos);
 
   SERIAL_EOL;
 
-  #if ENABLED(SCARA)
-    SERIAL_PROTOCOLPGM("SCARA Theta:");
-    SERIAL_PROTOCOL(delta[X_AXIS]);
-    SERIAL_PROTOCOLPGM("   Psi+Theta:");
-    SERIAL_PROTOCOL(delta[Y_AXIS]);
-    SERIAL_EOL;
-
-    SERIAL_PROTOCOLPGM("SCARA Cal - Theta:");
-    SERIAL_PROTOCOL(delta[X_AXIS] + home_offset[X_AXIS]);
-    SERIAL_PROTOCOLPGM("   Psi+Theta (90):");
-    SERIAL_PROTOCOL(delta[Y_AXIS] - delta[X_AXIS] - 90 + home_offset[Y_AXIS]);
-    SERIAL_EOL;
-
-    SERIAL_PROTOCOLPGM("SCARA step Cal - Theta:");
-    SERIAL_PROTOCOL(delta[X_AXIS] / 90 * axis_steps_per_unit[X_AXIS]);
-    SERIAL_PROTOCOLPGM("   Psi+Theta:");
-    SERIAL_PROTOCOL((delta[Y_AXIS] - delta[X_AXIS]) / 90 * axis_steps_per_unit[Y_AXIS]);
-    SERIAL_EOL; SERIAL_EOL;
-  #endif
 }
 
 /**
@@ -6000,13 +5761,6 @@ inline void gcode_M114() {
  */
 inline void gcode_M115() {
   SERIAL_PROTOCOLPGM(MSG_M115_REPORT);
-}
-
-/**
- * M117: Set LCD Status Message
- */
-inline void gcode_M117() {
-  lcd_setstatus(current_command_args);
 }
 
 /**
@@ -6224,7 +5978,7 @@ inline void gcode_M204() {
  *
  *    S = Min Feed Rate (mm/s)
  *    T = Min Travel Feed Rate (mm/s)
- *    B = Min Segment Time (µs)
+ *    B = Min Segment Time (us)
  *    X = Max XY Jerk (mm/s/s)
  *    Z = Max Z Jerk (mm/s/s)
  *    E = Max E Jerk (mm/s/s)
@@ -6239,17 +5993,13 @@ inline void gcode_M205() {
 }
 
 /**
- * M206: Set Additional Homing Offset (X Y Z). SCARA aliases T=X, P=Y
+ * M206: Set Additional Homing Offset (X Y Z).
  */
 inline void gcode_M206() {
   for (int8_t i = X_AXIS; i <= Z_AXIS; i++)
     if (code_seen(axis_codes[i]))
       set_home_offset((AxisEnum)i, code_value());
 
-  #if ENABLED(SCARA)
-    if (code_seen('T')) set_home_offset(X_AXIS, code_value()); // Theta
-    if (code_seen('P')) set_home_offset(Y_AXIS, code_value()); // Psi
-  #endif
   sync_plan_position();
 }
 
@@ -6504,20 +6254,6 @@ inline void gcode_M226() {
 
 #endif // HAS_SERVOS
 
-#if HAS_BUZZER
-
-  /**
-   * M300: Play beep sound S<frequency Hz> P<duration ms>
-   */
-  inline void gcode_M300() {
-    uint16_t beepS = code_seen('S') ? code_value_short() : 110;
-    uint32_t beepP = code_seen('P') ? code_value_long() : 1000;
-    if (beepP > 5000) beepP = 5000; // limit to 5 seconds
-    buzz(beepP, beepS);
-  }
-
-#endif // HAS_BUZZER
-
 #if ENABLED(PIDTEMP)
 
   /**
@@ -6630,20 +6366,6 @@ inline void gcode_M226() {
 
 #endif // CHDK || PHOTOGRAPH_PIN
 
-#if ENABLED(HAS_LCD_CONTRAST)
-
-  /**
-   * M250: Read and optionally set the LCD contrast
-   */
-  inline void gcode_M250() {
-    if (code_seen('C')) lcd_setcontrast(code_value_short() & 0x3F);
-    SERIAL_PROTOCOLPGM("lcd contrast value: ");
-    SERIAL_PROTOCOL(lcd_contrast);
-    SERIAL_EOL;
-  }
-
-#endif // HAS_LCD_CONTRAST
-
 #if ENABLED(PREVENT_DANGEROUS_EXTRUDE)
 
   void set_extrude_min_temp(float temp) { extrude_min_temp = temp; }
@@ -6686,77 +6408,6 @@ inline void gcode_M303() {
     SERIAL_ERRORLNPGM(MSG_ERR_M303_DISABLED);
   #endif
 }
-
-#if ENABLED(SCARA)
-  bool SCARA_move_to_cal(uint8_t delta_x, uint8_t delta_y) {
-    //SoftEndsEnabled = false;              // Ignore soft endstops during calibration
-    //SERIAL_ECHOLN(" Soft endstops disabled ");
-    if (IsRunning()) {
-      //gcode_get_destination(); // For X Y Z E F
-      delta[X_AXIS] = delta_x;
-      delta[Y_AXIS] = delta_y;
-      calculate_SCARA_forward_Transform(delta);
-      destination[X_AXIS] = delta[X_AXIS] / axis_scaling[X_AXIS];
-      destination[Y_AXIS] = delta[Y_AXIS] / axis_scaling[Y_AXIS];
-      prepare_move();
-      //ok_to_send();
-      return true;
-    }
-    return false;
-  }
-
-  /**
-   * M360: SCARA calibration: Move to cal-position ThetaA (0 deg calibration)
-   */
-  inline bool gcode_M360() {
-    SERIAL_ECHOLN(" Cal: Theta 0 ");
-    return SCARA_move_to_cal(0, 120);
-  }
-
-  /**
-   * M361: SCARA calibration: Move to cal-position ThetaB (90 deg calibration - steps per degree)
-   */
-  inline bool gcode_M361() {
-    SERIAL_ECHOLN(" Cal: Theta 90 ");
-    return SCARA_move_to_cal(90, 130);
-  }
-
-  /**
-   * M362: SCARA calibration: Move to cal-position PsiA (0 deg calibration)
-   */
-  inline bool gcode_M362() {
-    SERIAL_ECHOLN(" Cal: Psi 0 ");
-    return SCARA_move_to_cal(60, 180);
-  }
-
-  /**
-   * M363: SCARA calibration: Move to cal-position PsiB (90 deg calibration - steps per degree)
-   */
-  inline bool gcode_M363() {
-    SERIAL_ECHOLN(" Cal: Psi 90 ");
-    return SCARA_move_to_cal(50, 90);
-  }
-
-  /**
-   * M364: SCARA calibration: Move to cal-position PSIC (90 deg to Theta calibration position)
-   */
-  inline bool gcode_M364() {
-    SERIAL_ECHOLN(" Cal: Theta-Psi 90 ");
-    return SCARA_move_to_cal(45, 135);
-  }
-
-  /**
-   * M365: SCARA calibration: Scaling factor, X, Y, Z axis
-   */
-  inline void gcode_M365() {
-    for (int8_t i = X_AXIS; i <= Z_AXIS; i++) {
-      if (code_seen(axis_codes[i])) {
-        axis_scaling[i] = code_value();
-      }
-    }
-  }
-
-#endif // SCARA
 
 #if ENABLED(EXT_SOLENOID)
 
@@ -6957,10 +6608,6 @@ inline void gcode_M428() {
       else {
         SERIAL_ERROR_START;
         SERIAL_ERRORLNPGM(MSG_ERR_M428_TOO_FAR);
-        LCD_ALERTMESSAGEPGM("Err: Too far!");
-        #if HAS_BUZZER
-          buzz(200, 40);
-        #endif
         err = true;
         break;
       }
@@ -6969,11 +6616,6 @@ inline void gcode_M428() {
 
   if (!err) {
     sync_plan_position();
-    LCD_MESSAGEPGM(MSG_HOME_OFFSETS_APPLIED);
-    #if HAS_BUZZER
-      buzz(200, 659);
-      buzz(200, 698);
-    #endif
   }
 }
 
@@ -7072,7 +6714,7 @@ inline void gcode_M503() {
   #endif
 #endif
 
-#if ENABLED(FILAMENTCHANGEENABLE)
+#if ENABLED(FILAMENTCHANGEENABLE) || ENABLED(FILAMENT_RUNOUT_SENSOR) || ENABLED(FILAMENT2_RUNOUT_SENSOR)
 
   #if ENABLED(AUTO_FILAMENT_CHANGE) && DISABLED(Z_MIN_MAGIC)
     #define LONG_PRESS_SUPPORT
@@ -7108,7 +6750,7 @@ inline void gcode_M503() {
     #define RUNPLAN line_to_destination(feedrate);
   #endif
 
-  #if ENABLED(DELTA_EXTRA) && ENABLED(Z_MIN_MAGIC) && DISABLED(LONG_PRESS_SUPPORT)
+  #if HAS_DELTA_EXTRA && ENABLED(Z_MIN_MAGIC) && DISABLED(LONG_PRESS_SUPPORT)
 
     inline void manage_tap_tap() {
       if ( !printer_states.pause_asked ) {
@@ -7189,7 +6831,7 @@ inline void gcode_M503() {
                 }
                 else {
                   printer_states.pause_asked = false;
-                  #if DISABLED(DELTA_EXTRA) && ENABLED(SDSUPPORT)
+                  #if !HAS_DELTA_EXTRA && ENABLED(SDSUPPORT)
                     enqueue_and_echo_commands_P(PSTR(SD_FINISHED_RELEASECOMMAND));
                   #endif
                 }
@@ -7199,7 +6841,7 @@ inline void gcode_M503() {
                 enqueue_and_echo_commands_P(PSTR(FILAMENTCHANGE_EXTRACTION_SCRIPT));
               } else {
                 printer_states.pause_asked = false;
-                #if DISABLED(DELTA_EXTRA) && ENABLED(SDSUPPORT)
+                #if !HAS_DELTA_EXTRA && ENABLED(SDSUPPORT)
                   enqueue_and_echo_commands_P(PSTR(SD_FINISHED_RELEASECOMMAND));
                 #endif
               }
@@ -7221,7 +6863,7 @@ inline void gcode_M503() {
    *  X[position|to] - Move to this X position, with Y
    *  Y[position|to] - Move to this Y position, with X
    *  L[distance]    - Retract distance for removal (manual reload)
-   *  P[pin]         - Pin to wait for, if not specified use lcd button
+   *  P[pin]         - Pin to wait for
    *                 - Pin can be A, B or C respectively for X, Y and Z endstops.
    *  S[0|1]         - If Pin, state to wait for, if not specified use LOW
    *
@@ -7255,10 +6897,6 @@ inline void gcode_M503() {
 
     SERIAL_ECHOLNPGM( "pause : In process" );
     KEEPALIVE_STATE(PAUSED_FOR_USER);
-    #if ENABLED(ULTRA_LCD) && DISABLED(NO_LCD_FOR_FILAMENTCHANGEABLE)
-      LCD_MESSAGEPGM(MSG_FILAMENTCHANGE);
-    #endif
-
     #if EXTRUDERS > 1
       uint8_t active_extruder_before_filament_change = active_extruder;
       if (code_seen('T'))
@@ -7355,7 +6993,7 @@ inline void gcode_M503() {
 
     // Security: Clamp Z height
     // We need to not go higher than max height ...
-    #if ENABLED(DELTA_EXTRA)
+    #if HAS_DELTA_EXTRA
       // Take in account the shperical dome
       NOMORE(z_heat_from, (sw_endstop_max[Z_AXIS]-FILAMENTCHANGE_DELTA_Z_DOME_SECURITY_DISTANCE));
       NOMORE(z_heat_to, (sw_endstop_max[Z_AXIS]-FILAMENTCHANGE_DELTA_Z_DOME_SECURITY_DISTANCE));
@@ -7556,9 +7194,6 @@ inline void gcode_M503() {
         && printer_states.hotend_state == HOTEND_HOT
       ) {
         SERIAL_ECHOLNPGM( "pause: filament insertion" );
-        #if ENABLED(ULTRA_LCD) && DISABLED(NO_LCD_FOR_FILAMENTCHANGEABLE)
-          LCD_MESSAGEPGM(MSG_FILAMENTINSERTION);
-        #endif
         // FILAMENTCHANGE_FINALRETRACT is a negative length
         // So following extruder move delta is 'inverted' in meaning
         //
@@ -7603,7 +7238,14 @@ inline void gcode_M503() {
         if (current_filament_present(active_extruder)) {
 
           // Wait
-          int i=30; do{ delay(100); idle(true); } while(i--);
+          int i=30; do {
+            delay(100);
+            #if ENABLED(FILAMENTCHANGEENABLE)
+              idle(true);
+            #else
+              idle();
+            #endif
+          } while(i--);
 
           // Retract
           if(code_seen('R')) {
@@ -7652,10 +7294,6 @@ inline void gcode_M503() {
         && printer_states.hotend_state == HOTEND_HOT
       ) {
         SERIAL_ECHOLNPGM( "pause: filament extraction" );
-        #if ENABLED(ULTRA_LCD) && DISABLED(NO_LCD_FOR_FILAMENTCHANGEABLE)
-          LCD_MESSAGEPGM(MSG_FILAMENTEJECTION);
-        #endif
-
         current_position[E_AXIS] = destination[E_AXIS];
         sync_plan_position_e();
 
@@ -7676,7 +7314,6 @@ inline void gcode_M503() {
         st_synchronize();
         refresh_cmd_timeout();
         quick_pause_timeout += previous_cmd_ms;  // keep track of when we started waiting
-        if (!lcd_hasstatus()) LCD_MESSAGEPGM(MSG_DWELL);
         while (PENDING(millis(), quick_pause_timeout)) idle();
 
         // Second extrude before ejection
@@ -7753,7 +7390,6 @@ inline void gcode_M503() {
           st_synchronize();
           refresh_cmd_timeout();
           quick_pause_timeout += previous_cmd_ms;  // keep track of when we started waiting
-          if (!lcd_hasstatus()) LCD_MESSAGEPGM(MSG_DWELL);
           while (PENDING(millis(), quick_pause_timeout)) idle();
 
           // Second extrude before ejection
@@ -7809,7 +7445,11 @@ inline void gcode_M503() {
         // We need to wait the user pulling-out the filament
         while(current_filament_present(active_extruder)) {
           if(previous_activity_state != ACTIVITY_IDLE) {
-            idle(true);
+            #if ENABLED(FILAMENTCHANGEENABLE)
+              idle(true);
+            #else
+              idle();
+            #endif
           } else {
             exit_pause_asked = true;
             break;
@@ -7897,13 +7537,13 @@ inline void gcode_M503() {
       //
       if (ELAPSED(now, next_low_latency_checks)) {
         // Do we abort the print
-        #if ENABLED( DELTA_EXTRA )
+        #if HAS_DELTA_EXTRA
           // Only checked every 2.5s
           // Detected if sd is out
           if ( IS_SD_PRINTING && !card.stillPluggedIn() ) {
             // Abort current print
             while( true ) {
-              #if ENABLED(ONE_LED)
+              #if HAS_ONE_LED
                 one_led_on();
                 delay(150);
                 one_led_off();
@@ -7964,7 +7604,11 @@ inline void gcode_M503() {
         printer_states.hotend_state = HOTEND_COOL;
       }
 
-      idle(true);
+      #if ENABLED(FILAMENTCHANGEENABLE)
+        idle(true);
+      #else
+        idle();
+      #endif
 
       //
       // 'Listen' for exit actions
@@ -7972,7 +7616,12 @@ inline void gcode_M503() {
         #if ENABLED(LONG_PRESS_SUPPORT)
           long_press_timeout = now + LONG_PRESS_TIMEOUT;
           do {
-            delay(100); idle(true);
+            delay(100);
+            #if ENABLED(FILAMENTCHANGEENABLE)
+              idle(true);
+            #else
+              idle();
+            #endif
             now = millis();
           } while( digitalRead(pin_number) == target && PENDING(now, long_press_timeout) );
           if ( digitalRead(pin_number) == target && ELAPSED(now, long_press_timeout) ) {
@@ -7990,15 +7639,6 @@ inline void gcode_M503() {
         #endif
       }
 
-      #if ENABLED(ULTRA_LCD) && DISABLED(NO_LCD_FOR_FILAMENTCHANGEABLE)
-        if (lcd_clicked()) {
-          SERIAL_ECHOLNPGM("pause: lcd clicked");
-          exit_pause_asked = true;
-          lcd_quick_feedback();
-        }
-      #endif
-
-
       // Detemines if we can really exit
       if (
         exit_pause_asked
@@ -8007,7 +7647,7 @@ inline void gcode_M503() {
       ) {
         SERIAL_ECHOLNPGM( "exit_pause_asked: no filament" );
         exit_pause_asked = false;
-        #if ENABLED(ONE_LED)
+        #if HAS_ONE_LED
           set_notify_warning();
         #endif
       }
@@ -8035,18 +7675,6 @@ inline void gcode_M503() {
     //
 
     KEEPALIVE_STATE(IN_HANDLER);
-    #if ENABLED(ULTRA_LCD) && DISABLED(NO_LCD_FOR_FILAMENTCHANGEABLE)
-      lcd_quick_feedback(); // click sound feedback
-      lcd_reset_alert_level();
-      if (previous_activity_state == ACTIVITY_PRINTING) {
-        LCD_MESSAGEPGM(MSG_RESUMING);
-      }
-      else {
-        LCD_MESSAGEPGM(WELCOME_MSG);
-      }
-    #endif
-
-
     // Return back to normal positions
     destination[X_AXIS] = previous_position[X_AXIS];
     destination[Y_AXIS] = previous_position[Y_AXIS];
@@ -8056,7 +7684,7 @@ inline void gcode_M503() {
       float z_destination = previous_position[Z_AXIS];
       z_destination += FILAMENTCHANGE_Z_HOP_MM;
 
-      #if ENABLED(DELTA_EXTRA)
+      #if HAS_DELTA_EXTRA
         // Take in account the shperical dome
         NOMORE(z_destination, (sw_endstop_max[Z_AXIS]-FILAMENTCHANGE_DELTA_Z_DOME_SECURITY_DISTANCE));
       #else
@@ -8111,7 +7739,7 @@ inline void gcode_M503() {
     printer_states.pause_asked = false;
     printer_states.activity_state = previous_activity_state;
 
-    #if DISABLED(DELTA_EXTRA) && ENABLED(SDSUPPORT)
+    #if !HAS_DELTA_EXTRA && ENABLED(SDSUPPORT)
       if (previous_activity_state != ACTIVITY_PRINTING) {
         enqueue_and_echo_commands_P(PSTR(SD_FINISHED_RELEASECOMMAND));
       }
@@ -8346,7 +7974,6 @@ inline void gcode_M907() {
  */
 inline void gcode_M999() {
   Running = true;
-  lcd_reset_alert_level();
   // gcode_LastN = Stopped_gcode_LastN;
   FlushSerialRequestResend();
 }
@@ -8491,7 +8118,7 @@ inline void gcode_T(uint8_t tmp_extruder) {
   }
 }
 
-#if ENABLED( DELTA_EXTRA )
+#if HAS_DELTA_EXTRA
 
 inline void abort_sd_printing() {
   commands_in_queue = 0;
@@ -8889,7 +8516,10 @@ inline void gcode_D851() {
 
 #if ENABLED(Z_MIN_MAGIC)
 inline void gcode_D850() {
-  if (code_seen('V')) z_magic_threshold = code_value();
+  if (code_seen('V')) {
+    z_magic_threshold = code_value();
+    if (z_magic_threshold > 0.0f) z_magic_threshold = -z_magic_threshold;
+  }
   SERIAL_ECHOPAIR("z_magic_threshold = ", z_magic_threshold);
   SERIAL_EOL;
 }
@@ -8992,7 +8622,12 @@ inline void gcode_D853() {
       current_position[E_AXIS] -= step;
     }
     destination[E_AXIS] = current_position[E_AXIS];
-    RUNPLAN;
+    #if ENABLED(DELTA)
+      calculate_delta(destination);
+      plan_buffer_line(delta[X_AXIS], delta[Y_AXIS], delta[Z_AXIS], destination[E_AXIS], feedrate/60.0, active_extruder);
+    #else
+      line_to_destination(feedrate);
+    #endif
   } while( fabsf(destination[E_AXIS] - destination_e_to_reach) > step && current_filament_present(active_extruder));
   st_synchronize();
 
@@ -9078,12 +8713,10 @@ void process_next_command() {
         break;
 
       // G2, G3
-      #if DISABLED(SCARA)
-        case 2: // G2  - CW ARC
-        case 3: // G3  - CCW ARC
-          gcode_G2_G3(codenum == 2);
-          break;
-      #endif
+      case 2: // G2  - CW ARC
+      case 3: // G3  - CCW ARC
+        gcode_G2_G3(codenum == 2);
+        break;
 
       // G4 Dwell
       case 4:
@@ -9142,12 +8775,10 @@ void process_next_command() {
     break;
 
     case 'M': switch (codenum) {
-      #if ENABLED(ULTIPANEL)
-        case 0: // M0 - Unconditional stop - Wait for user button press on LCD
-        case 1: // M1 - Conditional stop - Wait for user button press on LCD
-          gcode_M0_M1();
-          break;
-      #endif // ULTIPANEL
+      case 0: // M0 - Unconditional stop
+      case 1: // M1 - Conditional stop
+        gcode_M0_M1();
+        break;
 
       case 17:
         gcode_M17();
@@ -9327,9 +8958,6 @@ void process_next_command() {
       case 115: // M115: Report capabilities
         gcode_M115();
         break;
-      case 117: // M117: Set LCD message text, if possible
-        gcode_M117();
-        break;
       case 114: // M114: Report current position
         gcode_M114();
         break;
@@ -9342,14 +8970,6 @@ void process_next_command() {
       case 119: // M119: Report endstop states
         gcode_M119();
         break;
-
-      #if ENABLED(ULTIPANEL)
-
-        case 145: // M145: Set material heatup parameters
-          gcode_M145();
-          break;
-
-      #endif
 
       #if ENABLED(BLINKM)
 
@@ -9443,12 +9063,6 @@ void process_next_command() {
           break;
       #endif // HAS_SERVOS
 
-      #if HAS_BUZZER
-        case 300: // M300 - Play beep tone
-          gcode_M300();
-          break;
-      #endif // HAS_BUZZER
-
       #if ENABLED(PIDTEMP)
         case 301: // M301
           gcode_M301();
@@ -9467,12 +9081,6 @@ void process_next_command() {
           break;
       #endif // CHDK || PHOTOGRAPH_PIN
 
-      #if ENABLED(HAS_LCD_CONTRAST)
-        case 250: // M250  Set LCD contrast value: C<value> (value 0..63)
-          gcode_M250();
-          break;
-      #endif // HAS_LCD_CONTRAST
-
       #if ENABLED(PREVENT_DANGEROUS_EXTRUDE)
         case 302: // allow cold extrudes, or set the minimum extrude temperature
           gcode_M302();
@@ -9482,27 +9090,6 @@ void process_next_command() {
       case 303: // M303 PID autotune
         gcode_M303();
         break;
-
-      #if ENABLED(SCARA)
-        case 360:  // M360 SCARA Theta pos1
-          if (gcode_M360()) return;
-          break;
-        case 361:  // M361 SCARA Theta pos2
-          if (gcode_M361()) return;
-          break;
-        case 362:  // M362 SCARA Psi pos1
-          if (gcode_M362()) return;
-          break;
-        case 363:  // M363 SCARA Psi pos2
-          if (gcode_M363()) return;
-          break;
-        case 364:  // M364 SCARA Psi pos3 (90 deg to Theta)
-          if (gcode_M364()) return;
-          break;
-        case 365: // M365 Set SCARA scaling for X Y Z
-          gcode_M365();
-          break;
-      #endif // SCARA
 
       case 400: // M400 finish all moves
         gcode_M400();
@@ -9664,7 +9251,7 @@ void process_next_command() {
           gcode_D720(); // ECHO
           break;
         #endif
-      #if ENABLED( DELTA_EXTRA )
+      #if HAS_DELTA_EXTRA
         case 410:
           gcode_D410();
           break;
@@ -9770,80 +9357,87 @@ void clamp_to_software_endstops(float target[3]) {
     delta_diagonal_rod_2_tower_2 = sq(diagonal_rod + delta_diagonal_rod_trim_tower_2);
     delta_diagonal_rod_2_tower_3 = sq(diagonal_rod + delta_diagonal_rod_trim_tower_3);
 
-    #if ENABLED( DELTA_EXTRA )
+    #if HAS_DELTA_EXTRA
+      const float probe_radius = min(radius, (float)DELTA_PROBEABLE_RADIUS);
+      const float tower1_length = sqrt(sq(delta_tower1_x) + sq(delta_tower1_y));
+      const float tower2_length = sqrt(sq(delta_tower2_x) + sq(delta_tower2_y));
+      const float tower3_length = sqrt(sq(delta_tower3_x) + sq(delta_tower3_y));
+      const float tower1_scale = tower1_length > 0.0 ? min(1.0f, probe_radius / tower1_length) : 0.0;
+      const float tower2_scale = tower2_length > 0.0 ? min(1.0f, probe_radius / tower2_length) : 0.0;
+      const float tower3_scale = tower3_length > 0.0 ? min(1.0f, probe_radius / tower3_length) : 0.0;
       int i=0;
       // Outer
-      probe_plan[i][0] = delta_tower1_x;
-      probe_plan[i][1] = delta_tower1_y;
+      probe_plan[i][0] = delta_tower1_x * tower1_scale;
+      probe_plan[i][1] = delta_tower1_y * tower1_scale;
       i++;
 
-      probe_plan[i][0] = -COS_60 * radius;
-      probe_plan[i][1] = -SIN_60 * radius;
+      probe_plan[i][0] = -COS_60 * probe_radius;
+      probe_plan[i][1] = -SIN_60 * probe_radius;
       i++;
 
       probe_plan[i][0] = 0.0;
-      probe_plan[i][1] = -1.0 * radius;
+      probe_plan[i][1] = -1.0 * probe_radius;
       i++;
 
-      probe_plan[i][0] = COS_60 * radius;
-      probe_plan[i][1] = -SIN_60 * radius;
+      probe_plan[i][0] = COS_60 * probe_radius;
+      probe_plan[i][1] = -SIN_60 * probe_radius;
       i++;
 
-      probe_plan[i][0] = delta_tower2_x;
-      probe_plan[i][1] = delta_tower2_y;
+      probe_plan[i][0] = delta_tower2_x * tower2_scale;
+      probe_plan[i][1] = delta_tower2_y * tower2_scale;
       i++;
 
-      probe_plan[i][0] = radius;
+      probe_plan[i][0] = probe_radius;
       probe_plan[i][1] = 0.0;
       i++;
 
-      probe_plan[i][0] = SIN_60 * radius;
-      probe_plan[i][1] = COS_60 * radius;
+      probe_plan[i][0] = SIN_60 * probe_radius;
+      probe_plan[i][1] = COS_60 * probe_radius;
       i++;
 
-      probe_plan[i][0] = COS_60 * radius;
-      probe_plan[i][1] = SIN_60 * radius;
+      probe_plan[i][0] = COS_60 * probe_radius;
+      probe_plan[i][1] = SIN_60 * probe_radius;
       i++;
 
-      probe_plan[i][0] = delta_tower3_x;
-      probe_plan[i][1] = delta_tower3_y;
+      probe_plan[i][0] = delta_tower3_x * tower3_scale;
+      probe_plan[i][1] = delta_tower3_y * tower3_scale;
       i++;
 
-      probe_plan[i][0] = -COS_60 * radius;
-      probe_plan[i][1] = SIN_60 * radius;
+      probe_plan[i][0] = -COS_60 * probe_radius;
+      probe_plan[i][1] = SIN_60 * probe_radius;
       i++;
 
-      probe_plan[i][0] = -SIN_60 * radius;
-      probe_plan[i][1] = COS_60 * radius;
+      probe_plan[i][0] = -SIN_60 * probe_radius;
+      probe_plan[i][1] = COS_60 * probe_radius;
       i++;
 
-      probe_plan[i][0] = -radius;
+      probe_plan[i][0] = -probe_radius;
       probe_plan[i][1] = 0.0;
       i++;
 
       // Inner
-      probe_plan[i][0] = -SIN_60 * radius / 2.0;
-      probe_plan[i][1] = -COS_60 * radius / 2.0;
+      probe_plan[i][0] = -SIN_60 * probe_radius / 2.0;
+      probe_plan[i][1] = -COS_60 * probe_radius / 2.0;
       i++;
 
       probe_plan[i][0] = 0.0;
-      probe_plan[i][1] = -radius / 2.0;
+      probe_plan[i][1] = -probe_radius / 2.0;
       i++;
 
-      probe_plan[i][0] = SIN_60 * radius / 2.0;
-      probe_plan[i][1] = -COS_60 * radius / 2.0;
+      probe_plan[i][0] = SIN_60 * probe_radius / 2.0;
+      probe_plan[i][1] = -COS_60 * probe_radius / 2.0;
       i++;
 
-      probe_plan[i][0] = SIN_60 * radius / 2.0;
-      probe_plan[i][1] = COS_60 * radius / 2.0;
+      probe_plan[i][0] = SIN_60 * probe_radius / 2.0;
+      probe_plan[i][1] = COS_60 * probe_radius / 2.0;
       i++;
 
       probe_plan[i][0] = 0.0;
-      probe_plan[i][1] = radius / 2.0;
+      probe_plan[i][1] = probe_radius / 2.0;
       i++;
 
-      probe_plan[i][0] = -SIN_60 * radius / 2.0;
-      probe_plan[i][1] = COS_60 * radius / 2.0;
+      probe_plan[i][0] = -SIN_60 * probe_radius / 2.0;
+      probe_plan[i][1] = COS_60 * probe_radius / 2.0;
       i++;
 
       // Center
@@ -9892,7 +9486,7 @@ void clamp_to_software_endstops(float target[3]) {
 
     // Adjust print surface height by linear interpolation over the bed_level array.
     void adjust_delta(float cartesian[3]) {
-      #if DISABLED( DELTA_EXTRA )
+      #if !HAS_DELTA_EXTRA
         if (delta_grid_spacing[0] == 0 || delta_grid_spacing[1] == 0) return; // G29 not done!
 
         int half = (AUTO_BED_LEVELING_GRID_POINTS - 1) / 2;
@@ -10063,7 +9657,7 @@ void mesh_plan_buffer_line(float x, float y, float z, const float e, float feed_
 
 #endif // PREVENT_DANGEROUS_EXTRUDE
 
-#if ENABLED(DELTA) || ENABLED(SCARA)
+#if ENABLED(DELTA)
 
   inline bool prepare_move_delta(float target[NUM_AXIS]) {
     float difference[NUM_AXIS];
@@ -10104,11 +9698,7 @@ void mesh_plan_buffer_line(float x, float y, float z, const float e, float feed_
     return true;
   }
 
-#endif // DELTA || SCARA
-
-#if ENABLED(SCARA)
-  inline bool prepare_move_scara(float target[NUM_AXIS]) { return prepare_move_delta(target); }
-#endif
+#endif // DELTA
 
 #if ENABLED(DUAL_X_CARRIAGE)
 
@@ -10149,7 +9739,7 @@ void mesh_plan_buffer_line(float x, float y, float z, const float e, float feed_
 
 #endif // DUAL_X_CARRIAGE
 
-#if DISABLED(DELTA) && DISABLED(SCARA)
+#if DISABLED(DELTA)
 
   inline bool prepare_move_cartesian() {
     // Do not use feedrate_multiplier for E or Z only moves
@@ -10167,13 +9757,13 @@ void mesh_plan_buffer_line(float x, float y, float z, const float e, float feed_
     return true;
   }
 
-#endif // !DELTA && !SCARA
+#endif // !DELTA
 
 /**
  * Prepare a single move and get ready for the next one
  *
  * (This may call plan_buffer_line several times to put
- *  smaller moves into the planner for DELTA or SCARA.)
+ *  smaller moves into the planner for DELTA.)
  */
 void prepare_move() {
   clamp_to_software_endstops(destination);
@@ -10183,9 +9773,7 @@ void prepare_move() {
     prevent_dangerous_extrude(current_position[E_AXIS], destination[E_AXIS]);
   #endif
 
-  #if ENABLED(SCARA)
-    if (!prepare_move_scara(destination)) return;
-  #elif ENABLED(DELTA)
+  #if ENABLED(DELTA)
     if (!prepare_move_delta(destination)) return;
   #endif
 
@@ -10193,7 +9781,7 @@ void prepare_move() {
     if (!prepare_move_dual_x_carriage()) return;
   #endif
 
-  #if DISABLED(DELTA) && DISABLED(SCARA)
+  #if DISABLED(DELTA)
     if (!prepare_move_cartesian()) return;
   #endif
 
@@ -10314,7 +9902,7 @@ void plan_arc(
 
     clamp_to_software_endstops(arc_target);
 
-    #if ENABLED(DELTA) || ENABLED(SCARA)
+    #if ENABLED(DELTA)
       calculate_delta(arc_target);
       #if ENABLED(AUTO_BED_LEVELING_FEATURE)
         adjust_delta(arc_target);
@@ -10326,7 +9914,7 @@ void plan_arc(
   }
 
   // Ensure last segment arrives at target location.
-  #if ENABLED(DELTA) || ENABLED(SCARA)
+  #if ENABLED(DELTA)
     calculate_delta(target);
     #if ENABLED(AUTO_BED_LEVELING_FEATURE)
       adjust_delta(target);
@@ -10378,85 +9966,6 @@ void plan_arc(
   }
 
 #endif // HAS_CONTROLLERFAN
-
-#if ENABLED(SCARA)
-
-  void calculate_SCARA_forward_Transform(float f_scara[3]) {
-    // Perform forward kinematics, and place results in delta[3]
-    // The maths and first version has been done by QHARLEY . Integrated into masterbranch 06/2014 and slightly restructured by Joachim Cerny in June 2014
-
-    float x_sin, x_cos, y_sin, y_cos;
-
-    //SERIAL_ECHOPGM("f_delta x="); SERIAL_ECHO(f_scara[X_AXIS]);
-    //SERIAL_ECHOPGM(" y="); SERIAL_ECHO(f_scara[Y_AXIS]);
-
-    x_sin = sin(f_scara[X_AXIS] / SCARA_RAD2DEG) * Linkage_1;
-    x_cos = cos(f_scara[X_AXIS] / SCARA_RAD2DEG) * Linkage_1;
-    y_sin = sin(f_scara[Y_AXIS] / SCARA_RAD2DEG) * Linkage_2;
-    y_cos = cos(f_scara[Y_AXIS] / SCARA_RAD2DEG) * Linkage_2;
-
-    //SERIAL_ECHOPGM(" x_sin="); SERIAL_ECHO(x_sin);
-    //SERIAL_ECHOPGM(" x_cos="); SERIAL_ECHO(x_cos);
-    //SERIAL_ECHOPGM(" y_sin="); SERIAL_ECHO(y_sin);
-    //SERIAL_ECHOPGM(" y_cos="); SERIAL_ECHOLN(y_cos);
-
-    delta[X_AXIS] = x_cos + y_cos + SCARA_offset_x;  //theta
-    delta[Y_AXIS] = x_sin + y_sin + SCARA_offset_y;  //theta+phi
-
-    //SERIAL_ECHOPGM(" delta[X_AXIS]="); SERIAL_ECHO(delta[X_AXIS]);
-    //SERIAL_ECHOPGM(" delta[Y_AXIS]="); SERIAL_ECHOLN(delta[Y_AXIS]);
-  }
-
-  void calculate_delta(float cartesian[3]) {
-    //reverse kinematics.
-    // Perform reversed kinematics, and place results in delta[3]
-    // The maths and first version has been done by QHARLEY . Integrated into masterbranch 06/2014 and slightly restructured by Joachim Cerny in June 2014
-
-    float SCARA_pos[2];
-    static float SCARA_C2, SCARA_S2, SCARA_K1, SCARA_K2, SCARA_theta, SCARA_psi;
-
-    SCARA_pos[X_AXIS] = cartesian[X_AXIS] * axis_scaling[X_AXIS] - SCARA_offset_x;  //Translate SCARA to standard X Y
-    SCARA_pos[Y_AXIS] = cartesian[Y_AXIS] * axis_scaling[Y_AXIS] - SCARA_offset_y;  // With scaling factor.
-
-    #if (Linkage_1 == Linkage_2)
-      SCARA_C2 = ((sq(SCARA_pos[X_AXIS]) + sq(SCARA_pos[Y_AXIS])) / (2 * (float)L1_2)) - 1;
-    #else
-      SCARA_C2 = (sq(SCARA_pos[X_AXIS]) + sq(SCARA_pos[Y_AXIS]) - (float)L1_2 - (float)L2_2) / 45000;
-    #endif
-
-    SCARA_S2 = sqrt(1 - sq(SCARA_C2));
-
-    SCARA_K1 = Linkage_1 + Linkage_2 * SCARA_C2;
-    SCARA_K2 = Linkage_2 * SCARA_S2;
-
-    SCARA_theta = (atan2(SCARA_pos[X_AXIS], SCARA_pos[Y_AXIS]) - atan2(SCARA_K1, SCARA_K2)) * -1;
-    SCARA_psi = atan2(SCARA_S2, SCARA_C2);
-
-    delta[X_AXIS] = SCARA_theta * SCARA_RAD2DEG;  // Multiply by 180/Pi  -  theta is support arm angle
-    delta[Y_AXIS] = (SCARA_theta + SCARA_psi) * SCARA_RAD2DEG;  //       -  equal to sub arm angle (inverted motor)
-    delta[Z_AXIS] = cartesian[Z_AXIS];
-
-    /**
-    SERIAL_ECHOPGM("cartesian x="); SERIAL_ECHO(cartesian[X_AXIS]);
-    SERIAL_ECHOPGM(" y="); SERIAL_ECHO(cartesian[Y_AXIS]);
-    SERIAL_ECHOPGM(" z="); SERIAL_ECHOLN(cartesian[Z_AXIS]);
-
-    SERIAL_ECHOPGM("scara x="); SERIAL_ECHO(SCARA_pos[X_AXIS]);
-    SERIAL_ECHOPGM(" y="); SERIAL_ECHOLN(SCARA_pos[Y_AXIS]);
-
-    SERIAL_ECHOPGM("delta x="); SERIAL_ECHO(delta[X_AXIS]);
-    SERIAL_ECHOPGM(" y="); SERIAL_ECHO(delta[Y_AXIS]);
-    SERIAL_ECHOPGM(" z="); SERIAL_ECHOLN(delta[Z_AXIS]);
-
-    SERIAL_ECHOPGM("C2="); SERIAL_ECHO(SCARA_C2);
-    SERIAL_ECHOPGM(" S2="); SERIAL_ECHO(SCARA_S2);
-    SERIAL_ECHOPGM(" Theta="); SERIAL_ECHO(SCARA_theta);
-    SERIAL_ECHOPGM(" Psi="); SERIAL_ECHOLN(SCARA_psi);
-    SERIAL_EOL;
-    */
-  }
-
-#endif // SCARA
 
 #if ENABLED(TEMP_STAT_LEDS)
 
@@ -10512,7 +10021,7 @@ void disable_all_steppers() {
 
 #endif
 
-#if ENABLED(ONE_LED)
+#if HAS_ONE_LED
 
   int state_blink = 0;
   millis_t next_one_led_tick = 0;
@@ -10585,7 +10094,7 @@ void disable_all_steppers() {
   }
 #endif
 
-#if ENABLED(SUMMON_PRINT_PAUSE)
+#if HAS_SUMMON_PRINT_PAUSE
 
   inline void manage_pause_summoner() {
     // PAUSE PUSHED
@@ -10602,7 +10111,7 @@ void disable_all_steppers() {
 
 #endif // SUMMON_PRINT_PAUSE
 
-#if ENABLED(ONE_BUTTON) && ENABLED(DELTA_EXTRA)
+#if ENABLED(ONE_BUTTON) && HAS_DELTA_EXTRA
 
   inline void manage_one_button_start_print() {
     if (printer_states.pause_asked) return;
@@ -10618,7 +10127,7 @@ void disable_all_steppers() {
           SERIAL_ECHOLNPGM("one button: Start pending: Checking sd card content");
           has_to_print_timeout = now + 2500UL;
 
-          #if ENABLED(ONE_LED)
+          #if HAS_ONE_LED
             one_led_on();
           #endif
 
@@ -10629,7 +10138,7 @@ void disable_all_steppers() {
         if (ELAPSED(now, has_to_print_timeout)) {
           // sd.checkautostart did not found some interesting file on sd card
           SERIAL_ECHOLNPGM("one button: Start aborted: No suitable file on sd card");
-          #if ENABLED(ONE_LED)
+          #if HAS_ONE_LED
             set_notify_warning();
           #endif
           printer_states.print_asked = false;
@@ -10666,7 +10175,7 @@ inline void manage_filament1_auto_insertion() {
       printer_states.filament_state == FILAMENT_OUT
       && FILAMENT_PRESENT
     ) {
-      #if ENABLED(DELTA_EXTRA)
+      #if HAS_DELTA_EXTRA
         if (NOT_YET_CALIBRATED) {
           SERIAL_ERRORLNPGM("Printer not yet calibrated. Please calibrate.");
           set_notify_not_calibrated();
@@ -10721,7 +10230,7 @@ inline void manage_filament1_auto_insertion() {
         printer_states.pause_asked = true;
 
         if (!printer_states.homed) {
-          #if ENABLED(DELTA_EXTRA)
+          #if HAS_DELTA_EXTRA
             // Home all axis
           #else
             // Home only X, Y axis
@@ -10754,7 +10263,7 @@ inline void manage_filament2_auto_insertion() {
       printer_states.filament2_state == FILAMENT_OUT
       && FILAMENT2_PRESENT
     ) {
-      #if ENABLED(DELTA_EXTRA)
+      #if HAS_DELTA_EXTRA
         if (NOT_YET_CALIBRATED) {
           SERIAL_ERRORLNPGM("Printer not yet calibrated. Please calibrate.");
           set_notify_not_calibrated();
@@ -10809,7 +10318,7 @@ inline void manage_filament2_auto_insertion() {
         printer_states.pause_asked = true;
 
         if (!printer_states.homed) {
-          #if ENABLED(DELTA_EXTRA)
+          #if HAS_DELTA_EXTRA
             // Home all axis
           #else
             // Home only X, Y axis
@@ -10845,7 +10354,7 @@ inline void manage_printer_states() {
     enable_z_magic_tap = (printer_states.activity_state != ACTIVITY_PRINTING) && !printer_states.probing;
   #endif
 
-  #if ENABLED(ONE_LED)
+  #if HAS_ONE_LED
     manage_one_led();
   #endif
 
@@ -10855,7 +10364,7 @@ inline void manage_printer_states() {
   // Conditional stuff
   // -----------------
   if (printer_states.activity_state == ACTIVITY_IDLE) {
-    #if ENABLED(ONE_BUTTON) && ENABLED(DELTA_EXTRA)
+    #if ENABLED(ONE_BUTTON) && HAS_DELTA_EXTRA
       manage_one_button_start_print();
     #endif
     #if ENABLED(FILAMENT_RUNOUT_SENSOR) && HAS_FILRUNOUT
@@ -10865,10 +10374,10 @@ inline void manage_printer_states() {
       manage_filament2_auto_insertion();
     #endif
 
-    #if ENABLED(LONG_PRESS_SUPPORT)
+    #if ENABLED(FILAMENTCHANGEENABLE) && ENABLED(LONG_PRESS_SUPPORT)
       // Long press support
       manage_long_press_filament_expulsion();
-    #elif ENABLED(Z_MIN_MAGIC) && ENABLED(DELTA_EXTRA)
+    #elif ENABLED(FILAMENTCHANGEENABLE) && ENABLED(Z_MIN_MAGIC) && HAS_DELTA_EXTRA
       // Alternatively to long press support, we can tap-tap
       manage_tap_tap();
     #endif
@@ -10907,7 +10416,7 @@ inline void manage_printer_states() {
   }
 
   if (printer_states.activity_state == ACTIVITY_PRINTING) {
-    #if ENABLED(SUMMON_PRINT_PAUSE)
+    #if HAS_SUMMON_PRINT_PAUSE
       manage_pause_summoner();
     #endif
 
@@ -10917,10 +10426,6 @@ inline void manage_printer_states() {
     }
   }
 }
-
-#if ENABLED(ULTRA_LCD) && DISABLED(NO_LCD_FOR_FILAMENTCHANGEABLE)
-  millis_t next_lcd_feedback = 0UL;
-#endif
 
 /**
  * Standard idle routine keeps the machine alive
@@ -10942,43 +10447,11 @@ void idle(
   );
   host_keepalive();
 
-  if (!printer_states.in_critical_section) {
-    #if ENABLED(U8GLIB_SSD1306) && ENABLED(INTELLIGENT_LCD_REFRESH_RATE)
-      if (IS_SD_PRINTING && axis_homed[X_AXIS] && axis_homed[Y_AXIS] && axis_homed[Z_AXIS]) {
-
-        if ( last_intelligent_F_lcd_update != feedrate ) {
-          last_intelligent_F_authorized_lcd_update = feedrate > last_intelligent_F_lcd_update;
-          last_intelligent_F_lcd_update = feedrate;
-        }
-
-        if ( last_intelligent_z_lcd_update != current_position[Z_AXIS] || last_intelligent_F_authorized_lcd_update ) {
-          last_intelligent_z_lcd_update = current_position[Z_AXIS];
-          lcd_update();
-        }
-
-      }
-      else {
-        lcd_update();
-      }
-    #else
-      lcd_update();
-    #endif
-  }
-
   #if ENABLED( WIFI_PRINT )
     manage_second_serial_status();
   #endif
 
   millis_t now = millis();
-
-  #if ENABLED(ULTRA_LCD) && DISABLED(NO_LCD_FOR_FILAMENTCHANGEABLE)
-    if (printer_states.activity_state == ACTIVITY_PAUSED) {
-      if (ELAPSED(now, next_lcd_feedback)) {
-        next_lcd_feedback = now + 2500UL;
-        lcd_quick_feedback();
-      }
-    }
-  #endif
 
   #if ENABLED( Z_MIN_MAGIC ) && DISABLED(LONG_PRESS_SUPPORT)
     if (enable_z_magic_tap) {
@@ -11120,19 +10593,19 @@ void manage_inactivity(bool ignore_stepper_queue/*=false*/) {
       && !ignore_stepper_queue && !blocks_queued()) {
     #if ENABLED(DISABLE_INACTIVE_X)
       disable_x();
-      #if ENABLED(DELTA_EXTRA)
+      #if HAS_DELTA_EXTRA
         axis_homed[X_AXIS] = false;
       #endif
     #endif
     #if ENABLED(DISABLE_INACTIVE_Y)
       disable_y();
-      #if ENABLED(DELTA_EXTRA)
+      #if HAS_DELTA_EXTRA
         axis_homed[Y_AXIS] = false;
       #endif
     #endif
     #if ENABLED(DISABLE_INACTIVE_Z)
       disable_z();
-      #if ENABLED(DELTA_EXTRA)
+      #if HAS_DELTA_EXTRA
         axis_homed[Z_AXIS] = false;
       #endif
     #endif
@@ -11177,7 +10650,6 @@ void manage_inactivity(bool ignore_stepper_queue/*=false*/) {
     if (!READ(HOME_PIN)) {
       if (!homeDebounceCount) {
         enqueue_and_echo_commands_P(PSTR("G28"));
-        LCD_MESSAGEPGM(MSG_AUTO_HOME);
       }
       if (homeDebounceCount < HOME_DEBOUNCE_DELAY)
         homeDebounceCount++;
@@ -11186,7 +10658,7 @@ void manage_inactivity(bool ignore_stepper_queue/*=false*/) {
     }
   #endif
 
-  #if ENABLED(IS_MONO_FAN) || ENABLED(PRINTER_HEAD_EASY)
+  #if HAS_MONO_FAN
     if ( ELAPSED(ms, next_fan_auto_regulation_check) ) {
       float max_temp = 0.0;
       for (int8_t cur_extruder = 0; cur_extruder < HOTENDS; ++cur_extruder)
@@ -11299,14 +10771,8 @@ void manage_inactivity(bool ignore_stepper_queue/*=false*/) {
   check_axes_activity();
 }
 
-void kill(const char* lcd_msg) {
-  #if ENABLED(ULTRA_LCD)
-    lcd_setalertstatuspgm(lcd_msg);
-  #else
-    UNUSED(lcd_msg);
-  #endif
-
-  #if ENABLED( DELTA_EXTRA )
+void kill(const char* message) {
+  #if HAS_DELTA_EXTRA
     #if ENABLED( SDSUPPORT )
       // Dump error msg onto sd card
       abort_sd_printing();
@@ -11328,7 +10794,7 @@ void kill(const char* lcd_msg) {
         // Then, create it
         card.openLogFile( logfilename );
         if ( card.saving ) {
-          if ( card.writePGM( lcd_msg ) ) {
+          if ( card.writePGM( message ) ) {
             SERIAL_ECHOLNPGM( "errmsg.d : file written, for more information." );
           }
           else {
@@ -11359,10 +10825,8 @@ void kill(const char* lcd_msg) {
   SERIAL_ERROR_START;
   SERIAL_ERRORLNPGM(MSG_ERR_KILLED);
 
-  // FMC small patch to update the LCD before ending
   sei();   // enable interrupts
-  for (int i = 5; i--; lcd_update()) delay(200); // Wait a short time
-  #if DISABLED( ONE_LED )
+  #if !HAS_ONE_LED
     cli();   // disable interrupts
   #else
     // In-case of not already initialized
@@ -11373,7 +10837,7 @@ void kill(const char* lcd_msg) {
     #if ENABLED(USE_WATCHDOG)
       watchdog_reset();
     #endif
-    #if ENABLED( ONE_LED )
+    #if HAS_ONE_LED
       one_led_on();
       delay(70);
       one_led_off();
@@ -11483,7 +10947,6 @@ void stop() {
     Stopped_gcode_LastN = gcode_LastN; // Save last g_code for restart
     SERIAL_ERROR_START;
     SERIAL_ERRORLNPGM(MSG_ERR_STOPPED);
-    LCD_MESSAGEPGM(MSG_STOPPED);
   }
 }
 

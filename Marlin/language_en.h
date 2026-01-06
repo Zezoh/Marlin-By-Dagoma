@@ -23,8 +23,7 @@
 /**
  * English
  *
- * LCD Menu Messages
- * See also https://github.com/MarlinFirmware/Marlin/wiki/LCD-Language
+ * Menu Messages
  *
  */
 #ifndef LANGUAGE_EN_H
@@ -49,14 +48,8 @@
 #ifndef MSG_SD_REMOVED
   #define MSG_SD_REMOVED                      "Card removed"
 #endif
-#ifndef MSG_LCD_ENDSTOPS
-  #define MSG_LCD_ENDSTOPS                    "Endstops" // Max length 8 characters
-#endif
 #ifndef MSG_MAIN
   #define MSG_MAIN                            "Main"
-#endif
-#ifndef MSG_LCD_OK
-  #define MSG_LCD_OK                          "OK"
 #endif
 #ifndef MSG_PINCH
   #define MSG_PINCH                           "Pinch the sheet"
@@ -244,15 +237,6 @@
 #ifndef MSG_CONTROL
   #define MSG_CONTROL                         "Control"
 #endif
-#ifndef MSG_MIN
-  #define MSG_MIN                             " " LCD_STR_THERMOMETER " Min"
-#endif
-#ifndef MSG_MAX
-  #define MSG_MAX                             " " LCD_STR_THERMOMETER " Max"
-#endif
-#ifndef MSG_FACTOR
-  #define MSG_FACTOR                          " " LCD_STR_THERMOMETER " Fact"
-#endif
 #ifndef MSG_AUTOTEMP
   #define MSG_AUTOTEMP                        "Autotemp"
 #endif
@@ -366,9 +350,6 @@
 #endif
 #ifndef MSG_DIAM_E4
   #define MSG_DIAM_E4                         " 4"
-#endif
-#ifndef MSG_CONTRAST
-  #define MSG_CONTRAST                        "LCD contrast"
 #endif
 #ifndef MSG_STORE_EPROM
   #define MSG_STORE_EPROM                     "Store memory"
@@ -501,9 +482,6 @@
 #endif
 #ifndef MSG_ENDSTOP_ABORT
   #define MSG_ENDSTOP_ABORT                   "Endstop abort"
-#endif
-#ifndef MSG_HEATING_FAILED_LCD
-  #define MSG_HEATING_FAILED_LCD              "Heating failed"
 #endif
 #ifndef MSG_ERR_REDUNDANT_TEMP
   #define MSG_ERR_REDUNDANT_TEMP              "Err: REDUNDANT TEMP"

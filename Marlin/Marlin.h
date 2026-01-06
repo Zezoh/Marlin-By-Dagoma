@@ -52,6 +52,19 @@
 
 typedef unsigned long millis_t;
 
+#if ENABLED(ONE_BUTTON)
+  #define ONE_BUTTON_PRESSED  (READ(ONE_BUTTON_PIN) ^ ONE_BUTTON_INVERTING)
+  #define ONE_BUTTON_RELEASED (!ONE_BUTTON_PRESSED)
+#elif ENABLED(SUMMON_PRINT_PAUSE)
+  #define ONE_BUTTON_PRESSED  (READ(SUMMON_PRINT_PAUSE_PIN) ^ SUMMON_PRINT_PAUSE_INVERTING)
+  #define ONE_BUTTON_RELEASED (!ONE_BUTTON_PRESSED)
+#endif
+
+#define HAS_MONO_FAN (ENABLED(IS_MONO_FAN) || ENABLED(PRINTER_HEAD_EASY))
+#define HAS_SUMMON_PRINT_PAUSE ENABLED(SUMMON_PRINT_PAUSE)
+#define HAS_ONE_LED ENABLED(ONE_LED)
+#define HAS_DELTA_EXTRA ENABLED(DELTA_EXTRA)
+
 // Arduino < 1.0.0 does not define this, so we need to do it ourselves
 #ifndef analogInputToDigitalPin
   #define analogInputToDigitalPin(p) ((p) + 0xA0)
@@ -207,8 +220,7 @@ void manage_inactivity(bool ignore_stepper_queue = false);
 /**
  * Axis indices as enumerated constants
  *
- * A_AXIS and B_AXIS are used by COREXY printers
- * X_HEAD and Y_HEAD is used for systems that don't have a 1:1 relationship between X_AXIS and X Head movement, like CoreXY bots.
+ * X_HEAD and Y_HEAD is used for systems that don't have a 1:1 relationship between X_AXIS and X Head movement.
  */
 enum AxisEnum {X_AXIS = 0, A_AXIS = 0, Y_AXIS = 1, B_AXIS = 1, Z_AXIS = 2, C_AXIS = 2, E_AXIS = 3, X_HEAD = 4, Y_HEAD = 5, Z_HEAD = 5};
 
@@ -251,8 +263,6 @@ bool enqueue_and_echo_command(const char* cmd, bool say_ok=false); //put a singl
 void enqueue_and_echo_command_now(const char* cmd); // enqueue now, only return when the command has been enqueued
 void enqueue_and_echo_commands_P(const char* cmd); //put one or many ASCII commands at the end of the current buffer, read from flash
 void clear_command_queue();
-bool enqueued_commands_finished__CALLABLE_FROM_LCD_ONLY(); // DAGO-Dev
-void wait_all_commands_finished__CALLABLE_FROM_LCD_ONLY(); // DAGO-Dev
 
 void prepare_arc_move(char isclockwise);
 void clamp_to_software_endstops(float target[3]);
@@ -315,10 +325,6 @@ extern bool axis_homed[3]; // axis[n].is_homed
     extern int delta_grid_spacing[2];
     void adjust_delta(float cartesian[3]);
   #endif
-#elif ENABLED(SCARA)
-  extern float axis_scaling[3];  // Build size scaling
-  void calculate_delta(float cartesian[3]);
-  void calculate_SCARA_forward_Transform(float f_scara[3]);
 #endif
 
 #if ENABLED(Z_DUAL_ENDSTOPS)

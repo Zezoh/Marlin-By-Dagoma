@@ -81,30 +81,9 @@
 #endif
 
 /**
- * Progress Bar
- */
-#if ENABLED(LCD_PROGRESS_BAR)
-  #if DISABLED(SDSUPPORT)
-    #error LCD_PROGRESS_BAR requires SDSUPPORT.
-  #endif
-  #if ENABLED(DOGLCD)
-    #error LCD_PROGRESS_BAR does not apply to graphical displays.
-  #endif
-  #if ENABLED(FILAMENT_LCD_DISPLAY)
-    #error LCD_PROGRESS_BAR and FILAMENT_LCD_DISPLAY are not fully compatible. Comment out this line to use both.
-  #endif
-#endif
-
-/**
  * Babystepping
  */
 #if ENABLED(BABYSTEPPING)
-  #if DISABLED(ULTRA_LCD)
-    #error BABYSTEPPING requires an LCD controller.
-  #endif
-  #if ENABLED(SCARA)
-    #error BABYSTEPPING is not implemented for SCARA yet.
-  #endif
   #if ENABLED(DELTA) && ENABLED(BABYSTEP_XY)
     #error BABYSTEPPING only implemented for Z axis on deltabots.
   #endif
@@ -167,13 +146,6 @@
  */
 #if ENABLED(DEACTIVATE_SERVOS_AFTER_MOVE) && !HAS_SERVO_ENDSTOPS
   #error At least one of the ?_ENDSTOP_SERVO_NR is required for DEACTIVATE_SERVOS_AFTER_MOVE.
-#endif
-
-/**
- * Required LCD language
- */
-#if DISABLED(DOGLCD) && ENABLED(ULTRA_LCD) && DISABLED(DISPLAY_CHARSET_HD44780_JAPAN) && DISABLED(DISPLAY_CHARSET_HD44780_WESTERN) && DISABLED(DISPLAY_CHARSET_HD44780_CYRILLIC)
-  #error You must enable either DISPLAY_CHARSET_HD44780_JAPAN or DISPLAY_CHARSET_HD44780_WESTERN  or DISPLAY_CHARSET_HD44780_CYRILLIC for your LCD controller.
 #endif
 
 /**
@@ -314,13 +286,6 @@
 #endif
 
 
-/**
- * ULTIPANEL encoder
- */
-#if ENABLED(ULTIPANEL) && DISABLED(NEWPANEL) && DISABLED(SR_LCD_2W_NL) && !defined(SHIFT_CLK)
-  #error ULTIPANEL requires some kind of encoder.
-#endif
-
 #if ENCODER_PULSES_PER_STEP < 0
   #error ENCODER_PULSES_PER_STEP should not be negative, use REVERSE_MENU_DIRECTION instead
 #endif
@@ -355,7 +320,7 @@
  * Dual X Carriage requirements
  */
 #if ENABLED(DUAL_X_CARRIAGE)
-  #if EXTRUDERS == 1 || ENABLED(COREXY) \
+  #if EXTRUDERS == 1 \
       || !HAS_X2_ENABLE || !HAS_X2_STEP || !HAS_X2_DIR \
       || !defined(X2_HOME_POS) || !defined(X2_MIN_POS) || !defined(X2_MAX_POS) \
       || !HAS_X_MAX
@@ -478,14 +443,10 @@
   #error Thermal Runaway Protection for hotends is now enabled with THERMAL_PROTECTION_HOTENDS.
 #elif DISABLED(THERMAL_PROTECTION_BED) && defined(THERMAL_PROTECTION_BED_PERIOD)
   #error Thermal Runaway Protection for the bed is now enabled with THERMAL_PROTECTION_BED.
-#elif ENABLED(COREXZ) && ENABLED(Z_LATE_ENABLE)
-  #error "Z_LATE_ENABLE can't be used with COREXZ."
 #elif defined(X_HOME_RETRACT_MM)
   #error [XYZ]_HOME_RETRACT_MM settings have been renamed [XYZ]_HOME_BUMP_MM.
 #elif defined(PROBE_SERVO_DEACTIVATION_DELAY)
   #error PROBE_SERVO_DEACTIVATION_DELAY has been replaced with DEACTIVATE_SERVOS_AFTER_MOVE and SERVO_DEACTIVATION_DELAY.
-#elif defined(BEEPER)
-  #error BEEPER is now BEEPER_PIN. Please update your pins definitions.
 #elif defined(SDCARDDETECT)
   #error SDCARDDETECT is now SD_DETECT_PIN. Please update your pins definitions.
 #elif defined(SDCARDDETECTINVERTED)
