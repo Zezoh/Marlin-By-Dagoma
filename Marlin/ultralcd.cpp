@@ -1176,14 +1176,14 @@ void lcd_parallel_x(){
  *
  */
 
- //Préparer
-   // Déplacer un axes
-   // Préchanffage PLA
-   // Réglage Offset
-   // Refroidir
-   // Eteindre alim.
-   // Tout le reste : Réglages avancés
-     // Préchauffage ABS
+ // Prepare
+   // Move an axis
+   // Preheat PLA
+   // Offset adjustment
+   // Cool down
+   // Power off
+   // Everything else: advanced settings
+     // Preheat ABS
 
 static void lcd_prepare_menu() {
   START_MENU();
@@ -1557,10 +1557,10 @@ static void _lcd_reinit_z_offsets_screenSheet(){
   END_MENU();
 }
 
-//1 écran : Placez la feuille et validez
-//2 écran : Pincez la feuille
+// Screen 1: place the sheet and confirm
+// Screen 2: pinch the sheet
 
-//si décalage : vérifier BED_CENTER_AT_0_0 n'est pas define dans la conf
+// If offset: verify BED_CENTER_AT_0_0 is not defined in the config
 
 static void lcd_reinit_z_offsets(){
   lcd_goto_menu(_lcd_reinit_z_offsets_wait);
@@ -1570,7 +1570,7 @@ static void lcd_reinit_z_offsets(){
   zprobe_zoffset = Z_OFFSET_REINIT_START_VALUE;
   Config_StoreSettings();
   enqueue_and_echo_commands_P(PSTR("M84"));  // ; Disable motors to encure Z_SAFE_HOMING
-  enqueue_and_echo_commands_P(PSTR("G28"));  // origine auto
+  enqueue_and_echo_commands_P(PSTR("G28"));  // auto home
   wait_all_commands_finished__CALLABLE_FROM_LCD_ONLY();
 
   lcd_goto_menu(_lcd_reinit_z_offsets_screenSheet);
@@ -1580,7 +1580,7 @@ static void lcd_set_z_offsets_save_config() {
   Config_StoreSettings();
   enqueue_and_echo_commands_P(PSTR("M84"));   // ; Disable motors to encure Z_SAFE_HOMING
   enqueue_and_echo_commands_P(PSTR("G28"));
-  enqueue_and_echo_commands_P(PSTR("G0 Z0")); // origine auto : besoin pour que le z soit pris en compte
+  enqueue_and_echo_commands_P(PSTR("G0 Z0")); // move to Z0 so the Z offset is applied
 }
 
 static void lcd_set_z_offsets() {

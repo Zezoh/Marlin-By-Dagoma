@@ -143,7 +143,7 @@ uint8_t g_uc_extruder_last_move[EXTRUDERS] = { 0 };
   #define MAX_FREQ_TIME (1000000.0/XY_FREQUENCY_LIMIT)
   // Old direction bits. Used for speed calculations
   static unsigned char old_direction_bits = 0;
-  // Segment times (in µs). Used for speed calculations
+  // Segment times (in us). Used for speed calculations
   static long axis_segment_time[2][3] = { {MAX_FREQ_TIME + 1, 0, 0}, {MAX_FREQ_TIME + 1, 0, 0} };
 #endif
 
