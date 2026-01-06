@@ -10053,16 +10053,16 @@ void disable_all_steppers() {
   millis_t notify_warning_timeout = 0;
   unsigned long led_refresh_rate_speed = 150UL;
 
-  inline void set_notify_warning() {
-    notify_warning = true;
-    notify_warning_timeout = millis() + 2000UL;
-  }
+  #define set_notify_warning() do { \
+    notify_warning = true; \
+    notify_warning_timeout = millis() + 2000UL; \
+  } while(0)
 
-  inline void set_notify_not_calibrated() {
-    notify_warning = true;
-    notify_warning_timeout = millis() + 10000UL;
-    led_refresh_rate_speed = 50UL;
-  }
+  #define set_notify_not_calibrated() do { \
+    notify_warning = true; \
+    notify_warning_timeout = millis() + 10000UL; \
+    led_refresh_rate_speed = 50UL; \
+  } while(0)
 
   inline void manage_one_led() {
     millis_t now = millis();
