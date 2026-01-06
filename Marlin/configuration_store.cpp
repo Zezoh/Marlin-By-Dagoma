@@ -36,10 +36,10 @@
  *
  */
 
-#define EEPROM_VERSION "V23"
+#define EEPROM_VERSION "V24"
 
 /**
- * V23 EEPROM Layout:
+ * V24 EEPROM Layout:
  *
  *  100  Version (char x4)
  *
