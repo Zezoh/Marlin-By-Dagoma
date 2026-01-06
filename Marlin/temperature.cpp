@@ -41,7 +41,6 @@
 */
 
 #include "Marlin.h"
-#include "ultralcd.h"
 #include "temperature.h"
 #include "language.h"
 #include "Sd2PinMap.h"
@@ -460,7 +459,6 @@ static void updateTemperaturesFromRawValues();
         }
         return;
       }
-      lcd_update();
     }
   }
 
@@ -558,7 +556,7 @@ void checkExtruderAutoFans() {
 //
 // Temperature Error Handlers
 //
-inline void _temp_error(int e, const char* serial_msg, const char* lcd_msg) {
+inline void _temp_error(int e, const char* serial_msg, const char* message) {
   static bool killed = false;
   if (IsRunning()) {
     SERIAL_ERROR_START;
@@ -571,7 +569,7 @@ inline void _temp_error(int e, const char* serial_msg, const char* lcd_msg) {
       SERIAL_ECHOLNPGM("Ca killeu");
       Running = false;
       killed = true;
-      kill(lcd_msg);
+      kill(message);
     }
     else
       disable_all_heaters(); // paranoia
@@ -752,7 +750,7 @@ void manage_heater() {
         // Has it failed to increase enough?
         if (degHotend(e) < watch_target_temp[e]) {
           // Stop!
-          _temp_error(e, PSTR(MSG_T_HEATING_FAILED), PSTR(MSG_HEATING_FAILED_LCD));
+          _temp_error(e, PSTR(MSG_T_HEATING_FAILED), PSTR(MSG_HEATING_FAILED));
         }
         else {
           // Start again if the target is still far off
@@ -1729,7 +1727,6 @@ ISR(TIMER0_COMPB_vect) {
       #if HAS_TEMP_0
         START_ADC(TEMP_0_PIN);
       #endif
-      lcd_buttons_update();
       temp_state = MeasureTemp_0;
       break;
     case MeasureTemp_0:
@@ -1743,7 +1740,6 @@ ISR(TIMER0_COMPB_vect) {
       #if HAS_TEMP_BED
         START_ADC(TEMP_BED_PIN);
       #endif
-      lcd_buttons_update();
       temp_state = MeasureTemp_BED;
       #if ENABLED( Z_MIN_MAGIC )
         START_ADC(15);
@@ -1763,7 +1759,6 @@ ISR(TIMER0_COMPB_vect) {
       #if HAS_TEMP_1
         START_ADC(TEMP_1_PIN);
       #endif
-      lcd_buttons_update();
       temp_state = MeasureTemp_1;
       // #if ENABLED( Z_MIN_MAGIC )
       //   START_ADC(15);
@@ -1783,7 +1778,6 @@ ISR(TIMER0_COMPB_vect) {
       #if HAS_TEMP_2
         START_ADC(TEMP_2_PIN);
       #endif
-      lcd_buttons_update();
       temp_state = MeasureTemp_2;
       #if ENABLED( Z_MIN_MAGIC )
         START_ADC(15);
@@ -1803,7 +1797,6 @@ ISR(TIMER0_COMPB_vect) {
       #if HAS_TEMP_3
         START_ADC(TEMP_3_PIN);
       #endif
-      lcd_buttons_update();
       temp_state = MeasureTemp_3;
       // #if ENABLED( Z_MIN_MAGIC )
       //   START_ADC(15);
@@ -1823,7 +1816,6 @@ ISR(TIMER0_COMPB_vect) {
       #if ENABLED(FILAMENT_WIDTH_SENSOR)
         START_ADC(FILWIDTH_PIN);
       #endif
-      lcd_buttons_update();
       temp_state = Measure_FILWIDTH;
       #if ENABLED( Z_MIN_MAGIC )
         START_ADC(15);

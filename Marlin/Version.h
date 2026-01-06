@@ -50,7 +50,7 @@
 #define PROTOCOL_VERSION "1.0"
 
 /**
- * Defines a generic printer name to be output to the LCD after booting Marlin.
+ * Defines a generic printer name to be output after booting Marlin.
  */
 #define MACHINE_NAME "3D Printer"
 

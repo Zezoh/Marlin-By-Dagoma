@@ -29,7 +29,7 @@
  * - Type of temperature sensor
  * - Printer geometry
  * - Endstop configuration
- * - LCD controller
+ * - Controller
  * - Extra features
  *
  * Advanced settings can be found in Configuration_adv.h
@@ -41,49 +41,65 @@
 #include "boards.h"
 #include "macros.h"
 #include "Configuration_pre.h"
+//===========================================================================
+//====================== Dagoma Custom Feature Flags ========================
+//===========================================================================
+
+// Filament change and automation tuning
 #define FILAMENTCHANGE_INSERTION_SCRIPT "M600 I1 U-55 X55 Y-92 W200 Z200"
 #define FILAMENTCHANGE_EXTRACTION_SCRIPT "M600 I-1 U-55 X55 Y-92 W200 Z200"
+#define FILAMENT_CHANGE_E_FEEDRATE 66
+#define FILAMENTCHANGE_TEMPERATURE 200
+#define FILAMENTCHANGE_Z_HOP_MM 10.0
+#define FILAMENTCHANGE_DELTA_Z_DOME_SECURITY_DISTANCE 25.0
 #define FILAMENT_SUCTION_GAP 200
+#define FILAMENT_PRE_INSERTION_LENGTH 40
+#define FILAMENT_PRE_INSERTION_FEEDRATE_FACTOR 0.1
+#define FILAMENT_AUTO_INSERTION_GAP 150
+#define FILAMENT_AUTO_INSERTION_VERIFICATION_LENGTH_MM 2.0
+#define FILAMENT_AUTO_INSERTION_FINAL_FEEDRATE_FACTOR 0.01
 #define FILAMENTCHANGE_AUTO_INSERTION_PURGE_BEFORE_EXTRACTION_LENGTH 5
-#define FILAMENTCHANGE_AUTO_INSERTION_PURGE_FEEDRATE_FACTOR 0.05
 #define FILAMENTCHANGE_AUTO_INSERTION_PURGE_LENGTH 30
+#define FILAMENTCHANGE_AUTO_INSERTION_PURGE_FEEDRATE_FACTOR 0.05
 #define FILAMENTCHANGE_AUTO_INSERTION_CONFIRMATION_LENGTH 40
 #define FILAMENTCHANGE_AUTO_INSERTION_PREAMBLE_FEEDRATE_FACTOR 0.25
 #define FILAMENTCHANGE_AUTO_INSERTION_VERIFICATION_LENGTH_MM 0.5
-#define Z_MAGIC_THRESHOLD -15
-#define QUICK_PAUSE_TIMEOUT 2000
-#define SECOND_RETRACT_BEFORE_EJECTION 50
-#define SECOND_EXTRUDE_BEFORE_EJECTION 1.5
-#define FIRST_RETRACT_BEFORE_EJECTION 4
 #define FIRST_EXTRUDE_BEFORE_EJECTION 10
-#define LONG_PRESS_SUPPORT 
-#define FILAMENT_CHANGE_E_FEEDRATE 66
-#define FILAMENT_AUTO_INSERTION_VERIFICATION_LENGTH_MM 2.0
-#define FILAMENT_AUTO_INSERTION_GAP 150
-#define FILAMENTCHANGE_Z_HOP_MM 10.0
-#define FILAMENTCHANGE_DELTA_Z_DOME_SECURITY_DISTANCE 25.0
-#define FILAMENTCHANGE_TEMPERATURE 200
-#define FILAMENT_AUTO_INSERTION_FINAL_FEEDRATE_FACTOR 0.01
-#define FILAMENT_PRE_INSERTION_FEEDRATE_FACTOR 0.1
-#define FILAMENT_PRE_INSERTION_LENGTH 40
-#define EMERGENCY_STOP_Z_MOVE
-#define EMERGENCY_STOP
-#define ONE_BUTTON_INVERTING true
-#define SUMMON_PRINT_PAUSE_INVERTING true
+#define FIRST_RETRACT_BEFORE_EJECTION 4
+#define SECOND_EXTRUDE_BEFORE_EJECTION 1.5
+#define SECOND_RETRACT_BEFORE_EJECTION 50
+
+// Pause and UI inputs
 #define ONE_BUTTON
-#define HEATING_STOP_TIME 600000UL
-#define HEATING_STOP
-#define SUMMON_PRINT_PAUSE_SCRIPT "M600 U-55 X55 Y-92 Z60"
+#define ONE_BUTTON_INVERTING true
 #define SUMMON_PRINT_PAUSE
-#define NO_LCD_FOR_FILAMENTCHANGEABLE
-#define ONE_LED_INVERTING true
-#define ONE_LED_PIN 65
+#define SUMMON_PRINT_PAUSE_INVERTING true
+#define SUMMON_PRINT_PAUSE_SCRIPT "M600 U-55 X55 Y-92 Z60"
+#define LONG_PRESS_SUPPORT
+#define QUICK_PAUSE_TIMEOUT 2000
+
+// Status LED
 #define ONE_LED
+#define ONE_LED_PIN 65
+#define ONE_LED_INVERTING true
+
+// Delta-specific extras
 #define DELTA_EXTRA
 #define Z_MIN_MAGIC
+#define Z_MAGIC_THRESHOLD -15
+
+// Heating safety
+#define HEATING_STOP
+#define HEATING_STOP_TIME 600000UL
+
+// Emergency stop behavior
+#define EMERGENCY_STOP
+#define EMERGENCY_STOP_Z_MOVE
+
+// Mono fan settings
+#define IS_MONO_FAN
 #define MONO_FAN_MIN_TEMP 50.0
 #define MONO_FAN_MIN_PWM 180
-#define IS_MONO_FAN
 
 //===========================================================================
 //============================= Getting Started =============================
@@ -145,7 +161,7 @@
 #endif
 
 // Optional custom name for your RepStrap or other custom machine
-// Displayed in the LCD "Ready" message
+// Displayed in the "Ready" message
 #define CUSTOM_MACHINE_NAME "Neva"
 
 // Define this to set a unique identifier for this printer, (Used by some programs to differentiate between machines)
@@ -272,7 +288,7 @@
 #define BANG_MAX 255 // limits current to nozzle while in bang-bang mode; 255=full current
 #define PID_MAX BANG_MAX // limits current to nozzle while PID is active (see PID_FUNCTIONAL_RANGE below); 255=full current
 #if ENABLED(PIDTEMP)
-  //#define PID_AUTOTUNE_MENU // Add PID Autotune to the LCD "Temperature" menu to run M303 and apply the result.
+  //#define PID_AUTOTUNE_MENU // Add PID Autotune to the "Temperature" menu to run M303 and apply the result.
   //#define PID_DEBUG // Sends debug data to the serial port.
   //#define PID_OPENLOOP 1 // Puts PID in open loop. M104/M140 sets the output power from 0 to PID_MAX
   //#define SLOW_PWM_HEATERS // PWM with very low frequency (roughly 0.125Hz=8s) and minimum state time of approximately 1s useful for heaters driven by a relay
@@ -439,7 +455,6 @@
   // uncomment to add three points calibration menu option.
   // See http://minow.blogspot.com/index.html#4918805519571907051
   // If needed, adjust the X, Y, Z calibration coordinates
-  // in ultralcd.cpp@lcd_delta_calibrate_menu()
   //#define DELTA_CALIBRATION_MENU
 
 #endif
@@ -885,48 +900,12 @@ const bool Z_MIN_PROBE_ENDSTOP_INVERTING = true; // set to true to invert the lo
 #define ABS_PREHEAT_FAN_SPEED 128   // Insert Value between 0 and 255
 
 //=============================================================================
-//============================= LCD and SD support ============================
+//============================= SD support ============================
 //=============================================================================
 
-// @section lcd
+// @section sd
 
-// Define your display language below. Replace (en) with your language code and uncomment.
-// en, pl, fr, de, es, ru, bg, it, pt, pt_utf8, pt-br, pt-br_utf8, fi, an, nl, ca, eu, kana, kana_utf8, cn, cz, test
-// See also language.h
-#define LANGUAGE_INCLUDE GENERATE_LANGUAGE_INCLUDE(en)
 
-//
-// LCD CHARACTER SET
-//
-// Choose ONE of the following charset options. This selection depends on
-// your physical hardware, so it must match your character-based LCD.
-//
-// Note: This option is NOT applicable to graphical displays.
-//
-// To find out what type of display you have:
-//  - Compile and upload with the language (above) set to 'test'
-//  - Click the controller to view the LCD menu
-//
-// The LCD will display two lines from the upper half of the character set.
-//
-// See also https://github.com/MarlinFirmware/Marlin/wiki/LCD-Language
-//
-#define DISPLAY_CHARSET_HD44780_JAPAN        // this is the most common hardware
-//#define DISPLAY_CHARSET_HD44780_WESTERN
-//#define DISPLAY_CHARSET_HD44780_CYRILLIC
-
-//
-// LCD TYPE
-//
-// You may choose ULTRA_LCD if you have character based LCD with 16x2, 16x4, 20x2,
-// 20x4 char/lines or DOGLCD for the full graphics display with 128x64 pixels
-// (ST7565R family). (This option will be set automatically for certain displays.)
-//
-// IMPORTANT NOTE: The U8glib library is required for Full Graphic Display!
-//                 https://github.com/olikraus/U8glib_Arduino
-//
-//#define ULTRA_LCD   // Character based
-//#define DOGLCD      // Full graphics display
 
 //
 // SD CARD
@@ -952,198 +931,6 @@ const bool Z_MIN_PROBE_ENDSTOP_INVERTING = true; // set to true to invert the lo
 // Use CRC checks and retries on the SD communication.
 //
 //#define SD_CHECK_AND_RETRY
-
-//
-// ENCODER SETTINGS
-//
-// This option overrides the default number of encoder pulses needed to
-// produce one step. Should be increased for high-resolution encoders.
-//
-//#define ENCODER_PULSES_PER_STEP 1
-
-//
-// Use this option to override the number of step signals required to
-// move between next/prev menu items.
-//
-//#define ENCODER_STEPS_PER_MENU_ITEM 5
-
-//
-// This option reverses the encoder direction for navigating LCD menus.
-// By default CLOCKWISE == DOWN. With this enabled CLOCKWISE == UP.
-//
-//#define REVERSE_MENU_DIRECTION
-
-//
-// SPEAKER/BUZZER
-//
-// If you have a speaker that can produce tones, enable it here.
-// By default Marlin assumes you have a buzzer with a fixed frequency.
-//
-//#define SPEAKER
-
-//
-// The duration and frequency for the UI feedback sound.
-// Set these to 0 to disable audio feedback in the LCD menus.
-//
-// Note: Test audio output with the G-Code:
-//  M300 S<frequency Hz> P<duration ms>
-//
-//#define LCD_FEEDBACK_FREQUENCY_DURATION_MS 100
-//#define LCD_FEEDBACK_FREQUENCY_HZ 1000
-
-//
-// CONTROLLER TYPE: Standard
-//
-// Marlin supports a wide variety of controllers.
-// Enable one of the following options to specify your controller.
-//
-
-//
-// ULTIMAKER Controller.
-//
-//#define ULTIMAKERCONTROLLER
-
-//
-// ULTIPANEL as seen on Thingiverse.
-//
-//#define ULTIPANEL
-
-//
-// PanelOne from T3P3 (via RAMPS 1.4 AUX2/AUX3)
-// http://reprap.org/wiki/PanelOne
-//
-//#define PANEL_ONE
-
-//
-// MaKr3d Makr-Panel with graphic controller and SD support.
-// http://reprap.org/wiki/MaKr3d_MaKrPanel
-//
-//#define MAKRPANEL
-
-//
-// Activate one of these if you have a Panucatt Devices
-// Viki 2.0 or mini Viki with Graphic LCD
-// http://panucatt.com
-//
-//#define VIKI2
-//#define miniVIKI
-
-//
-// Adafruit ST7565 Full Graphic Controller.
-// https://github.com/eboston/Adafruit-ST7565-Full-Graphic-Controller/
-//
-//#define ELB_FULL_GRAPHIC_CONTROLLER
-
-//
-// RepRapDiscount Smart Controller.
-// http://reprap.org/wiki/RepRapDiscount_Smart_Controller
-//
-// Note: Usually sold with a white PCB.
-//
-//#define REPRAP_DISCOUNT_SMART_CONTROLLER
-
-//
-// BQ LCD Smart Controller shipped by
-// default with the BQ Hephestos 2 and Witbox 2.
-//
-//#define BQ_LCD_SMART_CONTROLLER
-
-//
-// GADGETS3D G3D LCD/SD Controller
-// http://reprap.org/wiki/RAMPS_1.3/1.4_GADGETS3D_Shield_with_Panel
-//
-// Note: Usually sold with a blue PCB.
-//
-//#define G3D_PANEL
-
-//
-// RepRapDiscount FULL GRAPHIC Smart Controller
-// http://reprap.org/wiki/RepRapDiscount_Full_Graphic_Smart_Controller
-//
-// ==> REMEMBER TO INSTALL U8glib to your ARDUINO library folder: https://github.com/olikraus/U8glib_Arduino
-//#define REPRAP_DISCOUNT_FULL_GRAPHIC_SMART_CONTROLLER
-
-//
-// MakerLab Mini Panel with graphic
-// controller and SD support - http://reprap.org/wiki/Mini_panel
-//
-//#define MINIPANEL
-
-//
-// RepRapWorld REPRAPWORLD_KEYPAD v1.1
-// http://reprapworld.com/?products_details&products_id=202&cPath=1591_1626
-//
-// REPRAPWORLD_KEYPAD_MOVE_STEP sets how much should the robot move when a key
-// is pressed, a value of 10.0 means 10mm per click.
-//
-//#define REPRAPWORLD_KEYPAD
-//#define REPRAPWORLD_KEYPAD_MOVE_STEP 10.0
-
-//
-// RigidBot Panel V1.0
-// http://www.inventapart.com/
-//
-//#define RIGIDBOT_PANEL
-
-//
-// BQ LCD Smart Controller shipped by
-// default with the BQ Hephestos 2 and Witbox 2.
-//
-//#define BQ_LCD_SMART_CONTROLLER
-
-//
-// CONTROLLER TYPE: I2C
-//
-// Note: These controllers require the installation of Arduino's LiquidCrystal_I2C
-// library. For more info: https://github.com/kiyoshigawa/LiquidCrystal_I2C
-//
-
-//
-// Elefu RA Board Control Panel
-// http://www.elefu.com/index.php?route=product/product&product_id=53
-//
-//#define RA_CONTROL_PANEL
-
-//
-// Sainsmart YW Robot (LCM1602) LCD Display
-//
-//#define LCD_I2C_SAINSMART_YWROBOT
-
-//
-// Generic LCM1602 LCD adapter
-//
-//#define LCM1602
-
-//
-// PANELOLU2 LCD with status LEDs,
-// separate encoder and click inputs.
-//
-// Note: This controller requires Arduino's LiquidTWI2 library v1.2.3 or later.
-// For more info: https://github.com/lincomatic/LiquidTWI2
-//
-// Note: The PANELOLU2 encoder click input can either be directly connected to
-// a pin (if BTN_ENC defined to != -1) or read through I2C (when BTN_ENC == -1).
-//
-//#define LCD_I2C_PANELOLU2
-
-//
-// Panucatt VIKI LCD with status LEDs,
-// integrated click & L/R/U/D buttons, separate encoder inputs.
-//
-//#define LCD_I2C_VIKI
-
-//
-// SSD1306 OLED full graphics generic display
-//
-//#define U8GLIB_SSD1306
-
-//
-// CONTROLLER TYPE: Shift register panels
-//
-// 2 wire Non-latching LCD SR from https://goo.gl/aJJ4sH
-// LCD configuration: http://reprap.org/wiki/SAV_3D_LCD
-//
-//#define SAV_3DLCD
 
 //=============================================================================
 //=============================== Extra Features ==============================
@@ -1245,8 +1032,7 @@ const bool Z_MIN_PROBE_ENDSTOP_INVERTING = true; // set to true to invert the lo
 
   #define DEFAULT_MEASURED_FILAMENT_DIA  DEFAULT_NOMINAL_FILAMENT_DIA  //set measured to nominal initially
 
-  //When using an LCD, uncomment the line below to display the Filament sensor data on the last line instead of status.  Status will appear for 5 sec.
-  //#define FILAMENT_LCD_DISPLAY
+  //When using a display, uncomment the line below to show filament sensor data on the last line instead of status. Status will appear for 5 sec.
 #endif
 
 #include "Configuration_adv.h"

@@ -22,7 +22,6 @@
 
 #include "Marlin.h"
 #include "cardreader.h"
-#include "ultralcd.h"
 #include "stepper.h"
 #include "temperature.h"
 #include "language.h"
@@ -226,9 +225,6 @@ void CardReader::initsd() {
   #endif
 
   if (!card.init(SPI_SPEED,SDSS)
-    #if defined(LCD_SDSS) && (LCD_SDSS != SDSS)
-      && !card.init(SPI_SPEED, LCD_SDSS)
-    #endif
   ) {
     //if (!card.init(SPI_HALF_SPEED,SDSS))
     SERIAL_ECHO_START;
@@ -397,7 +393,6 @@ void CardReader::openFile(char* name, bool read, bool push_current/*=false*/) {
 
       SERIAL_PROTOCOLLNPGM(MSG_SD_FILE_SELECTED);
       getfilename(0, fname);
-      lcd_setstatus(longFilename[0] ? longFilename : fname);
     }
     else {
       SERIAL_PROTOCOLPGM(MSG_SD_OPEN_FILE_FAIL);
@@ -415,7 +410,6 @@ void CardReader::openFile(char* name, bool read, bool push_current/*=false*/) {
       saving = true;
       SERIAL_PROTOCOLPGM(MSG_SD_WRITE_TO_FILE);
       SERIAL_PROTOCOLLN(name);
-      lcd_setstatus(fname);
     }
   }
 }
