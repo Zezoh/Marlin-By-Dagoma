@@ -342,6 +342,9 @@ static uint8_t target_extruder;
 #if ENABLED(AUTO_BED_LEVELING_FEATURE)
   int xy_travel_speed = XY_TRAVEL_SPEED;
   float zprobe_zoffset = Z_PROBE_OFFSET_FROM_EXTRUDER;
+  #if HAS_DELTA_EXTRA
+    float delta_probe_feedrate = 0.0f;
+  #endif
 #endif
 
 #if ENABLED(Z_DUAL_ENDSTOPS) && DISABLED(DELTA)
@@ -1869,12 +1872,14 @@ static void setup_for_endstop_move() {
       #if HAS_DELTA_EXTRA
         if (fast) {
           feedrate = homing_feedrate[Z_AXIS] / 2;
+          if (delta_probe_feedrate > 0.0f) feedrate = delta_probe_feedrate;
           feedrate = min(feedrate, 1000.0f);
           SERIAL_ECHOPAIR("fast probing, feedrate = ", feedrate);
         }
         else {
       #endif
           feedrate = homing_feedrate[Z_AXIS] / 4;
+          if (delta_probe_feedrate > 0.0f) feedrate = delta_probe_feedrate;
           feedrate = min(feedrate, 1000.0f);
           SERIAL_ECHOPAIR("slow probing, feedrate = ", feedrate);
       #if HAS_DELTA_EXTRA
@@ -3566,8 +3571,12 @@ inline void gcode_G28() {
       float z_avg = 0.0;
       bool fast_probe = fast;
       bool first_sample = true;
+      float probe_feedrate = 750.0f;
 
       do {
+        #if HAS_DELTA_EXTRA
+          delta_probe_feedrate = probe_feedrate;
+        #endif
         if (first_sample && !fast_probe) {
           set_destination_to_current();
           destination[ Z_AXIS ] = min(67.0, current_position[Z_AXIS] + Z_RAISE_BEFORE_PROBING);
@@ -3577,6 +3586,9 @@ inline void gcode_G28() {
         gcode_G30(fast_probe);
         first_sample = false;
         if (!fast_probe) fast_probe = true;
+        if (probe_feedrate < 1000.0f) {
+          probe_feedrate = min(1000.0f, probe_feedrate + 50.0f);
+        }
 
         z_read[2] = z_read[1];
         z_read[1] = z_read[0];
@@ -3615,6 +3627,10 @@ inline void gcode_G28() {
 
       } while( !all_points_are_good );
 
+
+      #if HAS_DELTA_EXTRA
+        delta_probe_feedrate = 0.0f;
+      #endif
 
       return z_avg;
     }
