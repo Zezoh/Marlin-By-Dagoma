@@ -511,7 +511,7 @@ void CardReader::write_command(char *buf) {
   }
 }
 
-#if ENABLED( DELTA_EXTRA )
+#if HAS_DELTA_EXTRA
 bool CardReader::writePGM(const char *bufPGM) {
   char msg[64];
   strncpy_P(msg, bufPGM, sizeof(msg) - 1);

@@ -236,7 +236,7 @@ static void updateTemperaturesFromRawValues();
     float workKp = 0, workKi = 0, workKd = 0;
     float max = 0, min = 10000;
 
-    #if HAS_AUTO_FAN || ENABLED(IS_MONO_FAN) || ENABLED(PRINTER_HEAD_EASY)
+    #if HAS_AUTO_FAN || HAS_MONO_FAN
       millis_t next_auto_fan_check_ms = temp_ms + 2500UL;
     #endif
 
@@ -290,7 +290,7 @@ static void updateTemperaturesFromRawValues();
         max = max(max, input);
         min = min(min, input);
 
-        #if HAS_AUTO_FAN || ENABLED(IS_MONO_FAN) || ENABLED(PRINTER_HEAD_EASY)
+        #if HAS_AUTO_FAN || HAS_MONO_FAN
           if (ELAPSED(ms, next_auto_fan_check_ms)) {
             #if HAS_AUTO_FAN
             checkExtruderAutoFans();
@@ -1397,6 +1397,14 @@ static void set_current_temp_raw() {
   bool enable_z_magic_tap = false;
   bool log_z_magic_raw_value = false;
 
+  #if DISABLED(LONG_PRESS_SUPPORT)
+    constexpr float z_magic_bias_hit_threshold = 8.0f;
+    constexpr float z_magic_bias_delta_hit_threshold = 15.0f;
+    constexpr float z_magic_bias_noise_threshold = 4.0f;
+    constexpr millis_t z_magic_calibration_window = 250UL;
+    constexpr millis_t z_magic_calibration_rearm = 100UL;
+  #endif
+
   float z_magic_raw_value = 0; // Extern
   float z_magic_previous = 0; // Extern
   float z_magic_bias = 0; // Extern
@@ -1430,34 +1438,39 @@ static void set_current_temp_raw() {
       }
     #endif
 
-    if (enable_z_magic_probe || enable_z_magic_tap) {
-
-      z_magic_bias = z_magic_raw_value - z_magic_previous;
+    if (!(enable_z_magic_probe || enable_z_magic_tap)) {
       z_magic_previous = z_magic_raw_value;
-      z_magic_bias_delta += z_magic_bias;
-      
-      #if ENABLED(LONG_PRESS_SUPPORT)
-        // FIX: Old Neva does not support bias accumulator detection
-        if (!z_magic_hit_flag && z_magic_bias_delta < z_magic_threshold) {
-          z_magic_hit_flag = true;
-        }
-      #else
-        // FIX: Should work on both Magis and old Neva
-        if (!z_magic_hit_flag && (z_magic_bias < -8.0 || abs(z_magic_bias_delta) > 15.0)) {
-          z_magic_hit_flag = true;
-        }
+      z_magic_bias = 0.0f;
+      z_magic_bias_delta = 0.0f;
+      z_magic_hit_flag = false;
+      return;
+    }
 
-        if (abs(z_magic_bias) > 4.0) {
-        z_magic_calibration_timeout = now + 250UL;
+    z_magic_bias = z_magic_raw_value - z_magic_previous;
+    z_magic_previous = z_magic_raw_value;
+    z_magic_bias_delta += z_magic_bias;
+
+    #if ENABLED(LONG_PRESS_SUPPORT)
+      // FIX: Old Neva does not support bias accumulator detection
+      if (!z_magic_hit_flag && z_magic_bias_delta < -fabsf(z_magic_threshold)) {
+        z_magic_hit_flag = true;
+      }
+    #else
+      // FIX: Should work on both Magis and old Neva
+      if (!z_magic_hit_flag && (z_magic_bias < -z_magic_bias_hit_threshold || fabsf(z_magic_bias_delta) > z_magic_bias_delta_hit_threshold)) {
+        z_magic_hit_flag = true;
+      }
+
+      if (fabsf(z_magic_bias) > z_magic_bias_noise_threshold) {
+        z_magic_calibration_timeout = now + z_magic_calibration_window;
       }
 
       /* Cycle reset */
       if (ELAPSED(now, z_magic_calibration_timeout)) {
-        z_magic_bias_delta = 0.0;
-        z_magic_calibration_timeout = now + 100UL; // Re-Arm anyway
+        z_magic_bias_delta = 0.0f;
+        z_magic_calibration_timeout = now + z_magic_calibration_rearm; // Re-Arm anyway
       }
-      #endif
-    }
+    #endif
   }
 
 #endif

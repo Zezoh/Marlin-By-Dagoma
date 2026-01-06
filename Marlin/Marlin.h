@@ -52,6 +52,19 @@
 
 typedef unsigned long millis_t;
 
+#if ENABLED(ONE_BUTTON)
+  #define ONE_BUTTON_PRESSED  (READ(ONE_BUTTON_PIN) ^ ONE_BUTTON_INVERTING)
+  #define ONE_BUTTON_RELEASED (!ONE_BUTTON_PRESSED)
+#elif ENABLED(SUMMON_PRINT_PAUSE)
+  #define ONE_BUTTON_PRESSED  (READ(SUMMON_PRINT_PAUSE_PIN) ^ SUMMON_PRINT_PAUSE_INVERTING)
+  #define ONE_BUTTON_RELEASED (!ONE_BUTTON_PRESSED)
+#endif
+
+#define HAS_MONO_FAN (ENABLED(IS_MONO_FAN) || ENABLED(PRINTER_HEAD_EASY))
+#define HAS_SUMMON_PRINT_PAUSE ENABLED(SUMMON_PRINT_PAUSE)
+#define HAS_ONE_LED ENABLED(ONE_LED)
+#define HAS_DELTA_EXTRA ENABLED(DELTA_EXTRA)
+
 // Arduino < 1.0.0 does not define this, so we need to do it ourselves
 #ifndef analogInputToDigitalPin
   #define analogInputToDigitalPin(p) ((p) + 0xA0)
