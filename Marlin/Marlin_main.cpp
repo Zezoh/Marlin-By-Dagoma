@@ -3578,7 +3578,7 @@ inline void gcode_G28() {
         }
         
         set_destination_to_current();
-        destination[ Z_AXIS ] = min(67.0, Z_RAISE_BETWEEN_PROBINGS + home_offset[Z_AXIS]);
+        destination[ Z_AXIS ] = min(67.0, Z_RAISE_BEFORE_PROBING + home_offset[Z_AXIS]);
         prepare_move();
         st_synchronize();
 
