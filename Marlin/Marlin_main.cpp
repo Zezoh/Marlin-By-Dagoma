@@ -6798,7 +6798,7 @@ inline void gcode_M503() {
 
     void manage_long_press_filament_expulsion() {
       if ( !printer_states.pause_asked ) {
-        if (ONE_BUTTON_PRESSED) {
+        if (one_button_state) {
           millis_t now = millis();
           if (long_press_timeout == 0UL) {
             long_press_timeout = now + LONG_PRESS_TIMEOUT;
@@ -6807,6 +6807,7 @@ inline void gcode_M503() {
             SERIAL_ECHOLNPGM("Pause : Asked by long press");
             printer_states.pause_asked = true;
             printer_states.print_asked = false;
+            long_press_timeout = 0UL;
 
             if (!printer_states.homed) {
               #if DISABLED(DELTA)
@@ -7119,6 +7120,13 @@ inline void gcode_M503() {
     bool exit_pause_asked = false;
     bool can_exit_pause = false;
     bool need_to_go_first = true;
+    bool wait_for_button_release = false;
+
+    #if ENABLED(ONE_BUTTON)
+      if (pin_number == ONE_BUTTON_PIN && pin_number > -1) {
+        wait_for_button_release = (digitalRead(pin_number) == target);
+      }
+    #endif
 
     //
     // PAUSE LOOPs
@@ -7612,31 +7620,38 @@ inline void gcode_M503() {
 
       //
       // 'Listen' for exit actions
-      if (pin_number != -1 && digitalRead(pin_number) == target) {
-        #if ENABLED(LONG_PRESS_SUPPORT)
-          long_press_timeout = now + LONG_PRESS_TIMEOUT;
-          do {
-            delay(100);
-            #if ENABLED(FILAMENTCHANGEENABLE)
-              idle(true);
-            #else
-              idle();
-            #endif
-            now = millis();
-          } while( digitalRead(pin_number) == target && PENDING(now, long_press_timeout) );
-          if ( digitalRead(pin_number) == target && ELAPSED(now, long_press_timeout) ) {
-            SERIAL_ECHOLNPGM( "pause: long press detected" );
-            filament_direction = FILAMENT_NEED_TO_BE_EXPULSED;
-            RESCHEDULE_HOTEND_AUTO_SHUTDOWN;
+      if (pin_number != -1) {
+        if (wait_for_button_release) {
+          if (digitalRead(pin_number) != target) {
+            wait_for_button_release = false;
           }
-          else {
+        }
+        else if (digitalRead(pin_number) == target) {
+          #if ENABLED(LONG_PRESS_SUPPORT)
+            long_press_timeout = now + LONG_PRESS_TIMEOUT;
+            do {
+              delay(100);
+              #if ENABLED(FILAMENTCHANGEENABLE)
+                idle(true);
+              #else
+                idle();
+              #endif
+              now = millis();
+            } while( digitalRead(pin_number) == target && PENDING(now, long_press_timeout) );
+            if ( digitalRead(pin_number) == target && ELAPSED(now, long_press_timeout) ) {
+              SERIAL_ECHOLNPGM( "pause: long press detected" );
+              filament_direction = FILAMENT_NEED_TO_BE_EXPULSED;
+              RESCHEDULE_HOTEND_AUTO_SHUTDOWN;
+            }
+            else {
+              SERIAL_ECHOLNPGM("pause: button pushed");
+              exit_pause_asked = true;
+            }
+          #else
             SERIAL_ECHOLNPGM("pause: button pushed");
             exit_pause_asked = true;
-          }
-        #else
-          SERIAL_ECHOLNPGM("pause: button pushed");
-          exit_pause_asked = true;
-        #endif
+          #endif
+        }
       }
 
       // Detemines if we can really exit
@@ -10012,12 +10027,21 @@ void disable_all_steppers() {
   disable_e3();
 }
 
-#if ENABLED(ONE_BUTTON)
+#if ENABLED(ONE_BUTTON) || HAS_SUMMON_PRINT_PAUSE
 
   millis_t next_one_button_check = 0;
-  bool print_asked = false;
-  bool asked_to_pause = false;
   millis_t has_to_print_timeout = 0;
+  bool one_button_state = false;
+  bool one_button_state_prev = false;
+
+  inline void update_one_button_state() {
+    one_button_state_prev = one_button_state;
+    one_button_state = ONE_BUTTON_PRESSED;
+  }
+
+  inline bool one_button_just_pressed() {
+    return one_button_state && !one_button_state_prev;
+  }
 
 #endif
 
@@ -10046,23 +10070,13 @@ void disable_all_steppers() {
 
     state_blink = ( state_blink + 1 ) % 10;
     next_one_led_tick = now + led_refresh_rate_speed;
+    bool led_on = false;
 
     if ( printer_states.activity_state == ACTIVITY_STARTUP_CALIBRATION ) {
-      switch( state_blink ) {
-        case 0:
-          one_led_on();
-          break;
-        default:
-          one_led_off();
-      }
+      led_on = (state_blink == 0);
     }
-    #if ENABLED( ONE_BUTTON )
-    else if ( printer_states.print_asked ) {
-      one_led_on();
-    }
-    #endif
     else if ( notify_warning ) {
-      state_blink % 2 ? one_led_on() : one_led_off();
+      led_on = (state_blink % 2);
       if ( ELAPSED(now, notify_warning_timeout) ) {
         notify_warning = false;
         led_refresh_rate_speed = 150UL;
@@ -10072,25 +10086,18 @@ void disable_all_steppers() {
          printer_states.activity_state == ACTIVITY_PAUSED
       || printer_states.pause_asked
     ) {
-      switch( state_blink ) {
-        case 0:
-        case 2:
-          one_led_on();
-          break;
-        default:
-          one_led_off();
-      }
+      led_on = (state_blink == 0 || state_blink == 2);
     }
-    else {
-      if (
-        printer_states.activity_state == ACTIVITY_PRINTING
-      ) {
-        one_led_on();
-      }
-      else {
-        one_led_off();
-      }
+    #if ENABLED( ONE_BUTTON )
+    else if ( printer_states.print_asked ) {
+      led_on = true;
     }
+    #endif
+    else if ( printer_states.activity_state == ACTIVITY_PRINTING ) {
+      led_on = true;
+    }
+
+    led_on ? one_led_on() : one_led_off();
   }
 #endif
 
@@ -10100,7 +10107,7 @@ void disable_all_steppers() {
     // PAUSE PUSHED
     if (
       !printer_states.pause_asked
-      && ONE_BUTTON_PRESSED
+      && one_button_just_pressed()
     ) {
       SERIAL_ECHOLNPGM("Pause : Summoned by user bouton press");
       printer_states.pause_asked = true;
@@ -10356,6 +10363,10 @@ inline void manage_printer_states() {
 
   #if HAS_ONE_LED
     manage_one_led();
+  #endif
+
+  #if ENABLED(ONE_BUTTON) || HAS_SUMMON_PRINT_PAUSE
+    update_one_button_state();
   #endif
 
   printer_states.homed = axis_homed[X_AXIS] && axis_homed[Y_AXIS] && axis_homed[Z_AXIS];

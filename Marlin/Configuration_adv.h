@@ -89,6 +89,9 @@
   #define THERMAL_PROTECTION_BED_HYSTERESIS 2 // Degrees Celsius
 #endif
 
+// --------------------------------------------------------------------------
+// Temperature control tuning
+// --------------------------------------------------------------------------
 #if ENABLED(PIDTEMP)
   // this adds an experimental additional term to the heating power, proportional to the extrusion speed.
   // if Kc is chosen well, the additional required power due to increased melting should be compensated.
@@ -99,6 +102,9 @@
   #endif
 #endif
 
+// --------------------------------------------------------------------------
+// Automatic temperature control
+// --------------------------------------------------------------------------
 /**
  * Automatic Temperature:
  * The hotend target temperature is calculated by all the buffered lines of gcode.
