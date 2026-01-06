@@ -238,11 +238,11 @@ static void lcd_implementation_init() {
   // digitalWrite(17, HIGH);
 
   #if ENABLED(LCD_SCREEN_ROT_90)
-    u8g.setRot90();   // Rotate screen by 90°
+    u8g.setRot90();   // Rotate screen by 90 degrees
   #elif ENABLED(LCD_SCREEN_ROT_180)
-    u8g.setRot180();  // Rotate screen by 180°
+    u8g.setRot180();  // Rotate screen by 180 degrees
   #elif ENABLED(LCD_SCREEN_ROT_270)
-    u8g.setRot270();  // Rotate screen by 270°
+    u8g.setRot270();  // Rotate screen by 270 degrees
   #endif
 
   #if ENABLED(SHOW_BOOTSCREEN)

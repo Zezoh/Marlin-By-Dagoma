@@ -318,7 +318,7 @@
     #define X_HOME_POS MANUAL_X_HOME_POS
     #define Y_HOME_POS MANUAL_Y_HOME_POS
     #define Z_HOME_POS MANUAL_Z_HOME_POS
-  #else //!MANUAL_HOME_POSITIONS – Use home switch positions based on homing direction and travel limits
+  #else //!MANUAL_HOME_POSITIONS - Use home switch positions based on homing direction and travel limits
     #if ENABLED(BED_CENTER_AT_0_0)
       #define X_HOME_POS (X_MAX_LENGTH) * (X_HOME_DIR) * 0.5
       #define Y_HOME_POS (Y_MAX_LENGTH) * (Y_HOME_DIR) * 0.5
