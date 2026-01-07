@@ -6046,7 +6046,7 @@ void home_all_axes() { gcode_G28(true); }
 
 #if ENABLED(DELTA)
 
-  #define D851_Z_AVG_TOLERANCE 0.02f
+  #define G33_Q_Z_AVG_TOLERANCE 0.02f
 
   inline float get_probed_Z_avg(const float &rx, const float &ry, const bool fast=false) {
     if (!position_is_reachable_by_probe(rx, ry)) return NAN;
@@ -6069,16 +6069,16 @@ void home_all_axes() { gcode_G28(true); }
         if (sample_count >= 2) {
           z_avg = (z_read[0] + z_read[1]) * 0.5f;
           all_points_are_good =
-            ABS(z_read[0] - z_avg) < D851_Z_AVG_TOLERANCE &&
-            ABS(z_read[1] - z_avg) < D851_Z_AVG_TOLERANCE;
+            ABS(z_read[0] - z_avg) < G33_Q_Z_AVG_TOLERANCE &&
+            ABS(z_read[1] - z_avg) < G33_Q_Z_AVG_TOLERANCE;
         }
       }
       else if (sample_count >= 3) {
         z_avg = (z_read[0] + z_read[1] + z_read[2]) / 3.0f;
         all_points_are_good =
-          ABS(z_read[0] - z_avg) < D851_Z_AVG_TOLERANCE &&
-          ABS(z_read[1] - z_avg) < D851_Z_AVG_TOLERANCE &&
-          ABS(z_read[2] - z_avg) < D851_Z_AVG_TOLERANCE;
+          ABS(z_read[0] - z_avg) < G33_Q_Z_AVG_TOLERANCE &&
+          ABS(z_read[1] - z_avg) < G33_Q_Z_AVG_TOLERANCE &&
+          ABS(z_read[2] - z_avg) < G33_Q_Z_AVG_TOLERANCE;
       }
 
       const float raised_z = MIN(current_position[Z_AXIS] + 5.0f, soft_endstop_max[Z_AXIS]);
@@ -6510,8 +6510,90 @@ void home_all_axes() { gcode_G28(true); }
    *      V3  Report settings and probe results
    *
    *   E   Engage the probe for each point
+   *
+   *   Q   Run a simplified calibration loop (center/tower average)
    */
   inline void gcode_G33() {
+
+    if (parser.seen('Q')) {
+      const ActivityState previous_state = printer_states.activity_state;
+      printer_states.activity_state = ACTIVITY_STARTUP_CALIBRATION;
+
+      SERIAL_PROTOCOLLNPGM("G33 Quick Delta calibration");
+
+      #if HAS_LEVELING
+        const bool leveling_was_active = planner.leveling_active;
+        set_bed_leveling_enabled(false);
+      #endif
+
+      gcode_G28(false);
+      feedrate_mm_s = homing_feedrate(Z_AXIS);
+
+      float tower1_altitude = get_probed_Z_avg(delta_tower[A_AXIS][X_AXIS], delta_tower[A_AXIS][Y_AXIS]);
+      float tower2_altitude = get_probed_Z_avg(delta_tower[B_AXIS][X_AXIS], delta_tower[B_AXIS][Y_AXIS]);
+      float tower3_altitude = get_probed_Z_avg(delta_tower[C_AXIS][X_AXIS], delta_tower[C_AXIS][Y_AXIS]);
+      float center_altitude = get_probed_Z_avg(0.0f, 0.0f);
+
+      delta_endstop_adj[A_AXIS] = tower1_altitude;
+      delta_endstop_adj[B_AXIS] = tower2_altitude;
+      delta_endstop_adj[C_AXIS] = tower3_altitude;
+
+      float mean_ref_plan_altitude = (tower1_altitude + tower2_altitude + tower3_altitude) / 3.0f;
+      float diff_center_altitude = center_altitude - mean_ref_plan_altitude;
+
+      SERIAL_ECHOPGM("Initial mean based difference: ");
+      SERIAL_ECHOLN(diff_center_altitude);
+
+      SERIAL_ECHOPGM("Initial delta radius: ");
+      SERIAL_ECHOLN(delta_radius);
+
+      do {
+        delta_radius -= 2.0f * diff_center_altitude;
+
+        SERIAL_ECHOPGM("Testing delta radius: ");
+        SERIAL_ECHOLN(delta_radius);
+
+        gcode_M665();
+
+        tower1_altitude = get_probed_Z_avg(delta_tower[A_AXIS][X_AXIS], delta_tower[A_AXIS][Y_AXIS]);
+        tower2_altitude = get_probed_Z_avg(delta_tower[B_AXIS][X_AXIS], delta_tower[B_AXIS][Y_AXIS]);
+        tower3_altitude = get_probed_Z_avg(delta_tower[C_AXIS][X_AXIS], delta_tower[C_AXIS][Y_AXIS]);
+        center_altitude = get_probed_Z_avg(0.0f, 0.0f);
+
+        SERIAL_ECHOLNPGM("R probed points:");
+        SERIAL_ECHOPGM("  T1: ");
+        SERIAL_ECHOLN(tower1_altitude);
+        SERIAL_ECHOPGM("  T2: ");
+        SERIAL_ECHOLN(tower2_altitude);
+        SERIAL_ECHOPGM("  T3: ");
+        SERIAL_ECHOLN(tower3_altitude);
+        SERIAL_ECHOPGM("   C: ");
+        SERIAL_ECHOLN(center_altitude);
+
+        mean_ref_plan_altitude = (tower1_altitude + tower2_altitude + tower3_altitude) / 3.0f;
+        diff_center_altitude = center_altitude - mean_ref_plan_altitude;
+
+        SERIAL_ECHOPGM("NEW Mean based difference: ");
+        SERIAL_ECHOLN(diff_center_altitude);
+        SERIAL_ECHOPGM("With delta radius: ");
+        SERIAL_ECHOLN(delta_radius);
+      } while (ABS(diff_center_altitude) > 0.05f);
+
+      delta_height -= diff_center_altitude;
+      gcode_M665();
+
+      SERIAL_ECHOPGM("Adjusted delta height: ");
+      SERIAL_ECHOLN(delta_height);
+
+      gcode_G28(false);
+
+      #if HAS_LEVELING
+        set_bed_leveling_enabled(leveling_was_active);
+      #endif
+
+      printer_states.activity_state = previous_state;
+      return;
+    }
 
     const int8_t probe_points = parser.intval('P', DELTA_CALIBRATION_DEFAULT_POINTS);
     if (!WITHIN(probe_points, -1, 10)) {
@@ -10151,152 +10233,6 @@ inline void gcode_M205() {
     #endif
   }
 
-#if HAS_BED_PROBE
-
-  inline void gcode_M500();
-
-  inline void gcode_D851() {
-    const ActivityState previous_state = printer_states.activity_state;
-    printer_states.activity_state = ACTIVITY_STARTUP_CALIBRATION;
-
-    SERIAL_ECHOLNPGM("Starting full Delta calibration");
-
-    #if HAS_LEVELING
-      const bool leveling_was_active = planner.leveling_active;
-      set_bed_leveling_enabled(false);
-    #endif
-
-    gcode_G28(false);
-    feedrate_mm_s = homing_feedrate(Z_AXIS);
-
-    float tower1_altitude, tower2_altitude, tower3_altitude, center_altitude;
-
-    tower1_altitude = get_probed_Z_avg(delta_tower[A_AXIS][X_AXIS], delta_tower[A_AXIS][Y_AXIS]);
-    tower2_altitude = get_probed_Z_avg(delta_tower[B_AXIS][X_AXIS], delta_tower[B_AXIS][Y_AXIS]);
-    tower3_altitude = get_probed_Z_avg(delta_tower[C_AXIS][X_AXIS], delta_tower[C_AXIS][Y_AXIS]);
-
-    delta_endstop_adj[A_AXIS] = tower1_altitude;
-    delta_endstop_adj[B_AXIS] = tower2_altitude;
-    delta_endstop_adj[C_AXIS] = tower3_altitude;
-
-    gcode_M500();
-
-    #define R_L_CORRECTION
-    #if ENABLED(R_L_CORRECTION)
-      gcode_G28(false);
-      feedrate_mm_s = homing_feedrate(Z_AXIS);
-
-      tower1_altitude = get_probed_Z_avg(delta_tower[A_AXIS][X_AXIS], delta_tower[A_AXIS][Y_AXIS]);
-      tower2_altitude = get_probed_Z_avg(delta_tower[B_AXIS][X_AXIS], delta_tower[B_AXIS][Y_AXIS]);
-      tower3_altitude = get_probed_Z_avg(delta_tower[C_AXIS][X_AXIS], delta_tower[C_AXIS][Y_AXIS]);
-      center_altitude = get_probed_Z_avg(0.0f, 0.0f);
-
-      SERIAL_ECHOLNPGM("R probed points:");
-      SERIAL_ECHOPGM("  T1: ");
-      SERIAL_ECHOLN(tower1_altitude);
-      SERIAL_ECHOPGM("  T2: ");
-      SERIAL_ECHOLN(tower2_altitude);
-      SERIAL_ECHOPGM("  T3: ");
-      SERIAL_ECHOLN(tower3_altitude);
-      SERIAL_ECHOPGM("   C: ");
-      SERIAL_ECHOLN(center_altitude);
-
-      float mean_ref_plan_altitude = (tower1_altitude + tower2_altitude + tower3_altitude) / 3.0f;
-      float diff_center_altitude = center_altitude - mean_ref_plan_altitude;
-
-      SERIAL_ECHOPGM("Initial mean based difference: ");
-      SERIAL_ECHOLN(diff_center_altitude);
-
-      SERIAL_ECHOPGM("Initial delta radius: ");
-      SERIAL_ECHOLN(delta_radius);
-
-      do {
-        delta_radius -= 2.0f * diff_center_altitude;
-
-        SERIAL_ECHOPGM("Testing delta radius: ");
-        SERIAL_ECHOLN(delta_radius);
-
-        gcode_M665();
-
-        tower1_altitude = get_probed_Z_avg(delta_tower[A_AXIS][X_AXIS], delta_tower[A_AXIS][Y_AXIS]);
-        tower2_altitude = get_probed_Z_avg(delta_tower[B_AXIS][X_AXIS], delta_tower[B_AXIS][Y_AXIS]);
-        tower3_altitude = get_probed_Z_avg(delta_tower[C_AXIS][X_AXIS], delta_tower[C_AXIS][Y_AXIS]);
-        center_altitude = get_probed_Z_avg(0.0f, 0.0f);
-
-        SERIAL_ECHOLNPGM("R probed points:");
-        SERIAL_ECHOPGM("  T1: ");
-        SERIAL_ECHOLN(tower1_altitude);
-        SERIAL_ECHOPGM("  T2: ");
-        SERIAL_ECHOLN(tower2_altitude);
-        SERIAL_ECHOPGM("  T3: ");
-        SERIAL_ECHOLN(tower3_altitude);
-        SERIAL_ECHOPGM("   C: ");
-        SERIAL_ECHOLN(center_altitude);
-
-        mean_ref_plan_altitude = (tower1_altitude + tower2_altitude + tower3_altitude) / 3.0f;
-        diff_center_altitude = center_altitude - mean_ref_plan_altitude;
-
-        SERIAL_ECHOPGM("NEW Mean based difference: ");
-        SERIAL_ECHOLN(diff_center_altitude);
-        SERIAL_ECHOPGM("With delta radius: ");
-        SERIAL_ECHOLN(delta_radius);
-      } while (ABS(diff_center_altitude) > 0.05f);
-
-      SERIAL_ECHOPGM("Storing delta radius: ");
-      SERIAL_ECHOLN(delta_radius);
-
-      gcode_M500();
-
-      gcode_G28(false);
-
-      tower1_altitude = get_probed_Z_avg(delta_tower[A_AXIS][X_AXIS], delta_tower[A_AXIS][Y_AXIS]);
-      tower2_altitude = get_probed_Z_avg(delta_tower[B_AXIS][X_AXIS], delta_tower[B_AXIS][Y_AXIS]);
-      tower3_altitude = get_probed_Z_avg(delta_tower[C_AXIS][X_AXIS], delta_tower[C_AXIS][Y_AXIS]);
-      center_altitude = get_probed_Z_avg(0.0f, 0.0f);
-
-      SERIAL_ECHOLNPGM("R probed points:");
-      SERIAL_ECHOPGM("  T1: ");
-      SERIAL_ECHOLN(tower1_altitude);
-      SERIAL_ECHOPGM("  T2: ");
-      SERIAL_ECHOLN(tower2_altitude);
-      SERIAL_ECHOPGM("  T3: ");
-      SERIAL_ECHOLN(tower3_altitude);
-      SERIAL_ECHOPGM("   C: ");
-      SERIAL_ECHOLN(center_altitude);
-
-      mean_ref_plan_altitude = (tower1_altitude + tower2_altitude + tower3_altitude) / 3.0f;
-      diff_center_altitude = center_altitude - mean_ref_plan_altitude;
-
-      SERIAL_ECHOPGM("Mean based difference: ");
-      SERIAL_ECHOLN(diff_center_altitude);
-
-      SERIAL_ECHOPGM("With delta radius: ");
-      SERIAL_ECHOLN(delta_radius);
-
-      delta_height -= diff_center_altitude;
-      gcode_M665();
-
-      SERIAL_ECHOPGM("Adjusted delta height: ");
-      SERIAL_ECHOLN(delta_height);
-
-      delta_endstop_adj[A_AXIS] += tower1_altitude;
-      delta_endstop_adj[B_AXIS] += tower2_altitude;
-      delta_endstop_adj[C_AXIS] += tower3_altitude;
-
-      gcode_M500();
-    #endif // R_L_CORRECTION
-
-    gcode_G28(false);
-
-    #if HAS_LEVELING
-      set_bed_leveling_enabled(leveling_was_active);
-    #endif
-
-    printer_states.activity_state = previous_state;
-  }
-
-#endif // HAS_BED_PROBE
-
 #elif IS_SCARA
 
   /**
@@ -13814,14 +13750,6 @@ void process_parsed_command() {
 
       case 999: gcode_M999(); break;                              // M999: Restart after being Stopped
 
-      default: parser.unknown_command_error();
-    }
-    break;
-
-    case 'D': switch (parser.codenum) {
-      #if ENABLED(DELTA) && HAS_BED_PROBE
-        case 851: gcode_D851(); break;                            // D851: Full Delta calibration
-      #endif
       default: parser.unknown_command_error();
     }
     break;
