@@ -801,9 +801,6 @@ void set_current_from_steppers_for_axis(const AxisEnum axis);
 void report_current_position();
 void report_current_position_detail();
 inline void gcode_M665();
-#if ENABLED(DELTA)
-  float get_probed_Z_avg(const float &rx, const float &ry, const bool fast=false);
-#endif
 
 #if ENABLED(DEBUG_LEVELING_FEATURE)
   void print_xyz(const char* prefix, const char* suffix, const float x, const float y, const float z) {
@@ -6471,6 +6468,48 @@ void home_all_axes() { gcode_G28(true); }
    *
    *   Q   Run a simplified calibration loop (center/tower average)
    */
+  #define G33_Q_AVG_TOLERANCE 0.02f
+
+  inline float g33_q_probe_avg(const float &rx, const float &ry, const bool fast=false) {
+    if (!position_is_reachable_by_probe(rx, ry)) return NAN;
+
+    float z_read[3] = { 0.0f };
+    float z_avg = 0.0f;
+    uint8_t sample_count = 0;
+    bool all_points_are_good = false;
+
+    do {
+      const float measured_z = probe_pt(rx, ry, PROBE_PT_STOW, 0, false);
+      if (isnan(measured_z)) return measured_z;
+
+      z_read[2] = z_read[1];
+      z_read[1] = z_read[0];
+      z_read[0] = measured_z;
+      sample_count = MIN<uint8_t>(sample_count + 1, 3);
+
+      if (fast) {
+        if (sample_count >= 2) {
+          z_avg = (z_read[0] + z_read[1]) * 0.5f;
+          all_points_are_good =
+            ABS(z_read[0] - z_avg) < G33_Q_AVG_TOLERANCE &&
+            ABS(z_read[1] - z_avg) < G33_Q_AVG_TOLERANCE;
+        }
+      }
+      else if (sample_count >= 3) {
+        z_avg = (z_read[0] + z_read[1] + z_read[2]) / 3.0f;
+        all_points_are_good =
+          ABS(z_read[0] - z_avg) < G33_Q_AVG_TOLERANCE &&
+          ABS(z_read[1] - z_avg) < G33_Q_AVG_TOLERANCE &&
+          ABS(z_read[2] - z_avg) < G33_Q_AVG_TOLERANCE;
+      }
+
+      const float raised_z = MIN(current_position[Z_AXIS] + 5.0f, soft_endstop_max[Z_AXIS]);
+      do_blocking_move_to(current_position[X_AXIS], current_position[Y_AXIS], raised_z, homing_feedrate(Z_AXIS));
+    } while (!all_points_are_good);
+
+    return z_avg;
+  }
+
   inline void gcode_G33() {
 
     if (parser.seen('Q')) {
@@ -6487,10 +6526,10 @@ void home_all_axes() { gcode_G28(true); }
       gcode_G28(false);
       feedrate_mm_s = homing_feedrate(Z_AXIS);
 
-      float tower1_altitude = get_probed_Z_avg(delta_tower[A_AXIS][X_AXIS], delta_tower[A_AXIS][Y_AXIS]);
-      float tower2_altitude = get_probed_Z_avg(delta_tower[B_AXIS][X_AXIS], delta_tower[B_AXIS][Y_AXIS]);
-      float tower3_altitude = get_probed_Z_avg(delta_tower[C_AXIS][X_AXIS], delta_tower[C_AXIS][Y_AXIS]);
-      float center_altitude = get_probed_Z_avg(0.0f, 0.0f);
+      float tower1_altitude = g33_q_probe_avg(delta_tower[A_AXIS][X_AXIS], delta_tower[A_AXIS][Y_AXIS]);
+      float tower2_altitude = g33_q_probe_avg(delta_tower[B_AXIS][X_AXIS], delta_tower[B_AXIS][Y_AXIS]);
+      float tower3_altitude = g33_q_probe_avg(delta_tower[C_AXIS][X_AXIS], delta_tower[C_AXIS][Y_AXIS]);
+      float center_altitude = g33_q_probe_avg(0.0f, 0.0f);
 
       delta_endstop_adj[A_AXIS] = tower1_altitude;
       delta_endstop_adj[B_AXIS] = tower2_altitude;
@@ -6513,10 +6552,10 @@ void home_all_axes() { gcode_G28(true); }
 
         gcode_M665();
 
-        tower1_altitude = get_probed_Z_avg(delta_tower[A_AXIS][X_AXIS], delta_tower[A_AXIS][Y_AXIS]);
-        tower2_altitude = get_probed_Z_avg(delta_tower[B_AXIS][X_AXIS], delta_tower[B_AXIS][Y_AXIS]);
-        tower3_altitude = get_probed_Z_avg(delta_tower[C_AXIS][X_AXIS], delta_tower[C_AXIS][Y_AXIS]);
-        center_altitude = get_probed_Z_avg(0.0f, 0.0f);
+        tower1_altitude = g33_q_probe_avg(delta_tower[A_AXIS][X_AXIS], delta_tower[A_AXIS][Y_AXIS]);
+        tower2_altitude = g33_q_probe_avg(delta_tower[B_AXIS][X_AXIS], delta_tower[B_AXIS][Y_AXIS]);
+        tower3_altitude = g33_q_probe_avg(delta_tower[C_AXIS][X_AXIS], delta_tower[C_AXIS][Y_AXIS]);
+        center_altitude = g33_q_probe_avg(0.0f, 0.0f);
 
         SERIAL_ECHOLNPGM("R probed points:");
         SERIAL_ECHOPGM("  T1: ");
