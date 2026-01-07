@@ -867,8 +867,6 @@ extern "C" {
 }
 #endif // !SDSUPPORT
 
-inline void gcode_M500();
-
 #if ENABLED(ONE_LED)
 
   inline void one_led_on() {
@@ -10154,6 +10152,8 @@ inline void gcode_M205() {
   }
 
 #if HAS_BED_PROBE
+
+  inline void gcode_M500();
 
   inline void gcode_D851() {
     const ActivityState previous_state = printer_states.activity_state;
