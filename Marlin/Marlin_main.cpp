@@ -605,6 +605,9 @@ void serial_echopair_P(const char* s_P, double v)        { serialprintPGM(s_P); 
 void serial_echopair_P(const char* s_P, unsigned long v) { serialprintPGM(s_P); SERIAL_ECHO(v); }
 
 void gcode_M114();
+#if ENABLED(DELTA) && HAS_BED_PROBE
+  inline void gcode_D851();
+#endif
 
 #if ENABLED(DEBUG_LEVELING_FEATURE)
   void print_xyz(const char* prefix, const float x, const float y, const float z) {
