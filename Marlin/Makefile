@@ -37,7 +37,7 @@
 # from the commandline with "make HARDWARE_MOTHERBOARD=71" for example
 
 # This defined the board you are compiling for (see boards.h for the options)
-HARDWARE_MOTHERBOARD ?= 11
+HARDWARE_MOTHERBOARD ?= 40
 
 # Arduino source install directory, and version number
 # On most linuxes this will be /usr/share/arduino
@@ -88,7 +88,7 @@ HARDWARE_VARIANT ?= Gen7
 MCU              ?= atmega1284p
 F_CPU            ?= 20000000
 
-#RAMPS
+#RAMPS / Mega 2560-based boards
 else ifeq  ($(HARDWARE_MOTHERBOARD),3)
 HARDWARE_VARIANT ?= arduino
 MCU              ?= atmega2560
@@ -120,6 +120,9 @@ else ifeq  ($(HARDWARE_MOTHERBOARD),46)
 HARDWARE_VARIANT ?= arduino
 MCU              ?= atmega2560
 else ifeq  ($(HARDWARE_MOTHERBOARD),48)
+HARDWARE_VARIANT ?= arduino
+MCU              ?= atmega2560
+else ifeq  ($(HARDWARE_MOTHERBOARD),40)
 HARDWARE_VARIANT ?= arduino
 MCU              ?= atmega2560
 
@@ -324,6 +327,12 @@ OPT = s
 
 DEFINES ?=
 
+# Enable link-time optimization to reduce flash usage.
+LTO ?= 1
+ifeq ($(LTO),1)
+LTO_FLAGS = -flto -fuse-linker-plugin
+endif
+
 # Program settings
 CC = $(AVR_TOOLS_PATH)avr-gcc
 CXX = $(AVR_TOOLS_PATH)avr-g++
@@ -367,10 +376,10 @@ endif
 #CEXTRA = -Wa,-adhlns=$(<:.c=.lst)
 CEXTRA = -fno-use-cxa-atexit
 
-CFLAGS := $(CDEBUG) $(CDEFS) $(CINCS) -O$(OPT) $(CWARN) $(CEXTRA) $(CTUNING)
-CXXFLAGS :=         $(CDEFS) $(CINCS) -O$(OPT) -Wall    $(CEXTRA) $(CTUNING)
+CFLAGS := $(CDEBUG) $(CDEFS) $(CINCS) -O$(OPT) $(CWARN) $(CEXTRA) $(CTUNING) $(LTO_FLAGS)
+CXXFLAGS :=         $(CDEFS) $(CINCS) -O$(OPT) -Wall    $(CEXTRA) $(CTUNING) $(LTO_FLAGS)
 #ASFLAGS = -Wa,-adhlns=$(<:.S=.lst),-gstabs
-LDFLAGS = -lm
+LDFLAGS = -lm $(LTO_FLAGS)
 
 
 # Programming support using avrdude. Settings and variables.
