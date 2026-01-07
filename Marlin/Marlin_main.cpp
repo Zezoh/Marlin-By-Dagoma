@@ -258,16 +258,25 @@
   TWIBus i2c;
 #endif
 
+// --------------------------------------------------------------------------
+// Global runtime state
+// --------------------------------------------------------------------------
 bool Running = true;
 
 uint8_t marlin_debug_flags = DEBUG_NONE;
 
+// --------------------------------------------------------------------------
+// Motion state
+// --------------------------------------------------------------------------
 static float feedrate = 1500.0, saved_feedrate;
 float current_position[NUM_AXIS] = { 0.0 };
 static float destination[NUM_AXIS] = { 0.0 };
 bool axis_known_position[3] = { false };
 bool axis_homed[3] = { false };
 
+// --------------------------------------------------------------------------
+// GCode tracking and command queue
+// --------------------------------------------------------------------------
 static long gcode_N, gcode_LastN, Stopped_gcode_LastN = 0;
 
 static char* current_command, *current_command_args;
@@ -276,6 +285,9 @@ static int cmd_queue_index_w = 0;
 static int commands_in_queue = 0;
 static char command_queue[BUFSIZE][MAX_CMD_SIZE];
 
+// --------------------------------------------------------------------------
+// Feedrate and extrusion settings
+// --------------------------------------------------------------------------
 const float homing_feedrate[] = HOMING_FEEDRATE;
 bool axis_relative_modes[] = AXIS_RELATIVE_MODES;
 int feedrate_multiplier = 100; //100->1 200->2
@@ -285,6 +297,9 @@ bool volumetric_enabled = false;
 float filament_size[EXTRUDERS] = ARRAY_BY_EXTRUDERS1(DEFAULT_NOMINAL_FILAMENT_DIA);
 float volumetric_multiplier[EXTRUDERS] = ARRAY_BY_EXTRUDERS1(1.0);
 
+// --------------------------------------------------------------------------
+// Position offsets and endstops
+// --------------------------------------------------------------------------
 // The distance that XYZ has been offset by G92. Reset by G28.
 float position_shift[3] = { 0 };
 
@@ -296,6 +311,9 @@ float home_offset[3] = { 0 };
 float sw_endstop_min[3] = { X_MIN_POS, Y_MIN_POS, Z_MIN_POS };
 float sw_endstop_max[3] = { X_MAX_POS, Y_MAX_POS, Z_MAX_POS };
 
+// --------------------------------------------------------------------------
+// I/O state
+// --------------------------------------------------------------------------
 #if FAN_COUNT > 0
   int fanSpeeds[FAN_COUNT] = { 0 };
 #endif
@@ -311,6 +329,9 @@ static bool enable_filrunout2 = true;
 
 bool cancel_heatup = false;
 
+// --------------------------------------------------------------------------
+// Serial and messaging helpers
+// --------------------------------------------------------------------------
 const char errormagic[] PROGMEM = "Error:";
 const char echomagic[] PROGMEM = "echo:";
 const char axis_codes[NUM_AXIS] = {'X', 'Y', 'Z', 'E'};
