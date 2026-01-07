@@ -6816,7 +6816,7 @@ inline void gcode_M503() {
 
     void manage_long_press_filament_expulsion() {
       if ( !printer_states.pause_asked ) {
-        if (one_button_state) {
+        if (ONE_BUTTON_PRESSED) {
           millis_t now = millis();
           if (long_press_timeout == 0UL) {
             long_press_timeout = now + LONG_PRESS_TIMEOUT;
@@ -10070,6 +10070,17 @@ void disable_all_steppers() {
   bool notify_warning = false;
   millis_t notify_warning_timeout = 0;
   unsigned long led_refresh_rate_speed = 150UL;
+
+  inline void set_notify_warning() {
+    notify_warning = true;
+    notify_warning_timeout = millis() + 2000UL;
+  }
+
+  inline void set_notify_not_calibrated() {
+    notify_warning = true;
+    notify_warning_timeout = millis() + 10000UL;
+    led_refresh_rate_speed = 50UL;
+  }
 
   inline void manage_one_led() {
     millis_t now = millis();

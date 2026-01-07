@@ -92,20 +92,6 @@
 #define PIN_EXISTS(PN) (defined(PN ##_PIN) && PN ##_PIN >= 0)
 
 // --------------------------------------------------------------------------
-// LED helpers
-// --------------------------------------------------------------------------
-#define set_notify_warning() do { \
-  notify_warning = true; \
-  notify_warning_timeout = millis() + 2000UL; \
-} while(0)
-
-#define set_notify_not_calibrated() do { \
-  notify_warning = true; \
-  notify_warning_timeout = millis() + 10000UL; \
-  led_refresh_rate_speed = 50UL; \
-} while(0)
-
-// --------------------------------------------------------------------------
 // Time helpers
 // --------------------------------------------------------------------------
 #define PENDING(NOW,SOON) ((long)(NOW-(SOON))<0)
