@@ -860,9 +860,6 @@ void servo_init() {
     digitalWrite( ONE_LED_PIN, false ^ ONE_LED_INVERTING );
   }
 
-  // Pre-declaration
-  inline void set_notify_warning();
-  inline void set_notify_not_calibrated();
 #endif
 
 #if HAS_DELTA_EXTRA && ENABLED(Z_MIN_MAGIC)
@@ -10052,17 +10049,6 @@ void disable_all_steppers() {
   bool notify_warning = false;
   millis_t notify_warning_timeout = 0;
   unsigned long led_refresh_rate_speed = 150UL;
-
-  #define set_notify_warning() do { \
-    notify_warning = true; \
-    notify_warning_timeout = millis() + 2000UL; \
-  } while(0)
-
-  #define set_notify_not_calibrated() do { \
-    notify_warning = true; \
-    notify_warning_timeout = millis() + 10000UL; \
-    led_refresh_rate_speed = 50UL; \
-  } while(0)
 
   inline void manage_one_led() {
     millis_t now = millis();
