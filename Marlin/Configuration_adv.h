@@ -642,6 +642,14 @@
 
 #include "Conditionals.h"
 #include "SanityCheck.h"
-#include "Configuration_post.h"
+// Default material settings
+#undef DEFAULT_NOMINAL_FILAMENT_DIA
+#define DEFAULT_NOMINAL_FILAMENT_DIA 1.75
+
+// Thermal tuning
+#undef TEMP_WINDOW
+#define TEMP_WINDOW 3
+#undef TEMP_BED_WINDOW
+#define TEMP_BED_WINDOW 3
 
 #endif //CONFIGURATION_ADV_H

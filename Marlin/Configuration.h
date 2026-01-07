@@ -40,7 +40,9 @@
 
 #include "boards.h"
 #include "macros.h"
-#include "Configuration_pre.h"
+// EEPROM and storage defaults
+#define EEPROM_SETTINGS
+#define SDSUPPORT
 //===========================================================================
 //====================== Dagoma Custom Feature Flags ========================
 //===========================================================================
