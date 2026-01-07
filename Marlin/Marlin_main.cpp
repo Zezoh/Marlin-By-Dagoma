@@ -3854,11 +3854,19 @@ inline void gcode_G28() {
         probe_plan[i][2] = 42.0;
       }
 
+      // Lift before the first XY move to avoid scraping the bed
+      set_destination_to_current();
+      feedrate = homing_feedrate[Z_AXIS];
+      destination[Z_AXIS] = current_position[Z_AXIS] + Z_RAISE_BEFORE_PROBING;
+      prepare_move();
+      st_synchronize();
+
       // Probing
       for(i=0; i<PROBE_POINT_NUMBER; i++) {
         destination[ X_AXIS ] = probe_plan[i][0];
         destination[ Y_AXIS ] = probe_plan[i][1];
-        destination[ Z_AXIS ] = i ? current_position[Z_AXIS] : current_position[Z_AXIS] + Z_RAISE_BEFORE_PROBING;
+        destination[ Z_AXIS ] = current_position[Z_AXIS];
+        feedrate = homing_feedrate[ X_AXIS ];
         prepare_move();
         st_synchronize();
         probe_plan[i][2] = get_probed_Z_avg();
