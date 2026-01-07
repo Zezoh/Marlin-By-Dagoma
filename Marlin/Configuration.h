@@ -40,14 +40,30 @@
 
 #include "boards.h"
 #include "macros.h"
-#include "Configuration_pre.h"
+// EEPROM and storage defaults
+#define EEPROM_SETTINGS
+#define SDSUPPORT
 //===========================================================================
 //====================== Dagoma Custom Feature Flags ========================
 //===========================================================================
 
-// Filament change and automation tuning
+// --------------------------------------------------------------------------
+// Filament change parameters
+// --------------------------------------------------------------------------
+// Single extruder defaults
 #define FILAMENTCHANGE_INSERTION_SCRIPT "M600 I1 U-55 X55 Y-92 W200 Z200"
 #define FILAMENTCHANGE_EXTRACTION_SCRIPT "M600 I-1 U-55 X55 Y-92 W200 Z200"
+#define FILAMENT_RUNOUT_SCRIPT "M600 U-55 X55 Y-92 Z60"
+
+// Optional dual-extruder scripts (enable by setting EXTRUDERS > 1)
+#if EXTRUDERS > 1
+  #define FILAMENT2CHANGE_INSERTION_SCRIPT "M600 T1 I1 U-55 X55 Y-92 W200 Z200"
+  #define FILAMENT2CHANGE_EXTRACTION_SCRIPT "M600 T1 I-1 U-55 X55 Y-92 W200 Z200"
+  #define FILAMENTSCHANGE_EXTRACTION_SCRIPT "M600 B I-1 U-55 X55 Y-92 W200 Z200"
+  #define FILAMENT2_RUNOUT_SCRIPT "M600 T1 U-55 X55 Y-92 Z60"
+#endif
+
+// Motion and temperature tuning
 #define FILAMENT_CHANGE_E_FEEDRATE 66
 #define FILAMENTCHANGE_TEMPERATURE 200
 #define FILAMENTCHANGE_Z_HOP_MM 10.0
@@ -71,7 +87,9 @@
 #define SECOND_EXTRUDE_BEFORE_EJECTION 1.5
 #define SECOND_RETRACT_BEFORE_EJECTION 50
 
+// --------------------------------------------------------------------------
 // Pause and UI inputs
+// --------------------------------------------------------------------------
 #define ONE_BUTTON
 #define ONE_BUTTON_INVERTING true
 #define SUMMON_PRINT_PAUSE
@@ -80,25 +98,35 @@
 #define LONG_PRESS_SUPPORT
 #define QUICK_PAUSE_TIMEOUT 2000
 
+// --------------------------------------------------------------------------
 // Status LED
+// --------------------------------------------------------------------------
 #define ONE_LED
 #define ONE_LED_PIN 65
 #define ONE_LED_INVERTING true
 
+// --------------------------------------------------------------------------
 // Delta-specific extras
+// --------------------------------------------------------------------------
 #define DELTA_EXTRA
 #define Z_MIN_MAGIC
 #define Z_MAGIC_THRESHOLD -15
 
+// --------------------------------------------------------------------------
 // Heating safety
+// --------------------------------------------------------------------------
 #define HEATING_STOP
 #define HEATING_STOP_TIME 600000UL
 
+// --------------------------------------------------------------------------
 // Emergency stop behavior
+// --------------------------------------------------------------------------
 #define EMERGENCY_STOP
 #define EMERGENCY_STOP_Z_MOVE
 
+// --------------------------------------------------------------------------
 // Mono fan settings
+// --------------------------------------------------------------------------
 #define IS_MONO_FAN
 #define MONO_FAN_MIN_TEMP 50.0
 #define MONO_FAN_MIN_PWM 180
@@ -622,7 +650,6 @@ const bool Z_MIN_PROBE_ENDSTOP_INVERTING = true; // set to true to invert the lo
 #if ENABLED(FILAMENT_RUNOUT_SENSOR)
   const bool FIL_RUNOUT_INVERTING = true;
   #define ENDSTOPPULLUP_FIL_RUNOUT // Uncomment to use internal pullup for filament runout pins if the sensor is defined.
-  #define FILAMENT_RUNOUT_SCRIPT "M600 U-55 X55 Y-92 Z60"
 #endif
 
 //===========================================================================

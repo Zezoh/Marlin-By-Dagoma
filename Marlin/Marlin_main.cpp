@@ -77,10 +77,6 @@
   #include <SPI.h>
 #endif
 
-#if ENABLED(DAC_STEPPER_CURRENT)
-  #include "stepper_dac.h"
-#endif
-
 #if ENABLED(EXPERIMENTAL_I2CBUS)
   #include "twibus.h"
 #endif
@@ -217,9 +213,7 @@
  *   M665    - Set delta configuration (DELTA)
  *   M666    - Set delta/dual endstop adjustment (DELTA or Z_DUAL_ENDSTOPS)
  *   M907    - Set digital trimpot motor current
- *   M908    - Control digital trimpot (HAS_DIGIPOTSS or DAC_STEPPER_CURRENT)
- *   M909    - Report digipot/DAC current (DAC_STEPPER_CURRENT)
- *   M910    - Commit digipot/DAC value (DAC_STEPPER_CURRENT)
+ *   M908    - Control digital trimpot (HAS_DIGIPOTSS)
  *   M928    - Start SD write (SDSUPPORT)
  *   M999    - Restart after being stopped
  *   M<custom> - Set Z probe offset (CUSTOM_M_CODE_SET_Z_PROBE_OFFSET)
@@ -258,16 +252,25 @@
   TWIBus i2c;
 #endif
 
+// --------------------------------------------------------------------------
+// Global runtime state
+// --------------------------------------------------------------------------
 bool Running = true;
 
 uint8_t marlin_debug_flags = DEBUG_NONE;
 
+// --------------------------------------------------------------------------
+// Motion state
+// --------------------------------------------------------------------------
 static float feedrate = 1500.0, saved_feedrate;
 float current_position[NUM_AXIS] = { 0.0 };
 static float destination[NUM_AXIS] = { 0.0 };
 bool axis_known_position[3] = { false };
 bool axis_homed[3] = { false };
 
+// --------------------------------------------------------------------------
+// GCode tracking and command queue
+// --------------------------------------------------------------------------
 static long gcode_N, gcode_LastN, Stopped_gcode_LastN = 0;
 
 static char* current_command, *current_command_args;
@@ -276,6 +279,9 @@ static int cmd_queue_index_w = 0;
 static int commands_in_queue = 0;
 static char command_queue[BUFSIZE][MAX_CMD_SIZE];
 
+// --------------------------------------------------------------------------
+// Feedrate and extrusion settings
+// --------------------------------------------------------------------------
 const float homing_feedrate[] = HOMING_FEEDRATE;
 bool axis_relative_modes[] = AXIS_RELATIVE_MODES;
 int feedrate_multiplier = 100; //100->1 200->2
@@ -285,6 +291,9 @@ bool volumetric_enabled = false;
 float filament_size[EXTRUDERS] = ARRAY_BY_EXTRUDERS1(DEFAULT_NOMINAL_FILAMENT_DIA);
 float volumetric_multiplier[EXTRUDERS] = ARRAY_BY_EXTRUDERS1(1.0);
 
+// --------------------------------------------------------------------------
+// Position offsets and endstops
+// --------------------------------------------------------------------------
 // The distance that XYZ has been offset by G92. Reset by G28.
 float position_shift[3] = { 0 };
 
@@ -296,6 +305,9 @@ float home_offset[3] = { 0 };
 float sw_endstop_min[3] = { X_MIN_POS, Y_MIN_POS, Z_MIN_POS };
 float sw_endstop_max[3] = { X_MAX_POS, Y_MAX_POS, Z_MAX_POS };
 
+// --------------------------------------------------------------------------
+// I/O state
+// --------------------------------------------------------------------------
 #if FAN_COUNT > 0
   int fanSpeeds[FAN_COUNT] = { 0 };
 #endif
@@ -311,6 +323,9 @@ static bool enable_filrunout2 = true;
 
 bool cancel_heatup = false;
 
+// --------------------------------------------------------------------------
+// Serial and messaging helpers
+// --------------------------------------------------------------------------
 const char errormagic[] PROGMEM = "Error:";
 const char echomagic[] PROGMEM = "echo:";
 const char axis_codes[NUM_AXIS] = {'X', 'Y', 'Z', 'E'};
@@ -860,9 +875,12 @@ void servo_init() {
     digitalWrite( ONE_LED_PIN, false ^ ONE_LED_INVERTING );
   }
 
-  // Pre-declaration
   inline void set_notify_warning();
   inline void set_notify_not_calibrated();
+
+#else
+  inline void set_notify_warning() {}
+  inline void set_notify_not_calibrated() {}
 #endif
 
 #if HAS_DELTA_EXTRA && ENABLED(Z_MIN_MAGIC)
@@ -977,16 +995,6 @@ void setup() {
 
   #if ENABLED(DIGIPOT_I2C)
     digipot_i2c_init();
-  #endif
-
-  #if ENABLED(DAC_STEPPER_CURRENT)
-    dac_init();
-
-    //TODO: Store these values to eeprom
-    dac_current_raw(0, 1200);
-    dac_current_raw(1, 1200);
-    dac_current_raw(2, 900);
-    dac_current_raw(3, 1200);
   #endif
 
   #if ENABLED(Z_PROBE_SLED)
@@ -3846,11 +3854,19 @@ inline void gcode_G28() {
         probe_plan[i][2] = 42.0;
       }
 
+      // Lift before the first XY move to avoid scraping the bed
+      set_destination_to_current();
+      feedrate = homing_feedrate[Z_AXIS];
+      destination[Z_AXIS] = current_position[Z_AXIS] + Z_RAISE_BEFORE_PROBING;
+      prepare_move();
+      st_synchronize();
+
       // Probing
       for(i=0; i<PROBE_POINT_NUMBER; i++) {
         destination[ X_AXIS ] = probe_plan[i][0];
         destination[ Y_AXIS ] = probe_plan[i][1];
-        destination[ Z_AXIS ] = i ? current_position[Z_AXIS] : current_position[Z_AXIS] + Z_RAISE_BEFORE_PROBING;
+        destination[ Z_AXIS ] = current_position[Z_AXIS];
+        feedrate = homing_feedrate[ X_AXIS ];
         prepare_move();
         st_synchronize();
         probe_plan[i][2] = get_probed_Z_avg();
@@ -6807,6 +6823,7 @@ inline void gcode_M503() {
             SERIAL_ECHOLNPGM("Pause : Asked by long press");
             printer_states.pause_asked = true;
             printer_states.print_asked = false;
+            long_press_timeout = 0UL;
 
             if (!printer_states.homed) {
               #if DISABLED(DELTA)
@@ -7119,6 +7136,13 @@ inline void gcode_M503() {
     bool exit_pause_asked = false;
     bool can_exit_pause = false;
     bool need_to_go_first = true;
+    bool wait_for_button_release = false;
+
+    #if ENABLED(ONE_BUTTON)
+      if (pin_number == ONE_BUTTON_PIN && pin_number > -1) {
+        wait_for_button_release = (digitalRead(pin_number) == target);
+      }
+    #endif
 
     //
     // PAUSE LOOPs
@@ -7612,31 +7636,38 @@ inline void gcode_M503() {
 
       //
       // 'Listen' for exit actions
-      if (pin_number != -1 && digitalRead(pin_number) == target) {
-        #if ENABLED(LONG_PRESS_SUPPORT)
-          long_press_timeout = now + LONG_PRESS_TIMEOUT;
-          do {
-            delay(100);
-            #if ENABLED(FILAMENTCHANGEENABLE)
-              idle(true);
-            #else
-              idle();
-            #endif
-            now = millis();
-          } while( digitalRead(pin_number) == target && PENDING(now, long_press_timeout) );
-          if ( digitalRead(pin_number) == target && ELAPSED(now, long_press_timeout) ) {
-            SERIAL_ECHOLNPGM( "pause: long press detected" );
-            filament_direction = FILAMENT_NEED_TO_BE_EXPULSED;
-            RESCHEDULE_HOTEND_AUTO_SHUTDOWN;
+      if (pin_number != -1) {
+        if (wait_for_button_release) {
+          if (digitalRead(pin_number) != target) {
+            wait_for_button_release = false;
           }
-          else {
+        }
+        else if (digitalRead(pin_number) == target) {
+          #if ENABLED(LONG_PRESS_SUPPORT)
+            long_press_timeout = now + LONG_PRESS_TIMEOUT;
+            do {
+              delay(100);
+              #if ENABLED(FILAMENTCHANGEENABLE)
+                idle(true);
+              #else
+                idle();
+              #endif
+              now = millis();
+            } while( digitalRead(pin_number) == target && PENDING(now, long_press_timeout) );
+            if ( digitalRead(pin_number) == target && ELAPSED(now, long_press_timeout) ) {
+              SERIAL_ECHOLNPGM( "pause: long press detected" );
+              filament_direction = FILAMENT_NEED_TO_BE_EXPULSED;
+              RESCHEDULE_HOTEND_AUTO_SHUTDOWN;
+            }
+            else {
+              SERIAL_ECHOLNPGM("pause: button pushed");
+              exit_pause_asked = true;
+            }
+          #else
             SERIAL_ECHOLNPGM("pause: button pushed");
             exit_pause_asked = true;
-          }
-        #else
-          SERIAL_ECHOLNPGM("pause: button pushed");
-          exit_pause_asked = true;
-        #endif
+          #endif
+        }
       }
 
       // Detemines if we can really exit
@@ -7900,16 +7931,9 @@ inline void gcode_M907() {
     // for each additional extruder (named B,C,D,E..., channels 4,5,6,7...)
     for (int i = NUM_AXIS; i < DIGIPOT_I2C_NUM_CHANNELS; i++) if (code_seen('B' + i - (NUM_AXIS))) digipot_i2c_set_current(i, code_value());
   #endif
-  #if ENABLED(DAC_STEPPER_CURRENT)
-    if (code_seen('S')) {
-      float dac_percent = code_value();
-      for (uint8_t i = 0; i <= 4; i++) dac_current_percent(i, dac_percent);
-    }
-    for (uint8_t i = 0; i < NUM_AXIS; i++) if (code_seen(axis_codes[i])) dac_current_percent(i, code_value());
-  #endif
 }
 
-#if HAS_DIGIPOTSS || ENABLED(DAC_STEPPER_CURRENT)
+#if HAS_DIGIPOTSS
 
   /**
    * M908: Control digital trimpot directly (M908 P<pin> S<current>)
@@ -7921,23 +7945,9 @@ inline void gcode_M907() {
         code_seen('S') ? code_value() : 0
       );
     #endif
-    #ifdef DAC_STEPPER_CURRENT
-      dac_current_raw(
-        code_seen('P') ? code_value_long() : -1,
-        code_seen('S') ? code_value_short() : 0
-      );
-    #endif
   }
 
-  #if ENABLED(DAC_STEPPER_CURRENT) // As with Printrbot RevF
-
-    inline void gcode_M909() { dac_print_values(); }
-
-    inline void gcode_M910() { dac_commit_eeprom(); }
-
-  #endif
-
-#endif // HAS_DIGIPOTSS || DAC_STEPPER_CURRENT
+#endif // HAS_DIGIPOTSS
 
 #if HAS_MICROSTEPS
 
@@ -9177,25 +9187,13 @@ void process_next_command() {
         gcode_M907();
         break;
 
-      #if HAS_DIGIPOTSS || ENABLED(DAC_STEPPER_CURRENT)
+      #if HAS_DIGIPOTSS
 
         case 908: // M908 Control digital trimpot directly.
           gcode_M908();
           break;
 
-        #if ENABLED(DAC_STEPPER_CURRENT) // As with Printrbot RevF
-
-          case 909: // M909 Print digipot/DAC current value
-            gcode_M909();
-            break;
-
-          case 910: // M910 Commit digipot/DAC value to external EEPROM
-            gcode_M910();
-            break;
-
-        #endif
-
-      #endif // HAS_DIGIPOTSS || DAC_STEPPER_CURRENT
+      #endif // HAS_DIGIPOTSS
 
       #if HAS_MICROSTEPS
 
@@ -10012,12 +10010,21 @@ void disable_all_steppers() {
   disable_e3();
 }
 
-#if ENABLED(ONE_BUTTON)
+#if ENABLED(ONE_BUTTON) || HAS_SUMMON_PRINT_PAUSE
 
   millis_t next_one_button_check = 0;
-  bool print_asked = false;
-  bool asked_to_pause = false;
   millis_t has_to_print_timeout = 0;
+  bool one_button_state = false;
+  bool one_button_state_prev = false;
+
+  inline void update_one_button_state() {
+    one_button_state_prev = one_button_state;
+    one_button_state = ONE_BUTTON_PRESSED;
+  }
+
+  inline bool one_button_just_pressed() {
+    return one_button_state && !one_button_state_prev;
+  }
 
 #endif
 
@@ -10046,23 +10053,13 @@ void disable_all_steppers() {
 
     state_blink = ( state_blink + 1 ) % 10;
     next_one_led_tick = now + led_refresh_rate_speed;
+    bool led_on = false;
 
     if ( printer_states.activity_state == ACTIVITY_STARTUP_CALIBRATION ) {
-      switch( state_blink ) {
-        case 0:
-          one_led_on();
-          break;
-        default:
-          one_led_off();
-      }
+      led_on = (state_blink == 0);
     }
-    #if ENABLED( ONE_BUTTON )
-    else if ( printer_states.print_asked ) {
-      one_led_on();
-    }
-    #endif
     else if ( notify_warning ) {
-      state_blink % 2 ? one_led_on() : one_led_off();
+      led_on = (state_blink % 2);
       if ( ELAPSED(now, notify_warning_timeout) ) {
         notify_warning = false;
         led_refresh_rate_speed = 150UL;
@@ -10072,25 +10069,18 @@ void disable_all_steppers() {
          printer_states.activity_state == ACTIVITY_PAUSED
       || printer_states.pause_asked
     ) {
-      switch( state_blink ) {
-        case 0:
-        case 2:
-          one_led_on();
-          break;
-        default:
-          one_led_off();
-      }
+      led_on = (state_blink == 0 || state_blink == 2);
     }
-    else {
-      if (
-        printer_states.activity_state == ACTIVITY_PRINTING
-      ) {
-        one_led_on();
-      }
-      else {
-        one_led_off();
-      }
+    #if ENABLED( ONE_BUTTON )
+    else if ( printer_states.print_asked ) {
+      led_on = true;
     }
+    #endif
+    else if ( printer_states.activity_state == ACTIVITY_PRINTING ) {
+      led_on = true;
+    }
+
+    led_on ? one_led_on() : one_led_off();
   }
 #endif
 
@@ -10100,7 +10090,7 @@ void disable_all_steppers() {
     // PAUSE PUSHED
     if (
       !printer_states.pause_asked
-      && ONE_BUTTON_PRESSED
+      && one_button_just_pressed()
     ) {
       SERIAL_ECHOLNPGM("Pause : Summoned by user bouton press");
       printer_states.pause_asked = true;
@@ -10356,6 +10346,10 @@ inline void manage_printer_states() {
 
   #if HAS_ONE_LED
     manage_one_led();
+  #endif
+
+  #if ENABLED(ONE_BUTTON) || HAS_SUMMON_PRINT_PAUSE
+    update_one_button_state();
   #endif
 
   printer_states.homed = axis_homed[X_AXIS] && axis_homed[Y_AXIS] && axis_homed[Z_AXIS];
