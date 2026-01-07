@@ -881,6 +881,12 @@ void servo_init() {
     digitalWrite( ONE_LED_PIN, false ^ ONE_LED_INVERTING );
   }
 
+  inline void set_notify_warning();
+  inline void set_notify_not_calibrated();
+
+#else
+  inline void set_notify_warning() {}
+  inline void set_notify_not_calibrated() {}
 #endif
 
 #if HAS_DELTA_EXTRA && ENABLED(Z_MIN_MAGIC)
