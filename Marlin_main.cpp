@@ -867,6 +867,8 @@ extern "C" {
 }
 #endif // !SDSUPPORT
 
+inline void gcode_M500();
+
 #if ENABLED(ONE_LED)
 
   inline void one_led_on() {
