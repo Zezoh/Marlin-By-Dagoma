@@ -77,10 +77,6 @@
   #include <SPI.h>
 #endif
 
-#if ENABLED(DAC_STEPPER_CURRENT)
-  #include "stepper_dac.h"
-#endif
-
 #if ENABLED(EXPERIMENTAL_I2CBUS)
   #include "twibus.h"
 #endif
@@ -217,9 +213,7 @@
  *   M665    - Set delta configuration (DELTA)
  *   M666    - Set delta/dual endstop adjustment (DELTA or Z_DUAL_ENDSTOPS)
  *   M907    - Set digital trimpot motor current
- *   M908    - Control digital trimpot (HAS_DIGIPOTSS or DAC_STEPPER_CURRENT)
- *   M909    - Report digipot/DAC current (DAC_STEPPER_CURRENT)
- *   M910    - Commit digipot/DAC value (DAC_STEPPER_CURRENT)
+ *   M908    - Control digital trimpot (HAS_DIGIPOTSS)
  *   M928    - Start SD write (SDSUPPORT)
  *   M999    - Restart after being stopped
  *   M<custom> - Set Z probe offset (CUSTOM_M_CODE_SET_Z_PROBE_OFFSET)
@@ -1001,16 +995,6 @@ void setup() {
 
   #if ENABLED(DIGIPOT_I2C)
     digipot_i2c_init();
-  #endif
-
-  #if ENABLED(DAC_STEPPER_CURRENT)
-    dac_init();
-
-    //TODO: Store these values to eeprom
-    dac_current_raw(0, 1200);
-    dac_current_raw(1, 1200);
-    dac_current_raw(2, 900);
-    dac_current_raw(3, 1200);
   #endif
 
   #if ENABLED(Z_PROBE_SLED)
@@ -7939,16 +7923,9 @@ inline void gcode_M907() {
     // for each additional extruder (named B,C,D,E..., channels 4,5,6,7...)
     for (int i = NUM_AXIS; i < DIGIPOT_I2C_NUM_CHANNELS; i++) if (code_seen('B' + i - (NUM_AXIS))) digipot_i2c_set_current(i, code_value());
   #endif
-  #if ENABLED(DAC_STEPPER_CURRENT)
-    if (code_seen('S')) {
-      float dac_percent = code_value();
-      for (uint8_t i = 0; i <= 4; i++) dac_current_percent(i, dac_percent);
-    }
-    for (uint8_t i = 0; i < NUM_AXIS; i++) if (code_seen(axis_codes[i])) dac_current_percent(i, code_value());
-  #endif
 }
 
-#if HAS_DIGIPOTSS || ENABLED(DAC_STEPPER_CURRENT)
+#if HAS_DIGIPOTSS
 
   /**
    * M908: Control digital trimpot directly (M908 P<pin> S<current>)
@@ -7960,23 +7937,9 @@ inline void gcode_M907() {
         code_seen('S') ? code_value() : 0
       );
     #endif
-    #ifdef DAC_STEPPER_CURRENT
-      dac_current_raw(
-        code_seen('P') ? code_value_long() : -1,
-        code_seen('S') ? code_value_short() : 0
-      );
-    #endif
   }
 
-  #if ENABLED(DAC_STEPPER_CURRENT) // As with Printrbot RevF
-
-    inline void gcode_M909() { dac_print_values(); }
-
-    inline void gcode_M910() { dac_commit_eeprom(); }
-
-  #endif
-
-#endif // HAS_DIGIPOTSS || DAC_STEPPER_CURRENT
+#endif // HAS_DIGIPOTSS
 
 #if HAS_MICROSTEPS
 
@@ -9216,25 +9179,13 @@ void process_next_command() {
         gcode_M907();
         break;
 
-      #if HAS_DIGIPOTSS || ENABLED(DAC_STEPPER_CURRENT)
+      #if HAS_DIGIPOTSS
 
         case 908: // M908 Control digital trimpot directly.
           gcode_M908();
           break;
 
-        #if ENABLED(DAC_STEPPER_CURRENT) // As with Printrbot RevF
-
-          case 909: // M909 Print digipot/DAC current value
-            gcode_M909();
-            break;
-
-          case 910: // M910 Commit digipot/DAC value to external EEPROM
-            gcode_M910();
-            break;
-
-        #endif
-
-      #endif // HAS_DIGIPOTSS || DAC_STEPPER_CURRENT
+      #endif // HAS_DIGIPOTSS
 
       #if HAS_MICROSTEPS
 
