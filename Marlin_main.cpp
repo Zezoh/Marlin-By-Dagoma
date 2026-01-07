@@ -800,6 +800,7 @@ void set_current_from_steppers_for_axis(const AxisEnum axis);
 
 void report_current_position();
 void report_current_position_detail();
+inline void gcode_M665();
 
 #if ENABLED(DEBUG_LEVELING_FEATURE)
   void print_xyz(const char* prefix, const char* suffix, const float x, const float y, const float z) {
