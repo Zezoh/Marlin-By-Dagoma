@@ -3246,8 +3246,8 @@ inline void gcode_G28() {
     ;
     line_to_current_position();
 
-    current_position[X_AXIS] = x;
-    current_position[Y_AXIS] = y;
+    current_position[X_AXIS] = x + home_offset[X_AXIS];
+    current_position[Y_AXIS] = y + home_offset[Y_AXIS];
     line_to_current_position();
 
     #if MIN_Z_HEIGHT_FOR_HOMING > 0
