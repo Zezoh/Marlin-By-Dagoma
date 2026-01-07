@@ -10273,6 +10273,12 @@ inline void gcode_M205() {
       SERIAL_ECHOPGM("With delta radius: ");
       SERIAL_ECHOLN(delta_radius);
 
+      delta_height -= diff_center_altitude;
+      gcode_M665();
+
+      SERIAL_ECHOPGM("Adjusted delta height: ");
+      SERIAL_ECHOLN(delta_height);
+
       delta_endstop_adj[A_AXIS] += tower1_altitude;
       delta_endstop_adj[B_AXIS] += tower2_altitude;
       delta_endstop_adj[C_AXIS] += tower3_altitude;
