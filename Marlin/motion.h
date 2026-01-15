@@ -452,7 +452,7 @@ typedef struct {
     #define X2_ENABLE_INIT ((void)0)
 
     #undef X2_ENABLE_WRITE
-    #define X2_ENABLE_WRITE(STATE) (if(STATE) stepperX2.Step_Clock(stepperX2.getStatus() & STATUS_HIZ); else stepperX2.softFree();)
+    #define X2_ENABLE_WRITE(STATE) {if(STATE) stepperX2.Step_Clock(stepperX2.getStatus() & STATUS_HIZ); else stepperX2.softFree();}
 
     #undef X2_ENABLE_READ
     #define X2_ENABLE_READ (stepperX2.getStatus() & STATUS_HIZ)
@@ -472,7 +472,7 @@ typedef struct {
     #define Y_ENABLE_INIT ((void)0)
 
     #undef Y_ENABLE_WRITE
-    #define Y_ENABLE_WRITE(STATE) (if(STATE) stepperY.Step_Clock(stepperY.getStatus() & STATUS_HIZ); else stepperY.softFree();)
+    #define Y_ENABLE_WRITE(STATE) {if(STATE) stepperY.Step_Clock(stepperY.getStatus() & STATUS_HIZ); else stepperY.softFree();}
 
     #undef Y_ENABLE_READ
     #define Y_ENABLE_READ (stepperY.getStatus() & STATUS_HIZ)
@@ -492,7 +492,7 @@ typedef struct {
     #define Y2_ENABLE_INIT ((void)0)
 
     #undef Y2_ENABLE_WRITE
-    #define Y2_ENABLE_WRITE(STATE) (if(STATE) stepperY2.Step_Clock(stepperY2.getStatus() & STATUS_HIZ); else stepperY2.softFree();)
+    #define Y2_ENABLE_WRITE(STATE) {if(STATE) stepperY2.Step_Clock(stepperY2.getStatus() & STATUS_HIZ); else stepperY2.softFree();}
 
     #undef Y2_ENABLE_READ
     #define Y2_ENABLE_READ (stepperY2.getStatus() & STATUS_HIZ)
@@ -512,7 +512,7 @@ typedef struct {
     #define Z_ENABLE_INIT ((void)0)
 
     #undef Z_ENABLE_WRITE
-    #define Z_ENABLE_WRITE(STATE) (if(STATE) stepperZ.Step_Clock(stepperZ.getStatus() & STATUS_HIZ); else stepperZ.softFree();)
+    #define Z_ENABLE_WRITE(STATE) {if(STATE) stepperZ.Step_Clock(stepperZ.getStatus() & STATUS_HIZ); else stepperZ.softFree();}
 
     #undef Z_ENABLE_READ
     #define Z_ENABLE_READ (stepperZ.getStatus() & STATUS_HIZ)
@@ -523,8 +523,8 @@ typedef struct {
     #undef Z_DIR_WRITE
     #define Z_DIR_WRITE(STATE) stepperZ.Step_Clock(STATE)
 
-    #undef Y_DIR_READ
-    #define Y_DIR_READ (stepperY.getStatus() & STATUS_DIR)
+    #undef Z_DIR_READ
+    #define Z_DIR_READ (stepperZ.getStatus() & STATUS_DIR)
   #endif
   #if ENABLED(Z2_IS_L6470)
     extern L6470 stepperZ2;
@@ -532,7 +532,7 @@ typedef struct {
     #define Z2_ENABLE_INIT ((void)0)
 
     #undef Z2_ENABLE_WRITE
-    #define Z2_ENABLE_WRITE(STATE) (if(STATE) stepperZ2.Step_Clock(stepperZ2.getStatus() & STATUS_HIZ); else stepperZ2.softFree();)
+    #define Z2_ENABLE_WRITE(STATE) {if(STATE) stepperZ2.Step_Clock(stepperZ2.getStatus() & STATUS_HIZ); else stepperZ2.softFree();}
 
     #undef Z2_ENABLE_READ
     #define Z2_ENABLE_READ (stepperZ2.getStatus() & STATUS_HIZ)
@@ -543,8 +543,8 @@ typedef struct {
     #undef Z2_DIR_WRITE
     #define Z2_DIR_WRITE(STATE) stepperZ2.Step_Clock(STATE)
 
-    #undef Y2_DIR_READ
-    #define Y2_DIR_READ (stepperY2.getStatus() & STATUS_DIR)
+    #undef Z2_DIR_READ
+    #define Z2_DIR_READ (stepperZ2.getStatus() & STATUS_DIR)
   #endif
   #if ENABLED(E0_IS_L6470)
     extern L6470 stepperE0;
@@ -552,7 +552,7 @@ typedef struct {
     #define E0_ENABLE_INIT ((void)0)
 
     #undef E0_ENABLE_WRITE
-    #define E0_ENABLE_WRITE(STATE) (if(STATE) stepperE0.Step_Clock(stepperE0.getStatus() & STATUS_HIZ); else stepperE0.softFree();)
+    #define E0_ENABLE_WRITE(STATE) {if(STATE) stepperE0.Step_Clock(stepperE0.getStatus() & STATUS_HIZ); else stepperE0.softFree();}
 
     #undef E0_ENABLE_READ
     #define E0_ENABLE_READ (stepperE0.getStatus() & STATUS_HIZ)
@@ -572,7 +572,7 @@ typedef struct {
     #define E1_ENABLE_INIT ((void)0)
 
     #undef E1_ENABLE_WRITE
-    #define E1_ENABLE_WRITE(STATE) (if(STATE) stepperE1.Step_Clock(stepperE1.getStatus() & STATUS_HIZ); else stepperE1.softFree();)
+    #define E1_ENABLE_WRITE(STATE) {if(STATE) stepperE1.Step_Clock(stepperE1.getStatus() & STATUS_HIZ); else stepperE1.softFree();}
 
     #undef E1_ENABLE_READ
     #define E1_ENABLE_READ (stepperE1.getStatus() & STATUS_HIZ)
@@ -592,7 +592,7 @@ typedef struct {
     #define E2_ENABLE_INIT ((void)0)
 
     #undef E2_ENABLE_WRITE
-    #define E2_ENABLE_WRITE(STATE) (if(STATE) stepperE2.Step_Clock(stepperE2.getStatus() & STATUS_HIZ); else stepperE2.softFree();)
+    #define E2_ENABLE_WRITE(STATE) {if(STATE) stepperE2.Step_Clock(stepperE2.getStatus() & STATUS_HIZ); else stepperE2.softFree();}
 
     #undef E2_ENABLE_READ
     #define E2_ENABLE_READ (stepperE2.getStatus() & STATUS_HIZ)
@@ -612,7 +612,7 @@ typedef struct {
     #define E3_ENABLE_INIT ((void)0)
 
     #undef E3_ENABLE_WRITE
-    #define E3_ENABLE_WRITE(STATE) (if(STATE) stepperE3.Step_Clock(stepperE3.getStatus() & STATUS_HIZ); else stepperE3.softFree();)
+    #define E3_ENABLE_WRITE(STATE) {if(STATE) stepperE3.Step_Clock(stepperE3.getStatus() & STATUS_HIZ); else stepperE3.softFree();}
 
     #undef E3_ENABLE_READ
     #define E3_ENABLE_READ (stepperE3.getStatus() & STATUS_HIZ)
