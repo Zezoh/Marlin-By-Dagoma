@@ -36,7 +36,6 @@
 // Macros for maths shortcuts
 #define RADIANS(d) ((d)*M_PI/180.0)
 #define DEGREES(r) ((r)*180.0/M_PI)
-#define square(x) ((x)*(x))
 
 // Macros to contrain values
 #define NOLESS(v,n) do{ if (v < n) v = n; }while(0)

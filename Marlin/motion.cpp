@@ -147,12 +147,12 @@ FORCE_INLINE int8_t prev_block_index(int8_t block_index) { return BLOCK_MOD(bloc
 
 FORCE_INLINE float estimate_acceleration_distance(float initial_rate, float target_rate, float acceleration) {
   if (acceleration == 0) return 0;
-  return (square(target_rate) - square(initial_rate)) / (acceleration * 2);
+  return (target_rate * target_rate - initial_rate * initial_rate) / (acceleration * 2);
 }
 
 FORCE_INLINE float intersection_distance(float initial_rate, float final_rate, float acceleration, float distance) {
   if (acceleration == 0) return 0;
-  return (acceleration * 2 * distance - square(initial_rate) + square(final_rate)) / (acceleration * 4);
+  return (acceleration * 2 * distance - initial_rate * initial_rate + final_rate * final_rate) / (acceleration * 4);
 }
 
 void calculate_trapezoid_for_block(block_t* block, float entry_factor, float exit_factor) {
@@ -194,7 +194,7 @@ void calculate_trapezoid_for_block(block_t* block, float entry_factor, float exi
 }
 
 FORCE_INLINE float max_allowable_speed(float acceleration, float target_velocity, float distance) {
-  return sqrt(square(target_velocity) - 2 * acceleration * distance);
+  return sqrt(target_velocity * target_velocity - 2 * acceleration * distance);
 }
 
 // The kernel called by planner_recalculate() when scanning the plan from last to first entry.
@@ -666,7 +666,7 @@ float junction_deviation = 0.1;
   }
   else {
     block->millimeters = sqrt(
-      square(delta_mm[X_AXIS]) + square(delta_mm[Y_AXIS]) + square(delta_mm[Z_AXIS])
+      delta_mm[X_AXIS] * delta_mm[X_AXIS] + delta_mm[Y_AXIS] * delta_mm[Y_AXIS] + delta_mm[Z_AXIS] * delta_mm[Z_AXIS]
     );
   }
   float inverse_millimeters = 1.0 / block->millimeters;
@@ -825,7 +825,7 @@ float junction_deviation = 0.1;
           dsy = current_speed[Y_AXIS] - previous_speed[Y_AXIS],
           dsz = fabs(csz - previous_speed[Z_AXIS]),
           dse = fabs(cse - previous_speed[E_AXIS]),
-          jerk = sqrt(square(dsx) + square(dsy));
+          jerk = sqrt(dsx * dsx + dsy * dsy);
 
     vmax_junction = block->nominal_speed;
     if (jerk > max_xy_jerk) vmax_junction_factor = max_xy_jerk / jerk;
@@ -2412,7 +2412,7 @@ vector_3 vector_3::get_normal() {
 }
 
 float vector_3::get_length() {
-  return sqrt(square(x) + square(y) + square(z));
+  return sqrt(x * x + y * y + z * z);
 }
 
 void vector_3::normalize() {
