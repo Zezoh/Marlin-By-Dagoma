@@ -423,8 +423,9 @@
   #define RETRACT_RECOVER_FEEDRATE 8     //default feedrate for recovering from retraction (mm/s)
 #endif
 
-// Add support for experimental filament exchange support M600; requires display
-#if ENABLED(ULTIPANEL) || ENABLED(NO_LCD_FOR_FILAMENTCHANGEABLE)
+// Add support for experimental filament exchange support M600
+// LCD support removed - using NO_LCD_FOR_FILAMENTCHANGEABLE for headless operation
+#if ENABLED(NO_LCD_FOR_FILAMENTCHANGEABLE)
   #define FILAMENTCHANGEENABLE
   #if ENABLED(FILAMENTCHANGEENABLE)
     #define FILAMENTCHANGE_XPOS 0

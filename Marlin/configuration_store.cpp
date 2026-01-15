@@ -289,9 +289,8 @@ void Config_StoreSettings()
   EEPROM_WRITE_VAR(i, bedKi);
   EEPROM_WRITE_VAR(i, bedKd);
 
-#if DISABLED(HAS_LCD_CONTRAST)
+  // LCD contrast - LCD support removed, write dummy value for EEPROM layout compatibility
   const int lcd_contrast = 32;
-#endif
   EEPROM_WRITE_VAR(i, lcd_contrast);
 
   // Dummy write for removed SCARA axis_scaling (3 floats to maintain EEPROM layout compatibility)
@@ -493,9 +492,8 @@ void Config_RetrieveSettings()
         EEPROM_READ_VAR(i, dummy); // bedKi, bedKd
     }
 
-#if DISABLED(HAS_LCD_CONTRAST)
+    // LCD contrast - LCD support removed, read dummy value for EEPROM layout compatibility
     int lcd_contrast;
-#endif
     EEPROM_READ_VAR(i, lcd_contrast);
 
   // Dummy read for removed SCARA axis_scaling (3 floats to maintain EEPROM layout compatibility)
@@ -863,16 +861,7 @@ void Config_PrintSettings(bool forReplay)
 
 #endif // PIDTEMP || PIDTEMPBED
 
-#if ENABLED(HAS_LCD_CONTRAST)
-  CONFIG_ECHO_START;
-  if (!forReplay)
-  {
-    SERIAL_ECHOLNPGM("LCD Contrast:");
-    CONFIG_ECHO_START;
-  }
-  SERIAL_ECHOPAIR("  M250 C", lcd_contrast);
-  SERIAL_EOL;
-#endif
+  // LCD contrast reporting removed - LCD support not present in this firmware
 
 #if ENABLED(FWRETRACT)
 

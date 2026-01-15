@@ -298,16 +298,7 @@
 #endif
 
 
-/**
- * ULTIPANEL encoder
- */
-#if ENABLED(ULTIPANEL) && DISABLED(NEWPANEL) && DISABLED(SR_LCD_2W_NL) && !defined(SHIFT_CLK)
-  #error ULTIPANEL requires some kind of encoder.
-#endif
-
-#if ENCODER_PULSES_PER_STEP < 0
-  #error ENCODER_PULSES_PER_STEP should not be negative, use REVERSE_MENU_DIRECTION instead
-#endif
+// LCD/ULTIPANEL encoder check removed - LCD support not present in this firmware
 
 /**
  * Delta has limited bed leveling options
