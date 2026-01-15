@@ -24,5 +24,10 @@
 #define STEPPER_DAC_H
 
 // DAC support removed - stub file to maintain compilation compatibility
+// DAC (Digital-to-Analog Converter) stepper current control functionality has been removed.
+// If you need DAC stepper current control, consider using:
+// - DIGIPOT_I2C for digital potentiometer control
+// - TMC stepper drivers with SPI/UART control
+// - Hardware potentiometer adjustment on your stepper driver boards
 
 #endif // STEPPER_DAC_H

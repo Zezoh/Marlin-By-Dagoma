@@ -38,7 +38,7 @@ inline void lcd_quick_feedback() {}
 inline bool lcd_detected() { return false; }
 inline void lcd_buttons_update() {}
 
-#define LCD_MESSAGEPGM(x)
-#define LCD_ALERTMESSAGEPGM(x)
+#define LCD_MESSAGEPGM(x) do {} while(0)
+#define LCD_ALERTMESSAGEPGM(x) do {} while(0)
 
 #endif // ULTRALCD_H

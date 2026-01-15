@@ -298,9 +298,10 @@ void Config_StoreSettings()
 #endif
   EEPROM_WRITE_VAR(i, lcd_contrast);
 
-  // Dummy write for removed SCARA axis_scaling (1 float to maintain non-SCARA EEPROM layout)
+  // Dummy write for removed SCARA axis_scaling (3 floats to maintain EEPROM layout compatibility)
+  // SCARA used to store 3 floats here for axis_scaling[3]
   dummy = 1.0f;
-  EEPROM_WRITE_VAR(i, dummy);
+  for (uint8_t q = 0; q < 3; q++) EEPROM_WRITE_VAR(i, dummy);
 
 #if ENABLED(FWRETRACT)
   EEPROM_WRITE_VAR(i, autoretract_enabled);
@@ -502,8 +503,9 @@ void Config_RetrieveSettings()
 #endif
     EEPROM_READ_VAR(i, lcd_contrast);
 
-  // Dummy read for removed SCARA axis_scaling (1 float to maintain non-SCARA EEPROM layout)
-  EEPROM_READ_VAR(i, dummy);
+  // Dummy read for removed SCARA axis_scaling (3 floats to maintain EEPROM layout compatibility)
+  // SCARA used to read 3 floats here for axis_scaling[3]
+  for (uint8_t q = 0; q < 3; q++) EEPROM_READ_VAR(i, dummy);
 
 #if ENABLED(FWRETRACT)
     EEPROM_READ_VAR(i, autoretract_enabled);
