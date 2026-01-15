@@ -23,7 +23,7 @@
 #include "Marlin.h"
 #if HAS_BUZZER
   #include "buzzer.h"
-  #include "ultralcd.h"
+  // LCD support removed - no ultralcd.h include
 
   void buzz(long duration, uint16_t freq) {
     if (freq > 0) {

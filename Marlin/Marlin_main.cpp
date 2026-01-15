@@ -45,7 +45,7 @@
   #include "mesh_bed_leveling.h"
 #endif
 
-#include "ultralcd.h"
+// LCD support removed - no ultralcd.h include
 #include "planner.h"
 #include "stepper.h"
 #include "temperature.h"
@@ -505,11 +505,12 @@ inline bool current_filament_present(uint8_t e) {
 #if ENABLED(SUMMON_PRINT_PAUSE)
   static bool print_pause_summoned = false;
 #endif
-#if ENABLED(U8GLIB_SSD1306) && ENABLED(INTELLIGENT_LCD_REFRESH_RATE)
-  static float last_intelligent_z_lcd_update = 0;
-  static float last_intelligent_F_lcd_update = 0;
-  static bool last_intelligent_F_authorized_lcd_update = false;
-#endif
+// LCD support removed
+//#if ENABLED(U8GLIB_SSD1306) && ENABLED(INTELLIGENT_LCD_REFRESH_RATE)
+//  static float last_intelligent_z_lcd_update = 0;
+//  static float last_intelligent_F_lcd_update = 0;
+//  static bool last_intelligent_F_authorized_lcd_update = false;
+//#endif
 
 static bool send_ok[BUFSIZE];
 
@@ -984,7 +985,7 @@ void setup() {
   // loads data from EEPROM if available else uses defaults (and resets step acceleration rate)
   Config_RetrieveSettings();
 
-  lcd_init();
+  // lcd_init(); // LCD support removed
 
   tp_init();    // Initialize temperature loop
   plan_init();  // Initialize planner;
@@ -1290,7 +1291,7 @@ inline void get_serial_commands() {
       #if ENABLED( WIFI_PRINT )
         if ( strncmp( command, "REDY:", 4 ) == 0 ) {
           // Do stuff with that ?
-          lcd_setstatus( command + 5 );
+          // lcd_setstatus( command + 5 ); // LCD support removed
           continue;
         }
       #endif // END WIFI_PRINT
@@ -1365,7 +1366,7 @@ inline void get_serial_commands() {
             case 2:
             case 3:
               SERIAL_ERRORLNPGM(MSG_ERR_STOPPED);
-              LCD_MESSAGEPGM(MSG_STOPPED);
+              // LCD_MESSAGEPGM(MSG_STOPPED); // LCD support removed
               break;
           }
         }
@@ -1468,7 +1469,7 @@ inline void get_serial_commands() {
           sprintf_P(time, PSTR("%i " MSG_END_HOUR " %i " MSG_END_MINUTE), hours, minutes);
           SERIAL_ECHO_START;
           SERIAL_ECHOLN(time);
-          lcd_setstatus(time, true);
+          // lcd_setstatus(time, true); // LCD support removed
           card.printingHasFinished();
           #if DISABLED(ONE_BUTTON)
           card.checkautostart(true);
@@ -2157,7 +2158,7 @@ static void setup_for_endstop_move() {
           if (IsRunning()) {
             SERIAL_ERROR_START;
             SERIAL_ERRORLNPGM("Z-Probe failed to engage!");
-            LCD_ALERTMESSAGEPGM("Err: ZPROBE");
+            // LCD_ALERTMESSAGEPGM("Err: ZPROBE"); // LCD support removed
           }
           stop();
         }
@@ -2263,7 +2264,7 @@ static void setup_for_endstop_move() {
           if (IsRunning()) {
             SERIAL_ERROR_START;
             SERIAL_ERRORLNPGM("Z-Probe failed to retract!");
-            LCD_ALERTMESSAGEPGM("Err: ZPROBE");
+            // LCD_ALERTMESSAGEPGM("Err: ZPROBE"); // LCD support removed
           }
           stop();
         }
@@ -2445,7 +2446,7 @@ static void setup_for_endstop_move() {
 
 #if ENABLED(Z_PROBE_SLED) || ENABLED(Z_SAFE_HOMING) || ENABLED(AUTO_BED_LEVELING_FEATURE)
   static void axis_unhomed_error() {
-    LCD_MESSAGEPGM(MSG_YX_UNHOMED);
+    // LCD_MESSAGEPGM(MSG_YX_UNHOMED); // LCD support removed
     SERIAL_ECHO_START;
     SERIAL_ECHOLNPGM(MSG_YX_UNHOMED);
   }
@@ -2894,7 +2895,7 @@ inline void gcode_G4() {
   refresh_cmd_timeout();
   codenum += previous_cmd_ms;  // keep track of when we started waiting
 
-  if (!lcd_hasstatus()) LCD_MESSAGEPGM(MSG_DWELL);
+  // if (!lcd_hasstatus()) LCD_MESSAGEPGM(MSG_DWELL); // LCD support removed
 
   while (PENDING(millis(), codenum)) idle();
 }
@@ -3206,7 +3207,7 @@ inline void gcode_G28() {
                 HOMEAXIS(Z);
               }
               else {
-                LCD_MESSAGEPGM(MSG_ZPROBE_OUT);
+                // LCD_MESSAGEPGM(MSG_ZPROBE_OUT); // LCD support removed
                 SERIAL_ECHO_START;
                 SERIAL_ECHOLNPGM(MSG_ZPROBE_OUT);
               }
@@ -4591,35 +4592,36 @@ inline void gcode_G92() {
       hasS = codenum > 0;
     }
 
-    if (!hasP && !hasS && *args != '\0')
-      lcd_setstatus(args, true);
-    else {
-      LCD_MESSAGEPGM(MSG_USERWAIT);
-      #if ENABLED(LCD_PROGRESS_BAR) && PROGRESS_MSG_EXPIRE > 0
-        dontExpireStatus();
-      #endif
-    }
+    // LCD support removed
+    // if (!hasP && !hasS && *args != '\0')
+    //   lcd_setstatus(args, true);
+    // else {
+    //   LCD_MESSAGEPGM(MSG_USERWAIT);
+    //   #if ENABLED(LCD_PROGRESS_BAR) && PROGRESS_MSG_EXPIRE > 0
+    //     dontExpireStatus();
+    //   #endif
+    // }
 
-    lcd_ignore_click();
+    // lcd_ignore_click();
     st_synchronize();
     refresh_cmd_timeout();
     if (codenum > 0) {
       codenum += previous_cmd_ms;  // wait until this time for a click
       KEEPALIVE_STATE(PAUSED_FOR_USER);
-      while (PENDING(millis(), codenum) && !lcd_clicked()) idle();
+      while (PENDING(millis(), codenum) /* && !lcd_clicked() */) idle();
       KEEPALIVE_STATE(IN_HANDLER);
-      lcd_ignore_click(false);
+      // lcd_ignore_click(false);
     }
-    else {
-      if (!lcd_detected()) return;
-      KEEPALIVE_STATE(PAUSED_FOR_USER);
-      while (!lcd_clicked()) idle();
-      KEEPALIVE_STATE(IN_HANDLER);
-    }
-    if (IS_SD_PRINTING)
-      LCD_MESSAGEPGM(MSG_RESUMING);
-    else
-      LCD_MESSAGEPGM(WELCOME_MSG);
+    // else {
+    //   if (!lcd_detected()) return;
+    //   KEEPALIVE_STATE(PAUSED_FOR_USER);
+    //   while (!lcd_clicked()) idle();
+    //   KEEPALIVE_STATE(IN_HANDLER);
+    // }
+    // if (IS_SD_PRINTING)
+    //   LCD_MESSAGEPGM(MSG_RESUMING);
+    // else
+    //   LCD_MESSAGEPGM(WELCOME_MSG);
   }
 
 #endif // ULTIPANEL
@@ -4628,7 +4630,7 @@ inline void gcode_G92() {
  * M17: Enable power on all stepper motors
  */
 inline void gcode_M17() {
-  LCD_MESSAGEPGM(MSG_NO_MOVE);
+  // LCD_MESSAGEPGM(MSG_NO_MOVE); // LCD support removed
   enable_all_steppers();
 }
 
@@ -4731,7 +4733,7 @@ inline void gcode_M31() {
   sprintf_P(time, PSTR("%i min, %i sec"), min, sec);
   SERIAL_ECHO_START;
   SERIAL_ECHOLN(time);
-  lcd_setstatus(time);
+  // lcd_setstatus(time); // LCD support removed
   autotempShutdown();
 }
 
@@ -5175,7 +5177,7 @@ inline void gcode_M104() {
      */
     if (temp <= (EXTRUDE_MINTEMP)/2) {
       print_job_timer.stop();
-      LCD_MESSAGEPGM(WELCOME_MSG);
+      // LCD_MESSAGEPGM(WELCOME_MSG); // LCD support removed
     }
     /**
      * We do not check if the timer is already running because this check will
@@ -5184,7 +5186,7 @@ inline void gcode_M104() {
      */
     else print_job_timer.start();
 
-    if (temp > degHotend(target_extruder)) LCD_MESSAGEPGM(MSG_HEATING);
+    // if (temp > degHotend(target_extruder)) LCD_MESSAGEPGM(MSG_HEATING); // LCD support removed
   }
 }
 
@@ -5441,7 +5443,7 @@ inline void gcode_M109() {
      */
     if (temp <= (EXTRUDE_MINTEMP)/2) {
       print_job_timer.stop();
-      LCD_MESSAGEPGM(WELCOME_MSG);
+      // LCD_MESSAGEPGM(WELCOME_MSG); // LCD support removed
     }
     /**
      * We do not check if the timer is already running because this check will
@@ -5450,7 +5452,7 @@ inline void gcode_M109() {
      */
     else print_job_timer.start();
 
-    if (temp > degHotend(target_extruder)) LCD_MESSAGEPGM(MSG_HEATING);
+    // if (temp > degHotend(target_extruder)) LCD_MESSAGEPGM(MSG_HEATING); // LCD support removed
   }
 
   #if ENABLED(AUTOTEMP)
@@ -5504,7 +5506,7 @@ inline void gcode_M109() {
     x_from, x_to, y_from, y_to, z_from, z_to
   );
 
-  LCD_MESSAGEPGM(MSG_HEATING_COMPLETE);
+  // LCD_MESSAGEPGM(MSG_HEATING_COMPLETE); // LCD support removed
 }
 
 #if HAS_TEMP_BED
@@ -5516,7 +5518,7 @@ inline void gcode_M109() {
   inline void gcode_M190() {
     if (DEBUGGING(DRYRUN)) return;
 
-    LCD_MESSAGEPGM(MSG_BED_HEATING);
+    // LCD_MESSAGEPGM(MSG_BED_HEATING); // LCD support removed
     bool no_wait_for_cooling = code_seen('S');
     if (no_wait_for_cooling || code_seen('R')) setTargetBed(code_value());
 
@@ -5576,7 +5578,7 @@ inline void gcode_M109() {
       #endif //TEMP_BED_RESIDENCY_TIME > 0
 
     } while (!cancel_heatup && TEMP_BED_CONDITIONS);
-    LCD_MESSAGEPGM(MSG_BED_DONE);
+    // LCD_MESSAGEPGM(MSG_BED_DONE); // LCD support removed
   }
 
 #endif // HAS_TEMP_BED
@@ -5762,8 +5764,8 @@ inline void gcode_M140() {
 
     #if ENABLED(ULTIPANEL)
       powersupply = true;
-      LCD_MESSAGEPGM(WELCOME_MSG);
-      lcd_update();
+      // LCD_MESSAGEPGM(WELCOME_MSG); // LCD support removed
+      // lcd_update(); // LCD support removed
     #endif
   }
 
@@ -5795,8 +5797,8 @@ inline void gcode_M81() {
     #if HAS_POWER_SWITCH
       powersupply = false;
     #endif
-    LCD_MESSAGEPGM(MACHINE_NAME " " MSG_OFF ".");
-    lcd_update();
+    // LCD_MESSAGEPGM(MACHINE_NAME " " MSG_OFF "."); // LCD support removed
+    // lcd_update(); // LCD support removed
   #endif
 }
 
@@ -5926,7 +5928,7 @@ inline void gcode_M115() {
  * M117: Set LCD Status Message
  */
 inline void gcode_M117() {
-  lcd_setstatus(current_command_args);
+  // lcd_setstatus(current_command_args); // LCD support removed
 }
 
 /**
@@ -6546,19 +6548,20 @@ inline void gcode_M226() {
 
 #endif // CHDK || PHOTOGRAPH_PIN
 
-#if ENABLED(HAS_LCD_CONTRAST)
-
-  /**
-   * M250: Read and optionally set the LCD contrast
-   */
-  inline void gcode_M250() {
-    if (code_seen('C')) lcd_setcontrast(code_value_short() & 0x3F);
-    SERIAL_PROTOCOLPGM("lcd contrast value: ");
-    SERIAL_PROTOCOL(lcd_contrast);
-    SERIAL_EOL;
-  }
-
-#endif // HAS_LCD_CONTRAST
+// LCD support removed
+//#if ENABLED(HAS_LCD_CONTRAST)
+//
+//  /**
+//   * M250: Read and optionally set the LCD contrast
+//   */
+//  inline void gcode_M250() {
+//    if (code_seen('C')) lcd_setcontrast(code_value_short() & 0x3F);
+//    SERIAL_PROTOCOLPGM("lcd contrast value: ");
+//    SERIAL_PROTOCOL(lcd_contrast);
+//    SERIAL_EOL;
+//  }
+//
+//#endif // HAS_LCD_CONTRAST
 
 #if ENABLED(PREVENT_DANGEROUS_EXTRUDE)
 
@@ -6802,7 +6805,7 @@ inline void gcode_M428() {
       else {
         SERIAL_ERROR_START;
         SERIAL_ERRORLNPGM(MSG_ERR_M428_TOO_FAR);
-        LCD_ALERTMESSAGEPGM("Err: Too far!");
+        // LCD_ALERTMESSAGEPGM("Err: Too far!"); // LCD support removed
         #if HAS_BUZZER
           buzz(200, 40);
         #endif
@@ -6814,7 +6817,7 @@ inline void gcode_M428() {
 
   if (!err) {
     sync_plan_position();
-    LCD_MESSAGEPGM(MSG_HOME_OFFSETS_APPLIED);
+    // LCD_MESSAGEPGM(MSG_HOME_OFFSETS_APPLIED); // LCD support removed
     #if HAS_BUZZER
       buzz(200, 659);
       buzz(200, 698);
@@ -7100,9 +7103,10 @@ inline void gcode_M503() {
 
     SERIAL_ECHOLNPGM( "pause : In process" );
     KEEPALIVE_STATE(PAUSED_FOR_USER);
-    #if ENABLED(ULTRA_LCD) && DISABLED(NO_LCD_FOR_FILAMENTCHANGEABLE)
-      LCD_MESSAGEPGM(MSG_FILAMENTCHANGE);
-    #endif
+    // LCD support removed
+    //#if ENABLED(ULTRA_LCD) && DISABLED(NO_LCD_FOR_FILAMENTCHANGEABLE)
+    //  LCD_MESSAGEPGM(MSG_FILAMENTCHANGE);
+    //#endif
 
     #if EXTRUDERS > 1
       uint8_t active_extruder_before_filament_change = active_extruder;
@@ -7401,9 +7405,10 @@ inline void gcode_M503() {
         && printer_states.hotend_state == HOTEND_HOT
       ) {
         SERIAL_ECHOLNPGM( "pause: filament insertion" );
-        #if ENABLED(ULTRA_LCD) && DISABLED(NO_LCD_FOR_FILAMENTCHANGEABLE)
-          LCD_MESSAGEPGM(MSG_FILAMENTINSERTION);
-        #endif
+        // LCD support removed
+        //#if ENABLED(ULTRA_LCD) && DISABLED(NO_LCD_FOR_FILAMENTCHANGEABLE)
+        //  LCD_MESSAGEPGM(MSG_FILAMENTINSERTION);
+        //#endif
         // FILAMENTCHANGE_FINALRETRACT is a negative length
         // So following extruder move delta is 'inverted' in meaning
         //
@@ -7497,9 +7502,10 @@ inline void gcode_M503() {
         && printer_states.hotend_state == HOTEND_HOT
       ) {
         SERIAL_ECHOLNPGM( "pause: filament extraction" );
-        #if ENABLED(ULTRA_LCD) && DISABLED(NO_LCD_FOR_FILAMENTCHANGEABLE)
-          LCD_MESSAGEPGM(MSG_FILAMENTEJECTION);
-        #endif
+        // LCD support removed
+        //#if ENABLED(ULTRA_LCD) && DISABLED(NO_LCD_FOR_FILAMENTCHANGEABLE)
+        //  LCD_MESSAGEPGM(MSG_FILAMENTEJECTION);
+        //#endif
 
         current_position[E_AXIS] = destination[E_AXIS];
         sync_plan_position_e();
@@ -7521,7 +7527,7 @@ inline void gcode_M503() {
         st_synchronize();
         refresh_cmd_timeout();
         quick_pause_timeout += previous_cmd_ms;  // keep track of when we started waiting
-        if (!lcd_hasstatus()) LCD_MESSAGEPGM(MSG_DWELL);
+        // if (!lcd_hasstatus()) LCD_MESSAGEPGM(MSG_DWELL); // LCD support removed
         while (PENDING(millis(), quick_pause_timeout)) idle();
 
         // Second extrude before ejection
@@ -7598,7 +7604,7 @@ inline void gcode_M503() {
           st_synchronize();
           refresh_cmd_timeout();
           quick_pause_timeout += previous_cmd_ms;  // keep track of when we started waiting
-          if (!lcd_hasstatus()) LCD_MESSAGEPGM(MSG_DWELL);
+          // if (!lcd_hasstatus()) LCD_MESSAGEPGM(MSG_DWELL); // LCD support removed
           while (PENDING(millis(), quick_pause_timeout)) idle();
 
           // Second extrude before ejection
@@ -7835,13 +7841,14 @@ inline void gcode_M503() {
         #endif
       }
 
-      #if ENABLED(ULTRA_LCD) && DISABLED(NO_LCD_FOR_FILAMENTCHANGEABLE)
-        if (lcd_clicked()) {
-          SERIAL_ECHOLNPGM("pause: lcd clicked");
-          exit_pause_asked = true;
-          lcd_quick_feedback();
-        }
-      #endif
+      // LCD support removed
+      //#if ENABLED(ULTRA_LCD) && DISABLED(NO_LCD_FOR_FILAMENTCHANGEABLE)
+      //  if (lcd_clicked()) {
+      //    SERIAL_ECHOLNPGM("pause: lcd clicked");
+      //    exit_pause_asked = true;
+      //    lcd_quick_feedback();
+      //  }
+      //#endif
 
 
       // Detemines if we can really exit
@@ -7880,16 +7887,17 @@ inline void gcode_M503() {
     //
 
     KEEPALIVE_STATE(IN_HANDLER);
-    #if ENABLED(ULTRA_LCD) && DISABLED(NO_LCD_FOR_FILAMENTCHANGEABLE)
-      lcd_quick_feedback(); // click sound feedback
-      lcd_reset_alert_level();
-      if (previous_activity_state == ACTIVITY_PRINTING) {
-        LCD_MESSAGEPGM(MSG_RESUMING);
-      }
-      else {
-        LCD_MESSAGEPGM(WELCOME_MSG);
-      }
-    #endif
+    // LCD support removed
+    //#if ENABLED(ULTRA_LCD) && DISABLED(NO_LCD_FOR_FILAMENTCHANGEABLE)
+    //  lcd_quick_feedback(); // click sound feedback
+    //  lcd_reset_alert_level();
+    //  if (previous_activity_state == ACTIVITY_PRINTING) {
+    //    LCD_MESSAGEPGM(MSG_RESUMING);
+    //  }
+    //  else {
+    //    LCD_MESSAGEPGM(WELCOME_MSG);
+    //  }
+    //#endif
 
 
     // Return back to normal positions
@@ -8191,7 +8199,7 @@ inline void gcode_M907() {
  */
 inline void gcode_M999() {
   Running = true;
-  lcd_reset_alert_level();
+  // lcd_reset_alert_level(); // LCD support removed
   // gcode_LastN = Stopped_gcode_LastN;
   FlushSerialRequestResend();
 }
@@ -9310,11 +9318,12 @@ void process_next_command() {
           break;
       #endif // CHDK || PHOTOGRAPH_PIN
 
-      #if ENABLED(HAS_LCD_CONTRAST)
-        case 250: // M250  Set LCD contrast value: C<value> (value 0..63)
-          gcode_M250();
-          break;
-      #endif // HAS_LCD_CONTRAST
+      // LCD support removed
+      //#if ENABLED(HAS_LCD_CONTRAST)
+      //  case 250: // M250  Set LCD contrast value: C<value> (value 0..63)
+      //    gcode_M250();
+      //    break;
+      //#endif // HAS_LCD_CONTRAST
 
       #if ENABLED(PREVENT_DANGEROUS_EXTRUDE)
         case 302: // allow cold extrudes, or set the minimum extrude temperature
@@ -10657,9 +10666,10 @@ inline void manage_printer_states() {
   }
 }
 
-#if ENABLED(ULTRA_LCD) && DISABLED(NO_LCD_FOR_FILAMENTCHANGEABLE)
-  millis_t next_lcd_feedback = 0UL;
-#endif
+// LCD support removed
+//#if ENABLED(ULTRA_LCD) && DISABLED(NO_LCD_FOR_FILAMENTCHANGEABLE)
+//  millis_t next_lcd_feedback = 0UL;
+//#endif
 
 /**
  * Standard idle routine keeps the machine alive
@@ -10681,28 +10691,29 @@ void idle(
   );
   host_keepalive();
 
-  if (!printer_states.in_critical_section) {
-    #if ENABLED(U8GLIB_SSD1306) && ENABLED(INTELLIGENT_LCD_REFRESH_RATE)
-      if (IS_SD_PRINTING && axis_homed[X_AXIS] && axis_homed[Y_AXIS] && axis_homed[Z_AXIS]) {
-
-        if ( last_intelligent_F_lcd_update != feedrate ) {
-          last_intelligent_F_authorized_lcd_update = feedrate > last_intelligent_F_lcd_update;
-          last_intelligent_F_lcd_update = feedrate;
-        }
-
-        if ( last_intelligent_z_lcd_update != current_position[Z_AXIS] || last_intelligent_F_authorized_lcd_update ) {
-          last_intelligent_z_lcd_update = current_position[Z_AXIS];
-          lcd_update();
-        }
-
-      }
-      else {
-        lcd_update();
-      }
-    #else
-      lcd_update();
-    #endif
-  }
+  // LCD support removed
+  // if (!printer_states.in_critical_section) {
+  //   #if ENABLED(U8GLIB_SSD1306) && ENABLED(INTELLIGENT_LCD_REFRESH_RATE)
+  //     if (IS_SD_PRINTING && axis_homed[X_AXIS] && axis_homed[Y_AXIS] && axis_homed[Z_AXIS]) {
+  //
+  //       if ( last_intelligent_F_lcd_update != feedrate ) {
+  //         last_intelligent_F_authorized_lcd_update = feedrate > last_intelligent_F_lcd_update;
+  //         last_intelligent_F_lcd_update = feedrate;
+  //       }
+  //
+  //       if ( last_intelligent_z_lcd_update != current_position[Z_AXIS] || last_intelligent_F_authorized_lcd_update ) {
+  //         last_intelligent_z_lcd_update = current_position[Z_AXIS];
+  //         lcd_update();
+  //       }
+  //
+  //     }
+  //     else {
+  //       lcd_update();
+  //     }
+  //   #else
+  //     lcd_update();
+  //   #endif
+  // }
 
   #if ENABLED( WIFI_PRINT )
     manage_second_serial_status();
@@ -10710,14 +10721,15 @@ void idle(
 
   millis_t now = millis();
 
-  #if ENABLED(ULTRA_LCD) && DISABLED(NO_LCD_FOR_FILAMENTCHANGEABLE)
-    if (printer_states.activity_state == ACTIVITY_PAUSED) {
-      if (ELAPSED(now, next_lcd_feedback)) {
-        next_lcd_feedback = now + 2500UL;
-        lcd_quick_feedback();
-      }
-    }
-  #endif
+  // LCD support removed
+  //#if ENABLED(ULTRA_LCD) && DISABLED(NO_LCD_FOR_FILAMENTCHANGEABLE)
+  //  if (printer_states.activity_state == ACTIVITY_PAUSED) {
+  //    if (ELAPSED(now, next_lcd_feedback)) {
+  //      next_lcd_feedback = now + 2500UL;
+  //      lcd_quick_feedback();
+  //    }
+  //  }
+  //#endif
 
   #if ENABLED( Z_MIN_MAGIC ) && DISABLED(LONG_PRESS_SUPPORT)
     if (enable_z_magic_tap) {
@@ -10916,7 +10928,7 @@ void manage_inactivity(bool ignore_stepper_queue/*=false*/) {
     if (!READ(HOME_PIN)) {
       if (!homeDebounceCount) {
         enqueue_and_echo_commands_P(PSTR("G28"));
-        LCD_MESSAGEPGM(MSG_AUTO_HOME);
+        // LCD_MESSAGEPGM(MSG_AUTO_HOME); // LCD support removed
       }
       if (homeDebounceCount < HOME_DEBOUNCE_DELAY)
         homeDebounceCount++;
@@ -11039,11 +11051,12 @@ void manage_inactivity(bool ignore_stepper_queue/*=false*/) {
 }
 
 void kill(const char* lcd_msg) {
-  #if ENABLED(ULTRA_LCD)
-    lcd_setalertstatuspgm(lcd_msg);
-  #else
+  // LCD support removed
+  //#if ENABLED(ULTRA_LCD)
+  //  lcd_setalertstatuspgm(lcd_msg);
+  //#else
     UNUSED(lcd_msg);
-  #endif
+  //#endif
 
   #if ENABLED( DELTA_EXTRA )
     #if ENABLED( SDSUPPORT )
@@ -11100,7 +11113,8 @@ void kill(const char* lcd_msg) {
 
   // FMC small patch to update the LCD before ending
   sei();   // enable interrupts
-  for (int i = 5; i--; lcd_update()) delay(200); // Wait a short time
+  // for (int i = 5; i--; lcd_update()) delay(200); // Wait a short time // LCD support removed
+  for (int i = 5; i--;) delay(200); // Wait a short time
   #if DISABLED( ONE_LED )
     cli();   // disable interrupts
   #else
@@ -11222,7 +11236,7 @@ void stop() {
     Stopped_gcode_LastN = gcode_LastN; // Save last g_code for restart
     SERIAL_ERROR_START;
     SERIAL_ERRORLNPGM(MSG_ERR_STOPPED);
-    LCD_MESSAGEPGM(MSG_STOPPED);
+    // LCD_MESSAGEPGM(MSG_STOPPED); // LCD support removed
   }
 }
 

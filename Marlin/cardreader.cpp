@@ -22,7 +22,7 @@
 
 #include "Marlin.h"
 #include "cardreader.h"
-#include "ultralcd.h"
+// LCD support removed - no ultralcd.h include
 #include "stepper.h"
 #include "temperature.h"
 #include "language.h"

@@ -48,7 +48,7 @@
 #include "stepper.h"
 #include "planner.h"
 #include "temperature.h"
-#include "ultralcd.h"
+// LCD support removed - no ultralcd.h include
 #include "language.h"
 #include "cardreader.h"
 #include "speed_lookuptable.h"

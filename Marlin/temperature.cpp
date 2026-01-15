@@ -41,7 +41,7 @@
 */
 
 #include "Marlin.h"
-#include "ultralcd.h"
+// LCD support removed - no ultralcd.h include
 #include "temperature.h"
 #include "language.h"
 #include "Sd2PinMap.h"

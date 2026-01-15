@@ -124,7 +124,7 @@
 #include "language.h"
 #include "planner.h"
 #include "temperature.h"
-#include "ultralcd.h"
+// LCD support removed - no ultralcd.h include
 #include "configuration_store.h"
 
 #if ENABLED(MESH_BED_LEVELING)
