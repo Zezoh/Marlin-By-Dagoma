@@ -644,4 +644,5 @@ fail:
   return false;
 }
 
-#endif
+#endif  // DISABLED(SOFTWARE_SPI)
+#endif  // ENABLED(SDSUPPORT)
