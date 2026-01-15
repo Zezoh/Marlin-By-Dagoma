@@ -492,7 +492,6 @@ class SdBaseFile {
 #endif  // ALLOW_DEPRECATED_FUNCTIONS
 };
 
-#endif  // SdBaseFile_h
 
 //==============================================================================
 // SDFILE - File class with Print interface
@@ -517,7 +516,6 @@ class SdFile : public SdBaseFile, public Print {
   void write_P(PGM_P str);
   void writeln_P(PGM_P str);
 };
-#endif  // SdFile_h
 
 
 #endif // sd_card_file_h

@@ -129,8 +129,6 @@
   #define MAX_VFAT_ENTRIES (2)
   /** Total size of the buffer used to store the long filenames */
   #define LONG_FILENAME_LENGTH (FILENAME_LENGTH*MAX_VFAT_ENTRIES+1)
-#endif  // SdFatConfig_h
-
 
 
 //==============================================================================
@@ -389,7 +387,6 @@ union csd_t {
   csd1_t v1;
   csd2_t v2;
 };
-#endif  // SdInfo_h
 
 
 //==============================================================================
@@ -1013,7 +1010,6 @@ static inline uint8_t DIR_IS_SUBDIR(const dir_t* dir) {
 static inline uint8_t DIR_IS_FILE_OR_SUBDIR(const dir_t* dir) {
   return (dir->attributes & DIR_ATT_VOLUME_ID) == 0;
 }
-#endif  // SdFatStructs_h
 
 
 
@@ -1039,7 +1035,6 @@ namespace SdFatUtil {
 }
 
 using namespace SdFatUtil;  // NOLINT
-#endif  //#define SdFatUtil_h
 
 
 
@@ -1237,7 +1232,7 @@ class SdVolume {
   }
 #endif  // ALLOW_DEPRECATED_FUNCTIONS
 };
-#endif  // SdVolume
+
 #endif // sd_card_filesystem_h
 
 #endif
