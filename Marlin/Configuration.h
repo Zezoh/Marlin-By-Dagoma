@@ -40,7 +40,6 @@
 
 #include "boards.h"
 #include "macros.h"
-#include "Configuration_pre.h"
 #define FILAMENTCHANGE_INSERTION_SCRIPT "M600 I1 U-55 X55 Y-92 W200 Z200"
 #define FILAMENTCHANGE_EXTRACTION_SCRIPT "M600 I-1 U-55 X55 Y-92 W200 Z200"
 #define FILAMENT_SUCTION_GAP 200
