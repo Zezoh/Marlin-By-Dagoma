@@ -60,7 +60,7 @@
 
 #include "speed_lookuptable.h"
 
-#if HAS_DIGIPOTSS || ENABLED(HAVE_TMCDRIVER) || ENABLED(HAVE_L6470DRIVER)
+#if ENABLED(HAVE_TMCDRIVER) || ENABLED(HAVE_L6470DRIVER)
   #include <SPI.h>
 #endif
 
@@ -2054,25 +2054,7 @@ void quickStop() {
 
 #endif //BABYSTEPPING
 
-#if HAS_DIGIPOTSS
-  void digitalPotWrite(int address, int value) {
-    digitalWrite(DIGIPOTSS_PIN, LOW);
-    SPI.transfer(address);
-    SPI.transfer(value);
-    digitalWrite(DIGIPOTSS_PIN, HIGH);
-  }
-#endif
-
 void digipot_init() {
-  #if HAS_DIGIPOTSS
-    const uint8_t digipot_motor_current[] = DIGIPOT_MOTOR_CURRENT;
-
-    SPI.begin();
-    pinMode(DIGIPOTSS_PIN, OUTPUT);
-    for (int i = 0; i < COUNT(digipot_motor_current); i++) {
-      digipot_current(i, digipot_motor_current[i]);
-    }
-  #endif
   #if HAS_MOTOR_CURRENT_PWM
     #if PIN_EXISTS(MOTOR_CURRENT_PWM_XY)
       pinMode(MOTOR_CURRENT_PWM_XY_PIN, OUTPUT);
@@ -2091,10 +2073,7 @@ void digipot_init() {
 }
 
 void digipot_current(uint8_t driver, int current) {
-  #if HAS_DIGIPOTSS
-    const uint8_t digipot_ch[] = DIGIPOT_CHANNELS;
-    digitalPotWrite(digipot_ch[driver], current);
-  #elif HAS_MOTOR_CURRENT_PWM
+  #if HAS_MOTOR_CURRENT_PWM
     #define _WRITE_CURRENT_PWM(P) analogWrite(P, 255L * current / (MOTOR_CURRENT_PWM_RANGE))
     switch (driver) {
       #if PIN_EXISTS(MOTOR_CURRENT_PWM_XY)
