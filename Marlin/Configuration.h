@@ -110,8 +110,8 @@
 //===========================================================================
 //============================= SCARA Printer ===============================
 //===========================================================================
-// For a Scara printer replace the configuration files with the files in the
-// example_configurations/SCARA directory.
+// SCARA support has been removed from this firmware.
+// This firmware is configured for Delta printers only.
 //
 
 // @section info
@@ -930,6 +930,9 @@ const bool Z_MIN_PROBE_ENDSTOP_INVERTING = true; // set to true to invert the lo
 
 //
 // LCD TYPE
+// LCD/Display support has been removed from this firmware.
+// This firmware is configured for no display/screen.
+// All LCD-related defines are disabled and non-functional.
 //
 // You may choose ULTRA_LCD if you have character based LCD with 16x2, 16x4, 20x2,
 // 20x4 char/lines or DOGLCD for the full graphics display with 128x64 pixels
