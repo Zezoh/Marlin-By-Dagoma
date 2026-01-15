@@ -735,7 +735,6 @@ float junction_deviation = 0.1;
 
   /**
    * This part of the code calculates the total length of the movement.
-   * For cartesian bots, the X_AXIS is the real X movement and same for Y_AXIS.
    */
   float delta_mm[4];
   delta_mm[X_AXIS] = dx / axis_steps_per_unit[X_AXIS];
