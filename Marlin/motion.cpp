@@ -112,7 +112,7 @@ unsigned long axis_steps_per_sqr_second[NUM_AXIS];
 //============ semi-private variables, used in inline functions =============
 //===========================================================================
 
-block_t block_buffer[BLOCK_BUFFER_SIZE];            // A ring buffer for motion instfructions
+block_t block_buffer[BLOCK_BUFFER_SIZE];            // A ring buffer for motion instructions
 volatile unsigned char block_buffer_head;           // Index of the next block to be pushed
 volatile unsigned char block_buffer_tail;           // Index of the block to process now
 
