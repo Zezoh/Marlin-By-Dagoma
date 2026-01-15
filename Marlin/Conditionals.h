@@ -46,222 +46,8 @@
 
   #define CONFIGURATION_LCD
 
-  #if ENABLED(MAKRPANEL)
-    #define DOGLCD
-    #define DEFAULT_LCD_CONTRAST 17
-    #define ULTIPANEL
-    #define NEWPANEL
-  #endif
-
-  #if ENABLED(miniVIKI) || ENABLED(VIKI2) || ENABLED(ELB_FULL_GRAPHIC_CONTROLLER)
-    #define ULTRA_LCD  //general LCD support, also 16x2
-    #define DOGLCD  // Support for SPI LCD 128x64 (Controller ST7565R graphic Display Family)
-    #define ULTIMAKERCONTROLLER //as available from the Ultimaker online store.
-
-    #if ENABLED(miniVIKI)
-      #define DEFAULT_LCD_CONTRAST 95
-    #elif ENABLED(VIKI2)
-      #define DEFAULT_LCD_CONTRAST 40
-    #elif ENABLED(ELB_FULL_GRAPHIC_CONTROLLER)
-      #define DEFAULT_LCD_CONTRAST 110
-      #define U8GLIB_LM6059_AF
-      #define SD_DETECT_INVERTED
-    #endif
-
-    #define ENCODER_PULSES_PER_STEP 4
-    #define ENCODER_STEPS_PER_MENU_ITEM 1
-  #endif
-
-  // Generic support for SSD1306 OLED based LCDs.
-  #if ENABLED(U8GLIB_SSD1306)
-    #define ULTRA_LCD  //general LCD support, also 16x2
-    #define DOGLCD  // Support for I2C LCD 128x64 (Controller SSD1306 graphic Display Family)
-  #endif
-
-  #if ENABLED(PANEL_ONE)
-    #define ULTIMAKERCONTROLLER
-  #endif
-
-  #if ENABLED(BQ_LCD_SMART_CONTROLLER)
-    #define REPRAP_DISCOUNT_FULL_GRAPHIC_SMART_CONTROLLER
-
-    #ifndef ENCODER_PULSES_PER_STEP
-      #define ENCODER_PULSES_PER_STEP 4
-    #endif
-
-    #ifndef ENCODER_STEPS_PER_MENU_ITEM
-      #define ENCODER_STEPS_PER_MENU_ITEM 1
-    #endif
-
-    #ifndef LONG_FILENAME_HOST_SUPPORT
-      #define LONG_FILENAME_HOST_SUPPORT
-    #endif
-  #endif
-
-  #if ENABLED(REPRAP_DISCOUNT_FULL_GRAPHIC_SMART_CONTROLLER)
-    #define DOGLCD
-    #define U8GLIB_ST7920
-    #define REPRAP_DISCOUNT_SMART_CONTROLLER
-  #endif
-
-  #if ENABLED(ULTIMAKERCONTROLLER) || ENABLED(REPRAP_DISCOUNT_SMART_CONTROLLER) || ENABLED(G3D_PANEL) || ENABLED(RIGIDBOT_PANEL)
-    #define ULTIPANEL
-    #define NEWPANEL
-  #endif
-
-  #if ENABLED(REPRAPWORLD_KEYPAD)
-    #define ULTIPANEL
-    #define NEWPANEL
-  #endif
-
-  #if ENABLED(RA_CONTROL_PANEL)
-    #define LCD_I2C_TYPE_PCA8574
-    #define LCD_I2C_ADDRESS 0x27   // I2C Address of the port expander
-    #define ULTIPANEL
-    #define NEWPANEL
-  #endif
-
-  #if ENABLED(MINIPANEL)
-    #define DOGLCD
-    #define ULTIPANEL
-    #define NEWPANEL
-    #define DEFAULT_LCD_CONTRAST 17
-  #endif
-
-  /**
-   * I2C PANELS
-   */
-
-  #if ENABLED(LCD_I2C_SAINSMART_YWROBOT)
-    // This uses the LiquidCrystal_I2C library ( https://bitbucket.org/fmalpartida/new-liquidcrystal/wiki/Home )
-    // Make sure it is placed in the Arduino libraries directory.
-    #define LCD_I2C_TYPE_PCF8575
-    #define LCD_I2C_ADDRESS 0x27   // I2C Address of the port expander
-    #define ULTIPANEL
-    #define NEWPANEL
-  #endif
-
-  // PANELOLU2 LCD with status LEDs, separate encoder and click inputs
-  #if ENABLED(LCD_I2C_PANELOLU2)
-    #define LCD_I2C_TYPE_MCP23017
-    #define LCD_I2C_ADDRESS 0x20 // I2C Address of the port expander
-    #define LCD_USE_I2C_BUZZER //comment out to disable buzzer on LCD
-
-    #ifndef ENCODER_PULSES_PER_STEP
-      #define ENCODER_PULSES_PER_STEP 4
-    #endif
-
-    #ifndef ENCODER_STEPS_PER_MENU_ITEM
-      #define ENCODER_STEPS_PER_MENU_ITEM 1
-    #endif
-
-    #if ENABLED(LCD_USE_I2C_BUZZER)
-      #define LCD_FEEDBACK_FREQUENCY_HZ 1000
-      #define LCD_FEEDBACK_FREQUENCY_DURATION_MS 100
-    #endif
-
-    #define ULTIPANEL
-    #define NEWPANEL
-  #endif
-
-  // Panucatt VIKI LCD with status LEDs, integrated click & L/R/U/P buttons, separate encoder inputs
-  #if ENABLED(LCD_I2C_VIKI)
-    // This uses the LiquidTWI2 library v1.2.3 or later ( https://github.com/lincomatic/LiquidTWI2 )
-    // Make sure the LiquidTWI2 directory is placed in the Arduino or Sketchbook libraries subdirectory.
-    // Note: The pause/stop/resume LCD button pin should be connected to the Arduino
-    //       BTN_ENC pin (or set BTN_ENC to -1 if not used)
-    #define LCD_I2C_TYPE_MCP23017
-    #define LCD_I2C_ADDRESS 0x20 // I2C Address of the port expander
-    #define LCD_USE_I2C_BUZZER //comment out to disable buzzer on LCD (requires LiquidTWI2 v1.2.3 or later)
-    #define ULTIPANEL
-    #define NEWPANEL
-  #endif
-
-  // Shift register panels
-  // ---------------------
-  // 2 wire Non-latching LCD SR from:
-  // https://bitbucket.org/fmalpartida/new-liquidcrystal/wiki/schematics#!shiftregister-connection
-
-  #if ENABLED(SAV_3DLCD)
-    #define SR_LCD_2W_NL    // Non latching 2 wire shift register
-    #define ULTIPANEL
-    #define NEWPANEL
-  #endif
-
-  #if ENABLED(DOGLCD) // Change number of lines to match the DOG graphic display
-    #ifndef LCD_WIDTH
-      #define LCD_WIDTH 22
-    #endif
-    #ifndef LCD_HEIGHT
-      #define LCD_HEIGHT 5
-    #endif
-  #endif
-
-  #if ENABLED(ULTIPANEL)
-    #define NEWPANEL  //enable this if you have a click-encoder panel
-    #define ULTRA_LCD
-    #ifndef LCD_WIDTH
-      #define LCD_WIDTH 20
-    #endif
-    #ifndef LCD_HEIGHT
-      #define LCD_HEIGHT 4
-    #endif
-  #else //no panel but just LCD
-    #if ENABLED(ULTRA_LCD)
-      #ifndef LCD_WIDTH
-        #define LCD_WIDTH 16
-      #endif
-      #ifndef LCD_HEIGHT
-        #define LCD_HEIGHT 2
-      #endif
-    #endif
-  #endif
-
-  #if ENABLED(DOGLCD)
-    /* Custom characters defined in font dogm_font_data_Marlin_symbols.h / Marlin_symbols.fon */
-    // \x00 intentionally skipped to avoid problems in strings
-    #define LCD_STR_REFRESH     "\x01"
-    #define LCD_STR_FOLDER      "\x02"
-    #define LCD_STR_ARROW_RIGHT "\x03"
-    #define LCD_STR_UPLEVEL     "\x04"
-    #define LCD_STR_CLOCK       "\x05"
-    #define LCD_STR_FEEDRATE    "\x06"
-    #define LCD_STR_BEDTEMP     "\x07"
-    #define LCD_STR_THERMOMETER "\x08"
-    #define LCD_STR_DEGREE      "\x09"
-
-    #define LCD_STR_SPECIAL_MAX '\x09'
-    // Maximum here is 0x1f because 0x20 is ' ' (space) and the normal charsets begin.
-    // Better stay below 0x10 because DISPLAY_CHARSET_HD44780_WESTERN begins here.
-  #else
-    /* Custom characters defined in the first 8 characters of the LCD */
-    #define LCD_STR_BEDTEMP     "\x00"  // Print only as a char. This will have 'unexpected' results when used in a string!
-    #define LCD_STR_DEGREE      "\x01"
-    #define LCD_STR_THERMOMETER "\x02"
-    #define LCD_STR_UPLEVEL     "\x03"
-    #define LCD_STR_REFRESH     "\x04"
-    #define LCD_STR_FOLDER      "\x05"
-    #define LCD_STR_FEEDRATE    "\x06"
-    #define LCD_STR_CLOCK       "\x07"
-    #define LCD_STR_ARROW_RIGHT ">"  /* from the default character set */
-  #endif
-
-  /**
-   * Default LCD contrast for dogm-like LCD displays
-   */
-  #if ENABLED(DOGLCD) && DISABLED(DEFAULT_LCD_CONTRAST)
-    #define DEFAULT_LCD_CONTRAST 32
-  #endif
-
-  #if ENABLED(DOGLCD)
-    #define HAS_LCD_CONTRAST
-    #if ENABLED(U8GLIB_ST7920)
-      #undef HAS_LCD_CONTRAST
-    #endif
-    #if ENABLED(U8GLIB_SSD1306)
-      #undef HAS_LCD_CONTRAST
-    #endif
-  #endif
+  // LCD support has been removed from this firmware.
+  // No LCD-related conditionals are needed.
 
 #else // CONFIGURATION_LCD
 
@@ -348,8 +134,9 @@
     #define MAX_PROBE_Y (min(Y_MAX_POS, Y_MAX_POS + Y_PROBE_OFFSET_FROM_EXTRUDER))
   #endif
 
-  #define HAS_Z_ENDSTOP_SERVO (defined(Z_ENDSTOP_SERVO_NR) && Z_ENDSTOP_SERVO_NR >= 0)
-  #define SERVO_LEVELING (ENABLED(AUTO_BED_LEVELING_FEATURE) && HAS_Z_ENDSTOP_SERVO)
+  // Servo support removed - servo leveling disabled
+  #define HAS_Z_ENDSTOP_SERVO 0
+  #define SERVO_LEVELING 0
 
   /**
    * Sled Options
@@ -412,10 +199,6 @@
   #if ENABLED(ADVANCE)
     #define EXTRUSION_AREA (0.25 * (D_FILAMENT) * (D_FILAMENT) * M_PI)
     #define STEPS_PER_CUBIC_MM_E (axis_steps_per_unit[E_AXIS] / (EXTRUSION_AREA))
-  #endif
-
-  #if ENABLED(ULTIPANEL) && DISABLED(ELB_FULL_GRAPHIC_CONTROLLER)
-    #undef SD_DETECT_INVERTED
   #endif
 
   /**
@@ -708,7 +491,6 @@
     && ( \
          ENABLED(FIX_MOUNTED_PROBE) \
       || ENABLED(MECHANICAL_PROBE) \
-      || HAS_Z_ENDSTOP_SERVO \
       || ENABLED(Z_PROBE_ALLEN_KEY) \
       || ENABLED(Z_PROBE_SLED) \
     )
