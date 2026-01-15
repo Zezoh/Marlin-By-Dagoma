@@ -835,42 +835,6 @@ const bool Z_MIN_PROBE_ENDSTOP_INVERTING = true; // set to true to invert the lo
 #define LANGUAGE_INCLUDE GENERATE_LANGUAGE_INCLUDE(en)
 
 //
-// LCD CHARACTER SET
-//
-// Choose ONE of the following charset options. This selection depends on
-// your physical hardware, so it must match your character-based LCD.
-//
-// Note: This option is NOT applicable to graphical displays.
-//
-// To find out what type of display you have:
-//  - Compile and upload with the language (above) set to 'test'
-//  - Click the controller to view the LCD menu
-//
-// The LCD will display two lines from the upper half of the character set.
-//
-// See also https://github.com/MarlinFirmware/Marlin/wiki/LCD-Language
-//
-#define DISPLAY_CHARSET_HD44780_JAPAN        // this is the most common hardware
-//#define DISPLAY_CHARSET_HD44780_WESTERN
-//#define DISPLAY_CHARSET_HD44780_CYRILLIC
-
-//
-// LCD TYPE
-// LCD/Display support has been removed from this firmware.
-// This firmware is configured for no display/screen.
-// All LCD-related defines are disabled and non-functional.
-//
-// You may choose ULTRA_LCD if you have character based LCD with 16x2, 16x4, 20x2,
-// 20x4 char/lines or DOGLCD for the full graphics display with 128x64 pixels
-// (ST7565R family). (This option will be set automatically for certain displays.)
-//
-// IMPORTANT NOTE: The U8glib library is required for Full Graphic Display!
-//                 https://github.com/olikraus/U8glib_Arduino
-//
-//#define ULTRA_LCD   // Character based
-//#define DOGLCD      // Full graphics display
-
-//
 // SD CARD
 //
 // SD Card support is disabled by default. If your controller has an SD slot,
@@ -933,35 +897,7 @@ const bool Z_MIN_PROBE_ENDSTOP_INVERTING = true; // set to true to invert the lo
 //define BlinkM/CyzRgb Support
 //#define BLINKM
 
-/**********************************************************************\
- * Support for a filament diameter sensor
- * Also allows adjustment of diameter at print time (vs  at slicing)
- * Single extruder only at this point (extruder 0)
- *
- * Motherboards
- * 34 - RAMPS1.4 - uses Analog input 5 on the AUX2 connector
- * 81 - Printrboard - Uses Analog input 2 on the Exp1 connector (version B,C,D,E)
- * 301 - Rambo  - uses Analog input 3
- * Note may require analog pins to be defined for different motherboards
- **********************************************************************/
-// Uncomment below to enable
-//#define FILAMENT_WIDTH_SENSOR
-
-#define DEFAULT_NOMINAL_FILAMENT_DIA 3.00  //Enter the diameter (in mm) of the filament generally used (3.0 mm or 1.75 mm) - this is then used in the slicer software.  Used for sensor reading validation
-
-#if ENABLED(FILAMENT_WIDTH_SENSOR)
-  #define FILAMENT_SENSOR_EXTRUDER_NUM 0   //The number of the extruder that has the filament sensor (0,1,2)
-  #define MEASUREMENT_DELAY_CM        14   //measurement delay in cm.  This is the distance from filament sensor to middle of barrel
-
-  #define MEASURED_UPPER_LIMIT         3.30  //upper limit factor used for sensor reading validation in mm
-  #define MEASURED_LOWER_LIMIT         1.90  //lower limit factor for sensor reading validation in mm
-  #define MAX_MEASUREMENT_DELAY       20     //delay buffer size in bytes (1 byte = 1cm)- limits maximum measurement delay allowable (must be larger than MEASUREMENT_DELAY_CM  and lower number saves RAM)
-
-  #define DEFAULT_MEASURED_FILAMENT_DIA  DEFAULT_NOMINAL_FILAMENT_DIA  //set measured to nominal initially
-
-  //When using an LCD, uncomment the line below to display the Filament sensor data on the last line instead of status.  Status will appear for 5 sec.
-  //#define FILAMENT_LCD_DISPLAY
-#endif
+#define DEFAULT_NOMINAL_FILAMENT_DIA 3.00  //Enter the diameter (in mm) of the filament generally used (3.0 mm or 1.75 mm) - this is then used in the slicer software.
 
 #include "Configuration_adv.h"
 #include "thermistortables.h"
