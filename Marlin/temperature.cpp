@@ -117,7 +117,6 @@ unsigned char soft_pwm_bed;
 static volatile bool temp_meas_ready = false;
 
 #if ENABLED(PIDTEMP)
-  //static cannot be external:
   static float temp_iState[HOTENDS] = { 0 };
   static float temp_dState[HOTENDS] = { 0 };
   static float pTerm[HOTENDS];
@@ -129,20 +128,17 @@ static volatile bool temp_meas_ready = false;
     static long lpq[LPQ_MAX_LEN];
     static int lpq_ptr = 0;
   #endif
-  //int output;
   static float pid_error[HOTENDS];
   static float temp_iState_min[HOTENDS];
   static float temp_iState_max[HOTENDS];
   static bool pid_reset[HOTENDS];
 #endif //PIDTEMP
 #if ENABLED(PIDTEMPBED)
-  //static cannot be external:
   static float temp_iState_bed = { 0 };
   static float temp_dState_bed = { 0 };
   static float pTerm_bed;
   static float iTerm_bed;
   static float dTerm_bed;
-  //int output;
   static float pid_error_bed;
   static float temp_iState_min_bed;
   static float temp_iState_max_bed;

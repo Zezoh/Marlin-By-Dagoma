@@ -249,17 +249,9 @@ void CardReader::initsd() {
   }
   workDir = root;
   curDir = &root;
-  /**
-  if (!workDir.openRoot(&volume)) {
-    SERIAL_ECHOLNPGM(MSG_SD_WORKDIR_FAIL);
-  }
-  */
 }
 
 void CardReader::setroot() {
-  /*if (!workDir.openRoot(&volume)) {
-    SERIAL_ECHOLNPGM(MSG_SD_WORKDIR_FAIL);
-  }*/
   workDir = root;
   curDir = &workDir;
 }
@@ -660,7 +652,6 @@ uint16_t CardReader::getnrfilenames() {
   nrFiles = 0;
   curDir->rewind();
   lsDive("", *curDir);
-  //SERIAL_ECHOLN(nrFiles);
   return nrFiles;
 }
 

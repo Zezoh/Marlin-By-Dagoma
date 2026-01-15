@@ -497,12 +497,6 @@ inline bool current_filament_present(uint8_t e) {
 #if ENABLED(SUMMON_PRINT_PAUSE)
   static bool print_pause_summoned = false;
 #endif
-// LCD support removed
-//#if ENABLED(U8GLIB_SSD1306) && ENABLED(INTELLIGENT_LCD_REFRESH_RATE)
-//  static float last_intelligent_z_lcd_update = 0;
-//  static float last_intelligent_F_lcd_update = 0;
-//  static bool last_intelligent_F_authorized_lcd_update = false;
-//#endif
 
 static bool send_ok[BUFSIZE];
 
@@ -1219,7 +1213,6 @@ void gcode_line_error(const char* err, bool doFlush = true) {
   SERIAL_ERROR_START;
   serialprintPGM(err);
   SERIAL_ERRORLN(gcode_LastN);
-  //Serial.println(gcode_N);
   if (doFlush) FlushSerialRequestResend();
   serial_count = 0;
 }
@@ -2734,7 +2727,6 @@ static void homeaxis(AxisEnum axis) {
         #else
           sync_plan_position();
         #endif
-        //prepare_move();
       }
 
       feedrate = retract_recover_feedrate * 60;
@@ -4584,36 +4576,14 @@ inline void gcode_G92() {
       hasS = codenum > 0;
     }
 
-    // LCD support removed
-    // if (!hasP && !hasS && *args != '\0')
-    //   lcd_setstatus(args, true);
-    // else {
-    //   LCD_MESSAGEPGM(MSG_USERWAIT);
-    //   #if ENABLED(LCD_PROGRESS_BAR) && PROGRESS_MSG_EXPIRE > 0
-    //     dontExpireStatus();
-    //   #endif
-    // }
-
-    // lcd_ignore_click();
     st_synchronize();
     refresh_cmd_timeout();
     if (codenum > 0) {
       codenum += previous_cmd_ms;  // wait until this time for a click
       KEEPALIVE_STATE(PAUSED_FOR_USER);
-      while (PENDING(millis(), codenum) /* && !lcd_clicked() */) idle();
+      while (PENDING(millis(), codenum)) idle();
       KEEPALIVE_STATE(IN_HANDLER);
-      // lcd_ignore_click(false);
     }
-    // else {
-    //   if (!lcd_detected()) return;
-    //   KEEPALIVE_STATE(PAUSED_FOR_USER);
-    //   while (!lcd_clicked()) idle();
-    //   KEEPALIVE_STATE(IN_HANDLER);
-    // }
-    // if (IS_SD_PRINTING)
-    //   LCD_MESSAGEPGM(MSG_RESUMING);
-    // else
-    //   LCD_MESSAGEPGM(WELCOME_MSG);
   }
 
 #endif // ULTIPANEL
@@ -4622,7 +4592,6 @@ inline void gcode_G92() {
  * M17: Enable power on all stepper motors
  */
 inline void gcode_M17() {
-  // LCD_MESSAGEPGM(MSG_NO_MOVE); // LCD support removed
   enable_all_steppers();
 }
 
@@ -6069,14 +6038,6 @@ inline void gcode_M201() {
   reset_acceleration_rates();
 }
 
-#if 0 // Not used for Sprinter/grbl gen6
-  inline void gcode_M202() {
-    for (int8_t i = 0; i < NUM_AXIS; i++) {
-      if (code_seen(axis_codes[i])) axis_travel_steps_per_sqr_second[i] = code_value() * axis_steps_per_unit[i];
-    }
-  }
-#endif
-
 
 /**
  * M203: Set maximum feedrate that your machine can sustain (M203 X200 Y200 Z300 E10000) in mm/sec
@@ -6528,21 +6489,6 @@ inline void gcode_M226() {
 
 #endif // CHDK || PHOTOGRAPH_PIN
 
-// LCD support removed
-//#if ENABLED(HAS_LCD_CONTRAST)
-//
-//  /**
-//   * M250: Read and optionally set the LCD contrast
-//   */
-//  inline void gcode_M250() {
-//    if (code_seen('C')) lcd_setcontrast(code_value_short() & 0x3F);
-//    SERIAL_PROTOCOLPGM("lcd contrast value: ");
-//    SERIAL_PROTOCOL(lcd_contrast);
-//    SERIAL_EOL;
-//  }
-//
-//#endif // HAS_LCD_CONTRAST
-
 #if ENABLED(PREVENT_DANGEROUS_EXTRUDE)
 
   void set_extrude_min_temp(float temp) { extrude_min_temp = temp; }
@@ -6697,11 +6643,6 @@ inline void gcode_M400() { st_synchronize(); }
     }
 
     filament_sensor = true;
-
-    //SERIAL_PROTOCOLPGM("Filament dia (measured mm):");
-    //SERIAL_PROTOCOL(filament_width_meas);
-    //SERIAL_PROTOCOLPGM("Extrusion ratio(%):");
-    //SERIAL_PROTOCOL(extruder_multiplier[active_extruder]);
   }
 
   /**
@@ -7405,16 +7346,13 @@ inline void gcode_M503() {
         do {
           current_position[E_AXIS] += FILAMENTCHANGE_AUTO_INSERTION_VERIFICATION_LENGTH_MM;
           destination[E_AXIS] = current_position[E_AXIS];
-          //destination[E_AXIS] += FILAMENTCHANGE_AUTO_INSERTION_VERIFICATION_LENGTH_MM;
-          //prepare_move();
           RUNPLAN;
         } while( destination[E_AXIS] < destination_to_reach && current_filament_present(active_extruder));
         st_synchronize();
         printer_states.in_critical_section = false;
 
         // Purge part
-        //if(previous_activity_state != ACTIVITY_IDLE || active_extruder == 0) {
-          // But, can we continue to slowly purge ?
+        // But, can we continue to slowly purge ?
         if (current_filament_present(active_extruder)) {
           SET_FEEDRATE_FOR_PURGE;
           destination_to_reach = destination[E_AXIS] + 2.5*FILAMENTCHANGE_AUTO_INSERTION_PURGE_LENGTH;

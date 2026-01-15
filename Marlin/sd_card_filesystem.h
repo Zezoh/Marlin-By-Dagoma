@@ -68,8 +68,9 @@
   //------------------------------------------------------------------------------
   /**
   * Allow use of deprecated functions if ALLOW_DEPRECATED_FUNCTIONS is nonzero
+  * Disabled - use pointer-based API instead of reference-based deprecated functions
   */
-  #define ALLOW_DEPRECATED_FUNCTIONS 1
+  #define ALLOW_DEPRECATED_FUNCTIONS 0
   //------------------------------------------------------------------------------
   /**
   * Allow FAT12 volumes if FAT12_SUPPORT is nonzero.
