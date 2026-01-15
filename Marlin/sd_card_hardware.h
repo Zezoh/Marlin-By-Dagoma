@@ -456,7 +456,6 @@ static inline __attribute__((always_inline))
 // SD2CARD - SD card hardware interface class
 //==============================================================================
 
-#include "sd_card_filesystem.h"
 /**
  * \file
  * \brief Sd2Card class for V2 SD/SDHC cards

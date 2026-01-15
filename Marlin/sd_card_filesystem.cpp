@@ -467,3 +467,14 @@ void SdFatUtil::SerialPrint_P(PGM_P str) {
 void SdFatUtil::SerialPrintln_P(PGM_P str) {
   println_P(str);
 }
+
+//------------------------------------------------------------------------------
+// SdVolume inline method implementations
+//------------------------------------------------------------------------------
+bool SdVolume::readBlock(uint32_t block, uint8_t* dst) {
+  return sdCard_->readBlock(block, dst);
+}
+
+bool SdVolume::writeBlock(uint32_t block, const uint8_t* dst) {
+  return sdCard_->writeBlock(block, dst);
+}

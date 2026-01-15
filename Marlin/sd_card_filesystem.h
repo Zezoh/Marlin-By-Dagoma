@@ -1047,9 +1047,6 @@ using namespace SdFatUtil;  // NOLINT
  */
 #include "sd_card_hardware.h"
 
-// Forward declaration
-class Sd2Card;
-
 //==============================================================================
 // SdVolume class
 /**
@@ -1210,12 +1207,8 @@ class SdVolume {
     if (fatType_ == 16) return cluster >= FAT16EOC_MIN;
     return  cluster >= FAT32EOC_MIN;
   }
-  bool readBlock(uint32_t block, uint8_t* dst) {
-    return sdCard_->readBlock(block, dst);
-  }
-  bool writeBlock(uint32_t block, const uint8_t* dst) {
-    return sdCard_->writeBlock(block, dst);
-  }
+  bool readBlock(uint32_t block, uint8_t* dst);
+  bool writeBlock(uint32_t block, const uint8_t* dst);
   //------------------------------------------------------------------------------
   // Deprecated functions  - suppress cpplint warnings with NOLINT comment
 #if ALLOW_DEPRECATED_FUNCTIONS && !defined(DOXYGEN)
