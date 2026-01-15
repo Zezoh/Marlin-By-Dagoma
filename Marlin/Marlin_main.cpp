@@ -34,20 +34,12 @@
 
 #include "Marlin.h"
 
-#if ENABLED(AUTO_BED_LEVELING_FEATURE)
-  #include "vector_3.h"
-  #if ENABLED(AUTO_BED_LEVELING_GRID)
-    #include "qr_solve.h"
-  #endif
-#endif // AUTO_BED_LEVELING_FEATURE
-
 #if ENABLED(MESH_BED_LEVELING)
   #include "mesh_bed_leveling.h"
 #endif
 
 // LCD support removed - no ultralcd.h include
-#include "planner.h"
-#include "stepper.h"
+#include "motion.h"
 #include "temperature.h"
 #include "cardreader.h"
 #include "configuration_store.h"

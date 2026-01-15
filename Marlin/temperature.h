@@ -44,10 +44,7 @@
 #define TEMPERATURE_H
 
 #include "Marlin.h"
-#include "planner.h"
-#if ENABLED(PID_ADD_EXTRUSION_RATE)
-  #include "stepper.h"
-#endif
+#include "motion.h"
 
 // public functions
 void tp_init();  //initialize the heating
