@@ -1130,7 +1130,6 @@ void st_synchronize() { while (blocks_queued()) idle(); }
  * Set the stepper positions directly in steps
  *
  * The input is based on the typical per-axis XYZ steps.
- * For CORE machines XYZ needs to be translated to ABC.
  *
  * This allows st_get_axis_position_mm to correctly
  * derive the current XYZ position later on.
@@ -1164,7 +1163,7 @@ long st_get_position(AxisEnum axis) {
 }
 
 /**
- * Get an axis position according to stepper position(s)
+ * Get an axis position according to stepper position
  */
 float st_get_axis_position_mm(AxisEnum axis) {
   float axis_steps;
