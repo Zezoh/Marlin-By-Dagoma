@@ -37,6 +37,10 @@ inline void lcd_buzz(long duration, uint16_t freq) {}
 inline void lcd_quick_feedback() {}
 inline bool lcd_detected() { return false; }
 inline void lcd_buttons_update() {}
+inline bool lcd_hasstatus() { return false; }
+inline bool lcd_clicked() { return false; }
+inline void lcd_ignore_click(bool b=true) {}
+inline void lcd_setcontrast(uint8_t value) {}
 
 #define LCD_MESSAGEPGM(x) do {} while(0)
 #define LCD_ALERTMESSAGEPGM(x) do {} while(0)
