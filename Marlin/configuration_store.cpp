@@ -298,6 +298,7 @@ void Config_StoreSettings()
 #endif
   EEPROM_WRITE_VAR(i, lcd_contrast);
 
+  // Dummy write for removed SCARA axis_scaling to maintain EEPROM layout compatibility
   dummy = 1.0f;
   EEPROM_WRITE_VAR(i, dummy);
 
@@ -501,6 +502,7 @@ void Config_RetrieveSettings()
 #endif
     EEPROM_READ_VAR(i, lcd_contrast);
 
+  // Dummy read for removed SCARA axis_scaling to maintain EEPROM layout compatibility
   EEPROM_READ_VAR(i, dummy);
 
 #if ENABLED(FWRETRACT)
