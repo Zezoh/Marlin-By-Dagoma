@@ -655,7 +655,7 @@ void gcode_M114();
 #endif
 
 #if ENABLED(SDSUPPORT)
-  #include "SdFatUtil.h"
+  #include "sd_card_filesystem.h"
   int freeMemory() { return SdFatUtil::FreeRam(); }
 #else
 extern "C" {
@@ -5893,25 +5893,13 @@ inline void gcode_M114() {
        zpos = count_position[Z_AXIS];
   CRITICAL_SECTION_END;
 
-  #if ENABLED(COREXY) || ENABLED(COREXZ)
-    SERIAL_PROTOCOLPGM(MSG_COUNT_A);
-  #else
-    SERIAL_PROTOCOLPGM(MSG_COUNT_X);
-  #endif
+  SERIAL_PROTOCOLPGM(MSG_COUNT_X);
   SERIAL_PROTOCOL(xpos);
 
-  #if ENABLED(COREXY)
-    SERIAL_PROTOCOLPGM(" B:");
-  #else
-    SERIAL_PROTOCOLPGM(" Y:");
-  #endif
+  SERIAL_PROTOCOLPGM(" Y:");
   SERIAL_PROTOCOL(ypos);
 
-  #if ENABLED(COREXZ)
-    SERIAL_PROTOCOLPGM(" C:");
-  #else
-    SERIAL_PROTOCOLPGM(" Z:");
-  #endif
+  SERIAL_PROTOCOLPGM(" Z:");
   SERIAL_PROTOCOL(zpos);
 
   SERIAL_EOL;

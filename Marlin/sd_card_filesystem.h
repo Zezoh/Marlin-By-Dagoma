@@ -26,11 +26,84 @@
  *
  * This file is part of the Arduino Sd2Card Library
  */
+
 #include "Marlin.h"
 #if ENABLED(SDSUPPORT)
 
-#ifndef SdFatStructs_h
-#define SdFatStructs_h
+#ifndef sd_card_filesystem_h
+#define sd_card_filesystem_h
+
+//==============================================================================
+// SDFATCONFIG - Configuration defines
+//==============================================================================
+// NOTE: SPI hardware configuration moved to sd_card_hardware.h
+  //------------------------------------------------------------------------------
+  /**
+  * To use multiple SD cards set USE_MULTIPLE_CARDS nonzero.
+  *
+  * Using multiple cards costs 400 - 500  bytes of flash.
+  *
+  * Each card requires about 550 bytes of SRAM so use of a Mega is recommended.
+  */
+  #define USE_MULTIPLE_CARDS 0
+  //------------------------------------------------------------------------------
+  /**
+  * Call flush for endl if ENDL_CALLS_FLUSH is nonzero
+  *
+  * The standard for iostreams is to call flush.  This is very costly for
+  * SdFat.  Each call to flush causes 2048 bytes of I/O to the SD.
+  *
+  * SdFat has a single 512 byte buffer for SD I/O so it must write the current
+  * data block to the SD, read the directory block from the SD, update the
+  * directory entry, write the directory block to the SD and read the data
+  * block back into the buffer.
+  *
+  * The SD flash memory controller is not designed for this many rewrites
+  * so performance may be reduced by more than a factor of 100.
+  *
+  * If ENDL_CALLS_FLUSH is zero, you must call flush and/or close to force
+  * all data to be written to the SD.
+  */
+  #define ENDL_CALLS_FLUSH 0
+  //------------------------------------------------------------------------------
+  /**
+  * Allow use of deprecated functions if ALLOW_DEPRECATED_FUNCTIONS is nonzero
+  */
+  #define ALLOW_DEPRECATED_FUNCTIONS 1
+  //------------------------------------------------------------------------------
+  /**
+  * Allow FAT12 volumes if FAT12_SUPPORT is nonzero.
+  * FAT12 has not been well tested.
+  */
+  #define FAT12_SUPPORT 0
+  //------------------------------------------------------------------------------
+  /**
+  * The __cxa_pure_virtual function is an error handler that is invoked when
+  * a pure virtual function is called.
+  */
+  #define USE_CXA_PURE_VIRTUAL 1
+
+  /** Number of UTF-16 characters per entry */
+  #define FILENAME_LENGTH 13
+
+  /**
+  * Defines for long (vfat) filenames
+  */
+  /** Number of VFAT entries used. Every entry has 13 UTF-16 characters */
+  #define MAX_VFAT_ENTRIES (2)
+  /** Total size of the buffer used to store the long filenames */
+  #define LONG_FILENAME_LENGTH (FILENAME_LENGTH*MAX_VFAT_ENTRIES+1)
+
+
+//==============================================================================
+// SDINFO - SD card information structures
+//==============================================================================
+// NOTE: SD card commands and CID/CSD structures are now in sd_card_hardware.h
+
+
+//==============================================================================
+// SDFATSTRUCTS - FAT filesystem data structures
+//==============================================================================
 
 #define PACKED __attribute__((__packed__))
 /**
@@ -215,7 +288,7 @@ struct fat_boot {
            * FAT volume. This field is generally only relevant for media
            * visible on interrupt 0x13.
            */
-  uint32_t hidddenSectors;
+  uint32_t hiddenSectors;
           /**
            * This field is the new 32-bit total count of sectors on the volume.
            * This count includes the count of all sectors in all four regions
@@ -331,7 +404,7 @@ struct fat32_boot {
            * FAT volume. This field is generally only relevant for media
            * visible on interrupt 0x13.
            */
-  uint32_t hidddenSectors;
+  uint32_t hiddenSectors;
           /**
            * Contains the total number of sectors in the FAT32 volume.
            */
@@ -649,7 +722,225 @@ static inline uint8_t DIR_IS_SUBDIR(const dir_t* dir) {
 static inline uint8_t DIR_IS_FILE_OR_SUBDIR(const dir_t* dir) {
   return (dir->attributes & DIR_ATT_VOLUME_ID) == 0;
 }
-#endif  // SdFatStructs_h
 
+
+
+//==============================================================================
+// SDFATUTIL - Utility functions
+//==============================================================================
+/**
+ * \file
+ * \brief Useful utility functions.
+ */
+#include "MarlinSerial.h"
+/** Store and print a string in flash memory.*/
+#define PgmPrint(x) SerialPrint_P(PSTR(x))
+/** Store and print a string in flash memory followed by a CR/LF.*/
+#define PgmPrintln(x) SerialPrintln_P(PSTR(x))
+
+namespace SdFatUtil {
+  int FreeRam();
+  void print_P(PGM_P str);
+  void println_P(PGM_P str);
+  void SerialPrint_P(PGM_P str);
+  void SerialPrintln_P(PGM_P str);
+}
+
+using namespace SdFatUtil;  // NOLINT
+
+
+
+//==============================================================================
+// SDVOLUME - FAT volume management
+//==============================================================================
+/**
+ * \file
+ * \brief SdVolume class
+ */
+#include "sd_card_hardware.h"
+
+//==============================================================================
+// SdVolume class
+/**
+ * \brief Cache for an SD data block
+ */
+union cache_t {
+           /** Used to access cached file data blocks. */
+  uint8_t  data[512];
+           /** Used to access cached FAT16 entries. */
+  uint16_t fat16[256];
+           /** Used to access cached FAT32 entries. */
+  uint32_t fat32[128];
+           /** Used to access cached directory entries. */
+  dir_t    dir[16];
+           /** Used to access a cached Master Boot Record. */
+  mbr_t    mbr;
+           /** Used to access to a cached FAT boot sector. */
+  fat_boot_t fbs;
+           /** Used to access to a cached FAT32 boot sector. */
+  fat32_boot_t fbs32;
+           /** Used to access to a cached FAT32 FSINFO sector. */
+  fat32_fsinfo_t fsinfo;
+};
+//------------------------------------------------------------------------------
+/**
+ * \class SdVolume
+ * \brief Access FAT16 and FAT32 volumes on SD and SDHC cards.
+ */
+class SdVolume {
+ public:
+  /** Create an instance of SdVolume */
+  SdVolume() : fatType_(0) {}
+  /** Clear the cache and returns a pointer to the cache.  Used by the WaveRP
+   * recorder to do raw write to the SD card.  Not for normal apps.
+   * \return A pointer to the cache buffer or zero if an error occurs.
+   */
+  cache_t* cacheClear() {
+    if (!cacheFlush()) return 0;
+    cacheBlockNumber_ = 0XFFFFFFFF;
+    return &cacheBuffer_;
+  }
+  /** Initialize a FAT volume.  Try partition one first then try super
+   * floppy format.
+   *
+   * \param[in] dev The Sd2Card where the volume is located.
+   *
+   * \return The value one, true, is returned for success and
+   * the value zero, false, is returned for failure.  Reasons for
+   * failure include not finding a valid partition, not finding a valid
+   * FAT file system or an I/O error.
+   */
+  bool init(Sd2Card* dev) { return init(dev, 1) ? true : init(dev, 0);}
+  bool init(Sd2Card* dev, uint8_t part);
+
+  // inline functions that return volume info
+  /** \return The volume's cluster size in blocks. */
+  uint8_t blocksPerCluster() const {return blocksPerCluster_;}
+  /** \return The number of blocks in one FAT. */
+  uint32_t blocksPerFat()  const {return blocksPerFat_;}
+  /** \return The total number of clusters in the volume. */
+  uint32_t clusterCount() const {return clusterCount_;}
+  /** \return The shift count required to multiply by blocksPerCluster. */
+  uint8_t clusterSizeShift() const {return clusterSizeShift_;}
+  /** \return The logical block number for the start of file data. */
+  uint32_t dataStartBlock() const {return dataStartBlock_;}
+  /** \return The number of FAT structures on the volume. */
+  uint8_t fatCount() const {return fatCount_;}
+  /** \return The logical block number for the start of the first FAT. */
+  uint32_t fatStartBlock() const {return fatStartBlock_;}
+  /** \return The FAT type of the volume. Values are 12, 16 or 32. */
+  uint8_t fatType() const {return fatType_;}
+  int32_t freeClusterCount();
+  /** \return The number of entries in the root directory for FAT16 volumes. */
+  uint32_t rootDirEntryCount() const {return rootDirEntryCount_;}
+  /** \return The logical block number for the start of the root directory
+       on FAT16 volumes or the first cluster number on FAT32 volumes. */
+  uint32_t rootDirStart() const {return rootDirStart_;}
+  /** Sd2Card object for this volume
+   * \return pointer to Sd2Card object.
+   */
+  Sd2Card* sdCard() {return sdCard_;}
+  /** Debug access to FAT table
+   *
+   * \param[in] n cluster number.
+   * \param[out] v value of entry
+   * \return true for success or false for failure
+   */
+  bool dbgFat(uint32_t n, uint32_t* v) {return fatGet(n, v);}
+  //------------------------------------------------------------------------------
+ private:
+  // Allow SdBaseFile access to SdVolume private data.
+  friend class SdBaseFile;
+
+  // value for dirty argument in cacheRawBlock to indicate read from cache
+  static bool const CACHE_FOR_READ = false;
+  // value for dirty argument in cacheRawBlock to indicate write to cache
+  static bool const CACHE_FOR_WRITE = true;
+
+#if USE_MULTIPLE_CARDS
+  cache_t cacheBuffer_;        // 512 byte cache for device blocks
+  uint32_t cacheBlockNumber_;  // Logical number of block in the cache
+  Sd2Card* sdCard_;            // Sd2Card object for cache
+  bool cacheDirty_;            // cacheFlush() will write block if true
+  uint32_t cacheMirrorBlock_;  // block number for mirror FAT
+#else  // USE_MULTIPLE_CARDS
+  static cache_t cacheBuffer_;        // 512 byte cache for device blocks
+  static uint32_t cacheBlockNumber_;  // Logical number of block in the cache
+  static Sd2Card* sdCard_;            // Sd2Card object for cache
+  static bool cacheDirty_;            // cacheFlush() will write block if true
+  static uint32_t cacheMirrorBlock_;  // block number for mirror FAT
+#endif  // USE_MULTIPLE_CARDS
+  uint32_t allocSearchStart_;   // start cluster for alloc search
+  uint8_t blocksPerCluster_;    // cluster size in blocks
+  uint32_t blocksPerFat_;       // FAT size in blocks
+  uint32_t clusterCount_;       // clusters in one FAT
+  uint8_t clusterSizeShift_;    // shift to convert cluster count to block count
+  uint32_t dataStartBlock_;     // first data block number
+  uint8_t fatCount_;            // number of FATs on volume
+  uint32_t fatStartBlock_;      // start block for first FAT
+  uint8_t fatType_;             // volume type (12, 16, OR 32)
+  uint16_t rootDirEntryCount_;  // number of entries in FAT16 root dir
+  uint32_t rootDirStart_;       // root start block for FAT16, cluster for FAT32
+  //----------------------------------------------------------------------------
+  bool allocContiguous(uint32_t count, uint32_t* curCluster);
+  uint8_t blockOfCluster(uint32_t position) const {
+    return (position >> 9) & (blocksPerCluster_ - 1);
+  }
+  uint32_t clusterStartBlock(uint32_t cluster) const {
+    return dataStartBlock_ + ((cluster - 2) << clusterSizeShift_);
+  }
+  uint32_t blockNumber(uint32_t cluster, uint32_t position) const {
+    return clusterStartBlock(cluster) + blockOfCluster(position);
+  }
+  cache_t* cache() {return &cacheBuffer_;}
+  uint32_t cacheBlockNumber() {return cacheBlockNumber_;}
+#if USE_MULTIPLE_CARDS
+  bool cacheFlush();
+  bool cacheRawBlock(uint32_t blockNumber, bool dirty);
+#else  // USE_MULTIPLE_CARDS
+  static bool cacheFlush();
+  static bool cacheRawBlock(uint32_t blockNumber, bool dirty);
+#endif  // USE_MULTIPLE_CARDS
+  // used by SdBaseFile write to assign cache to SD location
+  void cacheSetBlockNumber(uint32_t blockNumber, bool dirty) {
+    cacheDirty_ = dirty;
+    cacheBlockNumber_  = blockNumber;
+  }
+  void cacheSetDirty() {cacheDirty_ |= CACHE_FOR_WRITE;}
+  bool chainSize(uint32_t beginCluster, uint32_t* size);
+  bool fatGet(uint32_t cluster, uint32_t* value);
+  bool fatPut(uint32_t cluster, uint32_t value);
+  bool fatPutEOC(uint32_t cluster) {
+    return fatPut(cluster, 0x0FFFFFFF);
+  }
+  bool freeChain(uint32_t cluster);
+  bool isEOC(uint32_t cluster) const {
+    if (FAT12_SUPPORT && fatType_ == 12) return  cluster >= FAT12EOC_MIN;
+    if (fatType_ == 16) return cluster >= FAT16EOC_MIN;
+    return  cluster >= FAT32EOC_MIN;
+  }
+  bool readBlock(uint32_t block, uint8_t* dst);
+  bool writeBlock(uint32_t block, const uint8_t* dst);
+  //------------------------------------------------------------------------------
+  // Deprecated functions  - suppress cpplint warnings with NOLINT comment
+#if ALLOW_DEPRECATED_FUNCTIONS && !defined(DOXYGEN)
+ public:
+  /** \deprecated Use: bool SdVolume::init(Sd2Card* dev);
+   * \param[in] dev The SD card where the volume is located.
+   * \return true for success or false for failure.
+   */
+  bool init(Sd2Card& dev) {return init(&dev);}  // NOLINT
+  /** \deprecated Use: bool SdVolume::init(Sd2Card* dev, uint8_t vol);
+   * \param[in] dev The SD card where the volume is located.
+   * \param[in] part The partition to be used.
+   * \return true for success or false for failure.
+   */
+  bool init(Sd2Card& dev, uint8_t part) {  // NOLINT
+    return init(&dev, part);
+  }
+#endif  // ALLOW_DEPRECATED_FUNCTIONS
+};
+
+#endif // sd_card_filesystem_h
 
 #endif

@@ -29,7 +29,7 @@
 #include "Marlin.h"
 
 #if ENABLED(SDSUPPORT)
-#include "Sd2Card.h"
+#include "sd_card_hardware.h"
 //------------------------------------------------------------------------------
 #if DISABLED(SOFTWARE_SPI)
   // functions for hardware SPI
@@ -88,75 +88,6 @@
     while (!TEST(SPSR, SPIF)) { /* Intentionally left empty */ }
   }
        //------------------------------------------------------------------------------
-#else  // SOFTWARE_SPI
-       //------------------------------------------------------------------------------
-  /** nop to tune soft SPI timing */
-  #define nop asm volatile ("nop\n\t")
-  //------------------------------------------------------------------------------
-  /** Soft SPI receive byte */
-  static uint8_t spiRec() {
-    uint8_t data = 0;
-    // no interrupts during byte receive - about 8 us
-    cli();
-    // output pin high - like sending 0XFF
-    fastDigitalWrite(SPI_MOSI_PIN, HIGH);
-
-    for (uint8_t i = 0; i < 8; i++) {
-      fastDigitalWrite(SPI_SCK_PIN, HIGH);
-
-      // adjust so SCK is nice
-      nop;
-      nop;
-
-      data <<= 1;
-
-      if (fastDigitalRead(SPI_MISO_PIN)) data |= 1;
-
-      fastDigitalWrite(SPI_SCK_PIN, LOW);
-    }
-    // enable interrupts
-    sei();
-    return data;
-  }
-  //------------------------------------------------------------------------------
-  /** Soft SPI read data */
-  static void spiRead(uint8_t* buf, uint16_t nbyte) {
-    for (uint16_t i = 0; i < nbyte; i++)
-      buf[i] = spiRec();
-  }
-  //------------------------------------------------------------------------------
-  /** Soft SPI send byte */
-  static void spiSend(uint8_t data) {
-    // no interrupts during byte send - about 8 us
-    cli();
-    for (uint8_t i = 0; i < 8; i++) {
-      fastDigitalWrite(SPI_SCK_PIN, LOW);
-
-      fastDigitalWrite(SPI_MOSI_PIN, data & 0X80);
-
-      data <<= 1;
-
-      fastDigitalWrite(SPI_SCK_PIN, HIGH);
-    }
-    // hold SCK high for a few ns
-    nop;
-    nop;
-    nop;
-    nop;
-
-    fastDigitalWrite(SPI_SCK_PIN, LOW);
-    // enable interrupts
-    sei();
-  }
-  //------------------------------------------------------------------------------
-  /** Soft SPI send block */
-  void spiSendBlock(uint8_t token, const uint8_t* buf) {
-    spiSend(token);
-    for (uint16_t i = 0; i < 512; i++)
-      spiSend(buf[i]);
-  }
-#endif  // SOFTWARE_SPI
-//------------------------------------------------------------------------------
 // send command and return error code.  Return zero for OK
 uint8_t Sd2Card::cardCommand(uint8_t cmd, uint32_t arg) {
   // select card
@@ -309,9 +240,7 @@ bool Sd2Card::init(uint8_t sckRateID, uint8_t chipSelectPin) {
     // SS must be in output mode even it is not chip select
     pinMode(SS_PIN, OUTPUT);
     // set SS high - may be chip select for another SPI device
-    #if SET_SPI_SS_HIGH
-      digitalWrite(SS_PIN, HIGH);
-    #endif  // SET_SPI_SS_HIGH
+    digitalWrite(SS_PIN, HIGH);
     // set SCK rate for initialization commands
     spiRate_ = SPI_SD_INIT_RATE;
     spiInit(spiRate_);
@@ -715,4 +644,5 @@ fail:
   return false;
 }
 
-#endif
+#endif  // DISABLED(SOFTWARE_SPI)
+#endif  // ENABLED(SDSUPPORT)
