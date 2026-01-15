@@ -397,7 +397,7 @@ void CardReader::openFile(char* name, bool read, bool push_current/*=false*/) {
 
       SERIAL_PROTOCOLLNPGM(MSG_SD_FILE_SELECTED);
       getfilename(0, fname);
-      lcd_setstatus(longFilename[0] ? longFilename : fname);
+      // LCD support removed - lcd_setstatus(longFilename[0] ? longFilename : fname);
     }
     else {
       SERIAL_PROTOCOLPGM(MSG_SD_OPEN_FILE_FAIL);
@@ -415,7 +415,7 @@ void CardReader::openFile(char* name, bool read, bool push_current/*=false*/) {
       saving = true;
       SERIAL_PROTOCOLPGM(MSG_SD_WRITE_TO_FILE);
       SERIAL_PROTOCOLLN(name);
-      lcd_setstatus(fname);
+      // LCD support removed - lcd_setstatus(fname);
     }
   }
 }
