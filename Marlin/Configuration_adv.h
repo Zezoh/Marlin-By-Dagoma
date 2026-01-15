@@ -681,10 +681,6 @@
  * echo:i2c-reply: from:63 bytes:5 data:hello
  */
 
-// @section i2cbus
-
-//#define EXPERIMENTAL_I2CBUS
-
 #include "Conditionals.h"
 #include "SanityCheck.h"
 
