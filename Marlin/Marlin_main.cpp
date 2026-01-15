@@ -226,15 +226,7 @@
  * M350 - Set microstepping mode.
  * M351 - Toggle MS1 MS2 pins directly.
  *
- * ************ SCARA Specific - This can change to suit future G-code regulations
- * M360 - SCARA calibration: Move to cal-position ThetaA (0 deg calibration)
- * M361 - SCARA calibration: Move to cal-position ThetaB (90 deg calibration - steps per degree)
- * M362 - SCARA calibration: Move to cal-position PsiA (0 deg calibration)
- * M363 - SCARA calibration: Move to cal-position PsiB (90 deg calibration - steps per degree)
- * M364 - SCARA calibration: Move to cal-position PSIC (90 deg to Theta calibration position)
- * M365 - SCARA calibration: Scaling factor, X, Y, Z axis
- * ************* SCARA End ***************
- *
+
  * ************ DAGOMA.FR Specific - This can change to suit future G-code regulations
  * M700 - Wifi : Set SSID to use.
  * M701 - Wifi : Set Password to use and connect !
@@ -461,11 +453,7 @@ static uint8_t target_extruder;
   static bool home_all_axis = true;
 #endif
 
-#if ENABLED(SCARA)
-  float delta_segments_per_second = SCARA_SEGMENTS_PER_SECOND;
-  static float delta[3] = { 0 };
-  float axis_scaling[3] = { 1, 1, 1 };    // Build size scaling, default to 1
-#endif
+
 
 #if ENABLED(FILAMENT_WIDTH_SENSOR)
   //Variables for Filament Sensor input
@@ -647,7 +635,7 @@ void gcode_M114();
   #define DEBUG_POS(PREFIX,VAR) do{ SERIAL_ECHOPGM(PREFIX); print_xyz(" > " STRINGIFY(VAR), VAR); }while(0)
 #endif
 
-#if ENABLED(DELTA) || ENABLED(SCARA)
+#if ENABLED(DELTA)
   inline void sync_plan_position_delta() {
     #if ENABLED(DEBUG_LEVELING_FEATURE)
       if (DEBUGGING(LEVELING)) DEBUG_POS("sync_plan_position_delta", current_position);
@@ -1001,7 +989,7 @@ void setup() {
   tp_init();    // Initialize temperature loop
   plan_init();  // Initialize planner;
 
-  #if ENABLED(DELTA) || ENABLED(SCARA)
+  #if ENABLED(DELTA)
     // Vital to init kinematic equivalent for X0 Y0 Z0
     sync_plan_position_delta();
   #endif
@@ -1700,48 +1688,6 @@ static void set_axis_is_at_home(AxisEnum axis) {
     }
   #endif
 
-  #if ENABLED(SCARA)
-
-    if (axis == X_AXIS || axis == Y_AXIS) {
-
-      float homeposition[3];
-      for (int i = 0; i < 3; i++) homeposition[i] = base_home_pos(i);
-
-      // SERIAL_ECHOPGM("homeposition[x]= "); SERIAL_ECHO(homeposition[0]);
-      // SERIAL_ECHOPGM("homeposition[y]= "); SERIAL_ECHOLN(homeposition[1]);
-
-      /**
-       * Works out real Homeposition angles using inverse kinematics,
-       * and calculates homing offset using forward kinematics
-       */
-      calculate_delta(homeposition);
-
-      // SERIAL_ECHOPGM("base Theta= "); SERIAL_ECHO(delta[X_AXIS]);
-      // SERIAL_ECHOPGM(" base Psi+Theta="); SERIAL_ECHOLN(delta[Y_AXIS]);
-
-      for (int i = 0; i < 2; i++) delta[i] -= home_offset[i];
-
-      // SERIAL_ECHOPGM("addhome X="); SERIAL_ECHO(home_offset[X_AXIS]);
-      // SERIAL_ECHOPGM(" addhome Y="); SERIAL_ECHO(home_offset[Y_AXIS]);
-      // SERIAL_ECHOPGM(" addhome Theta="); SERIAL_ECHO(delta[X_AXIS]);
-      // SERIAL_ECHOPGM(" addhome Psi+Theta="); SERIAL_ECHOLN(delta[Y_AXIS]);
-
-      calculate_SCARA_forward_Transform(delta);
-
-      // SERIAL_ECHOPGM("Delta X="); SERIAL_ECHO(delta[X_AXIS]);
-      // SERIAL_ECHOPGM(" Delta Y="); SERIAL_ECHOLN(delta[Y_AXIS]);
-
-      current_position[axis] = delta[axis];
-
-      /**
-       * SCARA home positions are based on configuration since the actual
-       * limits are determined by the inverse kinematic transform.
-       */
-      sw_endstop_min[axis] = base_min_pos(axis); // + (delta[axis] - base_home_pos(axis));
-      sw_endstop_max[axis] = base_max_pos(axis); // + (delta[axis] - base_home_pos(axis));
-    }
-    else
-  #endif
   {
     current_position[axis] = base_home_pos(axis) + home_offset[axis];
     update_software_endstops(axis);
@@ -3140,9 +3086,7 @@ inline void gcode_G28() {
 
         current_position[X_AXIS] = destination[X_AXIS];
         current_position[Y_AXIS] = destination[Y_AXIS];
-        #if DISABLED(SCARA)
-          current_position[Z_AXIS] = destination[Z_AXIS];
-        #endif
+        current_position[Z_AXIS] = destination[Z_AXIS];
 
         #if ENABLED(DEBUG_LEVELING_FEATURE)
           if (DEBUGGING(LEVELING)) DEBUG_POS("> QUICK_HOME 2", current_position);
@@ -3296,10 +3240,6 @@ inline void gcode_G28() {
     sync_plan_position();
 
   #endif // else DELTA
-
-  #if ENABLED(SCARA)
-    sync_plan_position_delta();
-  #endif
 
   #if ENABLED(ENDSTOPS_ONLY_FOR_HOMING)
     enable_endstops(false);
@@ -4617,7 +4557,7 @@ inline void gcode_G92() {
     }
   }
   if (didXYZ) {
-    #if ENABLED(DELTA) || ENABLED(SCARA)
+    #if ENABLED(DELTA)
       sync_plan_position_delta();
     #else
       sync_plan_position();
@@ -5973,26 +5913,6 @@ inline void gcode_M114() {
   SERIAL_PROTOCOL(zpos);
 
   SERIAL_EOL;
-
-  #if ENABLED(SCARA)
-    SERIAL_PROTOCOLPGM("SCARA Theta:");
-    SERIAL_PROTOCOL(delta[X_AXIS]);
-    SERIAL_PROTOCOLPGM("   Psi+Theta:");
-    SERIAL_PROTOCOL(delta[Y_AXIS]);
-    SERIAL_EOL;
-
-    SERIAL_PROTOCOLPGM("SCARA Cal - Theta:");
-    SERIAL_PROTOCOL(delta[X_AXIS] + home_offset[X_AXIS]);
-    SERIAL_PROTOCOLPGM("   Psi+Theta (90):");
-    SERIAL_PROTOCOL(delta[Y_AXIS] - delta[X_AXIS] - 90 + home_offset[Y_AXIS]);
-    SERIAL_EOL;
-
-    SERIAL_PROTOCOLPGM("SCARA step Cal - Theta:");
-    SERIAL_PROTOCOL(delta[X_AXIS] / 90 * axis_steps_per_unit[X_AXIS]);
-    SERIAL_PROTOCOLPGM("   Psi+Theta:");
-    SERIAL_PROTOCOL((delta[Y_AXIS] - delta[X_AXIS]) / 90 * axis_steps_per_unit[Y_AXIS]);
-    SERIAL_EOL; SERIAL_EOL;
-  #endif
 }
 
 /**
@@ -6239,17 +6159,13 @@ inline void gcode_M205() {
 }
 
 /**
- * M206: Set Additional Homing Offset (X Y Z). SCARA aliases T=X, P=Y
+ * M206: Set Additional Homing Offset (X Y Z)
  */
 inline void gcode_M206() {
   for (int8_t i = X_AXIS; i <= Z_AXIS; i++)
     if (code_seen(axis_codes[i]))
       set_home_offset((AxisEnum)i, code_value());
 
-  #if ENABLED(SCARA)
-    if (code_seen('T')) set_home_offset(X_AXIS, code_value()); // Theta
-    if (code_seen('P')) set_home_offset(Y_AXIS, code_value()); // Psi
-  #endif
   sync_plan_position();
 }
 
@@ -6686,77 +6602,6 @@ inline void gcode_M303() {
     SERIAL_ERRORLNPGM(MSG_ERR_M303_DISABLED);
   #endif
 }
-
-#if ENABLED(SCARA)
-  bool SCARA_move_to_cal(uint8_t delta_x, uint8_t delta_y) {
-    //SoftEndsEnabled = false;              // Ignore soft endstops during calibration
-    //SERIAL_ECHOLN(" Soft endstops disabled ");
-    if (IsRunning()) {
-      //gcode_get_destination(); // For X Y Z E F
-      delta[X_AXIS] = delta_x;
-      delta[Y_AXIS] = delta_y;
-      calculate_SCARA_forward_Transform(delta);
-      destination[X_AXIS] = delta[X_AXIS] / axis_scaling[X_AXIS];
-      destination[Y_AXIS] = delta[Y_AXIS] / axis_scaling[Y_AXIS];
-      prepare_move();
-      //ok_to_send();
-      return true;
-    }
-    return false;
-  }
-
-  /**
-   * M360: SCARA calibration: Move to cal-position ThetaA (0 deg calibration)
-   */
-  inline bool gcode_M360() {
-    SERIAL_ECHOLN(" Cal: Theta 0 ");
-    return SCARA_move_to_cal(0, 120);
-  }
-
-  /**
-   * M361: SCARA calibration: Move to cal-position ThetaB (90 deg calibration - steps per degree)
-   */
-  inline bool gcode_M361() {
-    SERIAL_ECHOLN(" Cal: Theta 90 ");
-    return SCARA_move_to_cal(90, 130);
-  }
-
-  /**
-   * M362: SCARA calibration: Move to cal-position PsiA (0 deg calibration)
-   */
-  inline bool gcode_M362() {
-    SERIAL_ECHOLN(" Cal: Psi 0 ");
-    return SCARA_move_to_cal(60, 180);
-  }
-
-  /**
-   * M363: SCARA calibration: Move to cal-position PsiB (90 deg calibration - steps per degree)
-   */
-  inline bool gcode_M363() {
-    SERIAL_ECHOLN(" Cal: Psi 90 ");
-    return SCARA_move_to_cal(50, 90);
-  }
-
-  /**
-   * M364: SCARA calibration: Move to cal-position PSIC (90 deg to Theta calibration position)
-   */
-  inline bool gcode_M364() {
-    SERIAL_ECHOLN(" Cal: Theta-Psi 90 ");
-    return SCARA_move_to_cal(45, 135);
-  }
-
-  /**
-   * M365: SCARA calibration: Scaling factor, X, Y, Z axis
-   */
-  inline void gcode_M365() {
-    for (int8_t i = X_AXIS; i <= Z_AXIS; i++) {
-      if (code_seen(axis_codes[i])) {
-        axis_scaling[i] = code_value();
-      }
-    }
-  }
-
-#endif // SCARA
 
 #if ENABLED(EXT_SOLENOID)
 
@@ -9078,12 +8923,10 @@ void process_next_command() {
         break;
 
       // G2, G3
-      #if DISABLED(SCARA)
-        case 2: // G2  - CW ARC
-        case 3: // G3  - CCW ARC
-          gcode_G2_G3(codenum == 2);
-          break;
-      #endif
+      case 2: // G2  - CW ARC
+      case 3: // G3  - CCW ARC
+        gcode_G2_G3(codenum == 2);
+        break;
 
       // G4 Dwell
       case 4:
@@ -9482,27 +9325,6 @@ void process_next_command() {
       case 303: // M303 PID autotune
         gcode_M303();
         break;
-
-      #if ENABLED(SCARA)
-        case 360:  // M360 SCARA Theta pos1
-          if (gcode_M360()) return;
-          break;
-        case 361:  // M361 SCARA Theta pos2
-          if (gcode_M361()) return;
-          break;
-        case 362:  // M362 SCARA Psi pos1
-          if (gcode_M362()) return;
-          break;
-        case 363:  // M363 SCARA Psi pos2
-          if (gcode_M363()) return;
-          break;
-        case 364:  // M364 SCARA Psi pos3 (90 deg to Theta)
-          if (gcode_M364()) return;
-          break;
-        case 365: // M365 Set SCARA scaling for X Y Z
-          gcode_M365();
-          break;
-      #endif // SCARA
 
       case 400: // M400 finish all moves
         gcode_M400();
@@ -10063,7 +9885,7 @@ void mesh_plan_buffer_line(float x, float y, float z, const float e, float feed_
 
 #endif // PREVENT_DANGEROUS_EXTRUDE
 
-#if ENABLED(DELTA) || ENABLED(SCARA)
+#if ENABLED(DELTA)
 
   inline bool prepare_move_delta(float target[NUM_AXIS]) {
     float difference[NUM_AXIS];
@@ -10104,11 +9926,7 @@ void mesh_plan_buffer_line(float x, float y, float z, const float e, float feed_
     return true;
   }
 
-#endif // DELTA || SCARA
-
-#if ENABLED(SCARA)
-  inline bool prepare_move_scara(float target[NUM_AXIS]) { return prepare_move_delta(target); }
-#endif
+#endif // DELTA
 
 #if ENABLED(DUAL_X_CARRIAGE)
 
@@ -10149,7 +9967,7 @@ void mesh_plan_buffer_line(float x, float y, float z, const float e, float feed_
 
 #endif // DUAL_X_CARRIAGE
 
-#if DISABLED(DELTA) && DISABLED(SCARA)
+#if DISABLED(DELTA)
 
   inline bool prepare_move_cartesian() {
     // Do not use feedrate_multiplier for E or Z only moves
@@ -10167,13 +9985,13 @@ void mesh_plan_buffer_line(float x, float y, float z, const float e, float feed_
     return true;
   }
 
-#endif // !DELTA && !SCARA
+#endif // !DELTA
 
 /**
  * Prepare a single move and get ready for the next one
  *
  * (This may call plan_buffer_line several times to put
- *  smaller moves into the planner for DELTA or SCARA.)
+ *  smaller moves into the planner for DELTA.)
  */
 void prepare_move() {
   clamp_to_software_endstops(destination);
@@ -10183,9 +10001,7 @@ void prepare_move() {
     prevent_dangerous_extrude(current_position[E_AXIS], destination[E_AXIS]);
   #endif
 
-  #if ENABLED(SCARA)
-    if (!prepare_move_scara(destination)) return;
-  #elif ENABLED(DELTA)
+  #if ENABLED(DELTA)
     if (!prepare_move_delta(destination)) return;
   #endif
 
@@ -10193,7 +10009,7 @@ void prepare_move() {
     if (!prepare_move_dual_x_carriage()) return;
   #endif
 
-  #if DISABLED(DELTA) && DISABLED(SCARA)
+  #if DISABLED(DELTA)
     if (!prepare_move_cartesian()) return;
   #endif
 
@@ -10314,7 +10130,7 @@ void plan_arc(
 
     clamp_to_software_endstops(arc_target);
 
-    #if ENABLED(DELTA) || ENABLED(SCARA)
+    #if ENABLED(DELTA)
       calculate_delta(arc_target);
       #if ENABLED(AUTO_BED_LEVELING_FEATURE)
         adjust_delta(arc_target);
@@ -10326,7 +10142,7 @@ void plan_arc(
   }
 
   // Ensure last segment arrives at target location.
-  #if ENABLED(DELTA) || ENABLED(SCARA)
+  #if ENABLED(DELTA)
     calculate_delta(target);
     #if ENABLED(AUTO_BED_LEVELING_FEATURE)
       adjust_delta(target);
@@ -10379,84 +10195,7 @@ void plan_arc(
 
 #endif // HAS_CONTROLLERFAN
 
-#if ENABLED(SCARA)
 
-  void calculate_SCARA_forward_Transform(float f_scara[3]) {
-    // Perform forward kinematics, and place results in delta[3]
-    // The maths and first version has been done by QHARLEY . Integrated into masterbranch 06/2014 and slightly restructured by Joachim Cerny in June 2014
-
-    float x_sin, x_cos, y_sin, y_cos;
-
-    //SERIAL_ECHOPGM("f_delta x="); SERIAL_ECHO(f_scara[X_AXIS]);
-    //SERIAL_ECHOPGM(" y="); SERIAL_ECHO(f_scara[Y_AXIS]);
-
-    x_sin = sin(f_scara[X_AXIS] / SCARA_RAD2DEG) * Linkage_1;
-    x_cos = cos(f_scara[X_AXIS] / SCARA_RAD2DEG) * Linkage_1;
-    y_sin = sin(f_scara[Y_AXIS] / SCARA_RAD2DEG) * Linkage_2;
-    y_cos = cos(f_scara[Y_AXIS] / SCARA_RAD2DEG) * Linkage_2;
-
-    //SERIAL_ECHOPGM(" x_sin="); SERIAL_ECHO(x_sin);
-    //SERIAL_ECHOPGM(" x_cos="); SERIAL_ECHO(x_cos);
-    //SERIAL_ECHOPGM(" y_sin="); SERIAL_ECHO(y_sin);
-    //SERIAL_ECHOPGM(" y_cos="); SERIAL_ECHOLN(y_cos);
-
-    delta[X_AXIS] = x_cos + y_cos + SCARA_offset_x;  //theta
-    delta[Y_AXIS] = x_sin + y_sin + SCARA_offset_y;  //theta+phi
-
-    //SERIAL_ECHOPGM(" delta[X_AXIS]="); SERIAL_ECHO(delta[X_AXIS]);
-    //SERIAL_ECHOPGM(" delta[Y_AXIS]="); SERIAL_ECHOLN(delta[Y_AXIS]);
-  }
-
-  void calculate_delta(float cartesian[3]) {
-    //reverse kinematics.
-    // Perform reversed kinematics, and place results in delta[3]
-    // The maths and first version has been done by QHARLEY . Integrated into masterbranch 06/2014 and slightly restructured by Joachim Cerny in June 2014
-
-    float SCARA_pos[2];
-    static float SCARA_C2, SCARA_S2, SCARA_K1, SCARA_K2, SCARA_theta, SCARA_psi;
-
-    SCARA_pos[X_AXIS] = cartesian[X_AXIS] * axis_scaling[X_AXIS] - SCARA_offset_x;  //Translate SCARA to standard X Y
-    SCARA_pos[Y_AXIS] = cartesian[Y_AXIS] * axis_scaling[Y_AXIS] - SCARA_offset_y;  // With scaling factor.
-
-    #if (Linkage_1 == Linkage_2)
-      SCARA_C2 = ((sq(SCARA_pos[X_AXIS]) + sq(SCARA_pos[Y_AXIS])) / (2 * (float)L1_2)) - 1;
-    #else
-      SCARA_C2 = (sq(SCARA_pos[X_AXIS]) + sq(SCARA_pos[Y_AXIS]) - (float)L1_2 - (float)L2_2) / 45000;
-    #endif
-
-    SCARA_S2 = sqrt(1 - sq(SCARA_C2));
-
-    SCARA_K1 = Linkage_1 + Linkage_2 * SCARA_C2;
-    SCARA_K2 = Linkage_2 * SCARA_S2;
-
-    SCARA_theta = (atan2(SCARA_pos[X_AXIS], SCARA_pos[Y_AXIS]) - atan2(SCARA_K1, SCARA_K2)) * -1;
-    SCARA_psi = atan2(SCARA_S2, SCARA_C2);
-
-    delta[X_AXIS] = SCARA_theta * SCARA_RAD2DEG;  // Multiply by 180/Pi  -  theta is support arm angle
-    delta[Y_AXIS] = (SCARA_theta + SCARA_psi) * SCARA_RAD2DEG;  //       -  equal to sub arm angle (inverted motor)
-    delta[Z_AXIS] = cartesian[Z_AXIS];
-
-    /**
-    SERIAL_ECHOPGM("cartesian x="); SERIAL_ECHO(cartesian[X_AXIS]);
-    SERIAL_ECHOPGM(" y="); SERIAL_ECHO(cartesian[Y_AXIS]);
-    SERIAL_ECHOPGM(" z="); SERIAL_ECHOLN(cartesian[Z_AXIS]);
-
-    SERIAL_ECHOPGM("scara x="); SERIAL_ECHO(SCARA_pos[X_AXIS]);
-    SERIAL_ECHOPGM(" y="); SERIAL_ECHOLN(SCARA_pos[Y_AXIS]);
-
-    SERIAL_ECHOPGM("delta x="); SERIAL_ECHO(delta[X_AXIS]);
-    SERIAL_ECHOPGM(" y="); SERIAL_ECHO(delta[Y_AXIS]);
-    SERIAL_ECHOPGM(" z="); SERIAL_ECHOLN(delta[Z_AXIS]);
-
-    SERIAL_ECHOPGM("C2="); SERIAL_ECHO(SCARA_C2);
-    SERIAL_ECHOPGM(" S2="); SERIAL_ECHO(SCARA_S2);
-    SERIAL_ECHOPGM(" Theta="); SERIAL_ECHO(SCARA_theta);
-    SERIAL_ECHOPGM(" Psi="); SERIAL_ECHOLN(SCARA_psi);
-    SERIAL_EOL;
-    */
-  }
-
-#endif // SCARA
 
 #if ENABLED(TEMP_STAT_LEDS)
 
