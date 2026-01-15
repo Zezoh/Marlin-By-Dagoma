@@ -460,6 +460,210 @@ static inline __attribute__((always_inline))
  * \file
  * \brief Sd2Card class for V2 SD/SDHC cards
  */
+
+// SD card commands and structures (from SD Specifications Part 1, Physical Layer, Version 3.01)
+//------------------------------------------------------------------------------
+// SD card commands
+/** GO_IDLE_STATE - init card in spi mode if CS low */
+uint8_t const CMD0 = 0X00;
+/** SEND_IF_COND - verify SD Memory Card interface operating condition.*/
+uint8_t const CMD8 = 0X08;
+/** SEND_CSD - read the Card Specific Data (CSD register) */
+uint8_t const CMD9 = 0X09;
+/** SEND_CID - read the card identification information (CID register) */
+uint8_t const CMD10 = 0X0A;
+/** STOP_TRANSMISSION - end multiple block read sequence */
+uint8_t const CMD12 = 0X0C;
+/** SEND_STATUS - read the card status register */
+uint8_t const CMD13 = 0X0D;
+/** READ_SINGLE_BLOCK - read a single data block from the card */
+uint8_t const CMD17 = 0X11;
+/** READ_MULTIPLE_BLOCK - read a multiple data blocks from the card */
+uint8_t const CMD18 = 0X12;
+/** WRITE_BLOCK - write a single data block to the card */
+uint8_t const CMD24 = 0X18;
+/** WRITE_MULTIPLE_BLOCK - write blocks of data until a STOP_TRANSMISSION */
+uint8_t const CMD25 = 0X19;
+/** ERASE_WR_BLK_START - sets the address of the first block to be erased */
+uint8_t const CMD32 = 0X20;
+/** ERASE_WR_BLK_END - sets the address of the last block of the continuous range to be erased*/
+uint8_t const CMD33 = 0X21;
+/** ERASE - erase all previously selected blocks */
+uint8_t const CMD38 = 0X26;
+/** APP_CMD - escape for application specific command */
+uint8_t const CMD55 = 0X37;
+/** READ_OCR - read the OCR register of a card */
+uint8_t const CMD58 = 0X3A;
+/** SET_WR_BLK_ERASE_COUNT - Set the number of write blocks to be pre-erased before writing */
+uint8_t const ACMD23 = 0X17;
+/** SD_SEND_OP_COMD - Sends host capacity support information and activates the card's initialization process */
+uint8_t const ACMD41 = 0X29;
+//------------------------------------------------------------------------------
+/** status for card in the ready state */
+uint8_t const R1_READY_STATE = 0X00;
+/** status for card in the idle state */
+uint8_t const R1_IDLE_STATE = 0X01;
+/** status bit for illegal command */
+uint8_t const R1_ILLEGAL_COMMAND = 0X04;
+/** start data token for read or write single block*/
+uint8_t const DATA_START_BLOCK = 0XFE;
+/** stop token for write multiple blocks*/
+uint8_t const STOP_TRAN_TOKEN = 0XFD;
+/** start data token for write multiple blocks*/
+uint8_t const WRITE_MULTIPLE_TOKEN = 0XFC;
+/** mask for data response tokens after a write block operation */
+uint8_t const DATA_RES_MASK = 0X1F;
+/** write data accepted token */
+uint8_t const DATA_RES_ACCEPTED = 0X05;
+//------------------------------------------------------------------------------
+/** Card IDentification (CID) register */
+typedef struct CID {
+  // byte 0
+  unsigned char mid;
+  // byte 1-2
+  char oid[2];
+  // byte 3-7
+  char pnm[5];
+  // byte 8
+  unsigned char prv_m : 4;
+  unsigned char prv_n : 4;
+  // byte 9-12
+  uint32_t psn;
+  // byte 13
+  unsigned char mdt_year_high : 4;
+  unsigned char reserved : 4;
+  // byte 14
+  unsigned char mdt_month : 4;
+  unsigned char mdt_year_low : 4;
+  // byte 15
+  unsigned char always1 : 1;
+  unsigned char crc : 7;
+} cid_t;
+//------------------------------------------------------------------------------
+/** CSD for version 1.00 cards */
+typedef struct CSDV1 {
+  // byte 0
+  unsigned char reserved1 : 6;
+  unsigned char csd_ver : 2;
+  // byte 1
+  unsigned char taac;
+  // byte 2
+  unsigned char nsac;
+  // byte 3
+  unsigned char tran_speed;
+  // byte 4
+  unsigned char ccc_high;
+  // byte 5
+  unsigned char read_bl_len : 4;
+  unsigned char ccc_low : 4;
+  // byte 6
+  unsigned char c_size_high : 2;
+  unsigned char reserved2 : 2;
+  unsigned char dsr_imp : 1;
+  unsigned char read_blk_misalign : 1;
+  unsigned char write_blk_misalign : 1;
+  unsigned char read_bl_partial : 1;
+  // byte 7
+  unsigned char c_size_mid;
+  // byte 8
+  unsigned char vdd_r_curr_max : 3;
+  unsigned char vdd_r_curr_min : 3;
+  unsigned char c_size_low : 2;
+  // byte 9
+  unsigned char c_size_mult_high : 2;
+  unsigned char vdd_w_cur_max : 3;
+  unsigned char vdd_w_curr_min : 3;
+  // byte 10
+  unsigned char sector_size_high : 6;
+  unsigned char erase_blk_en : 1;
+  unsigned char c_size_mult_low : 1;
+  // byte 11
+  unsigned char wp_grp_size : 7;
+  unsigned char sector_size_low : 1;
+  // byte 12
+  unsigned char write_bl_len_high : 2;
+  unsigned char r2w_factor : 3;
+  unsigned char reserved3 : 2;
+  unsigned char wp_grp_enable : 1;
+  // byte 13
+  unsigned char reserved4 : 5;
+  unsigned char write_partial : 1;
+  unsigned char write_bl_len_low : 2;
+  // byte 14
+  unsigned char reserved5: 2;
+  unsigned char file_format : 2;
+  unsigned char tmp_write_protect : 1;
+  unsigned char perm_write_protect : 1;
+  unsigned char copy : 1;
+  unsigned char file_format_grp : 1;
+  // byte 15
+  unsigned char always1 : 1;
+  unsigned char crc : 7;
+} csd1_t;
+//------------------------------------------------------------------------------
+/** CSD for version 2.00 cards */
+typedef struct CSDV2 {
+  // byte 0
+  unsigned char reserved1 : 6;
+  unsigned char csd_ver : 2;
+  // byte 1
+  unsigned char taac;
+  // byte 2
+  unsigned char nsac;
+  // byte 3
+  unsigned char tran_speed;
+  // byte 4
+  unsigned char ccc_high;
+  // byte 5
+  unsigned char read_bl_len : 4;
+  unsigned char ccc_low : 4;
+  // byte 6
+  unsigned char reserved2 : 4;
+  unsigned char dsr_imp : 1;
+  unsigned char read_blk_misalign : 1;
+  unsigned char write_blk_misalign : 1;
+  unsigned char read_bl_partial : 1;
+  // byte 7
+  unsigned char reserved3 : 2;
+  unsigned char c_size_high : 6;
+  // byte 8
+  unsigned char c_size_mid;
+  // byte 9
+  unsigned char c_size_low;
+  // byte 10
+  unsigned char sector_size_high : 6;
+  unsigned char erase_blk_en : 1;
+  unsigned char reserved4 : 1;
+  // byte 11
+  unsigned char wp_grp_size : 7;
+  unsigned char sector_size_low : 1;
+  // byte 12
+  unsigned char write_bl_len_high : 2;
+  unsigned char r2w_factor : 3;
+  unsigned char reserved5 : 2;
+  unsigned char wp_grp_enable : 1;
+  // byte 13
+  unsigned char reserved6 : 5;
+  unsigned char write_partial : 1;
+  unsigned char write_bl_len_low : 2;
+  // byte 14
+  unsigned char reserved7: 2;
+  unsigned char file_format : 2;
+  unsigned char tmp_write_protect : 1;
+  unsigned char perm_write_protect : 1;
+  unsigned char copy : 1;
+  unsigned char file_format_grp : 1;
+  // byte 15
+  unsigned char always1 : 1;
+  unsigned char crc : 7;
+} csd2_t;
+//------------------------------------------------------------------------------
+/** union of old and new style CSD register */
+union csd_t {
+  csd1_t v1;
+  csd2_t v2;
+};
+
 //------------------------------------------------------------------------------
 // SPI speed is F_CPU/2^(1 + index), 0 <= index <= 6
 /** Set SCK to max rate of F_CPU/2. See Sd2Card::setSckRate(). */
