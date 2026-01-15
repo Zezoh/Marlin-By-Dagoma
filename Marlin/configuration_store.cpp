@@ -122,7 +122,7 @@
  */
 #include "Marlin.h"
 #include "language.h"
-#include "planner.h"
+#include "motion.h"
 #include "temperature.h"
 // LCD support removed - no ultralcd.h include
 #include "configuration_store.h"
