@@ -6274,50 +6274,6 @@ inline void gcode_M226() {
   } // code_seen('P')
 }
 
-#if HAS_SERVOS
-
-  /**
-   * M280: Get or set servo position. P<index> S<angle>
-   */
-  inline void gcode_M280() {
-    int servo_index = code_seen('P') ? code_value_short() : -1;
-    int servo_position = 0;
-    if (code_seen('S')) {
-      servo_position = code_value_short();
-      if (servo_index >= 0 && servo_index < NUM_SERVOS)
-        servo[servo_index].move(servo_position);
-      else {
-        SERIAL_ERROR_START;
-        SERIAL_ERROR("Servo ");
-        SERIAL_ERROR(servo_index);
-        SERIAL_ERRORLN(" out of range");
-      }
-    }
-    else if (servo_index >= 0) {
-      SERIAL_ECHO_START;
-      SERIAL_ECHO(" Servo ");
-      SERIAL_ECHO(servo_index);
-      SERIAL_ECHO(": ");
-      SERIAL_ECHOLN(servo[servo_index].read());
-    }
-  }
-
-#endif // HAS_SERVOS
-
-#if HAS_BUZZER
-
-  /**
-   * M300: Play beep sound S<frequency Hz> P<duration ms>
-   */
-  inline void gcode_M300() {
-    uint16_t beepS = code_seen('S') ? code_value_short() : 110;
-    uint32_t beepP = code_seen('P') ? code_value_long() : 1000;
-    if (beepP > 5000) beepP = 5000; // limit to 5 seconds
-    buzz(beepP, beepS);
-  }
-
-#endif // HAS_BUZZER
-
 #if ENABLED(PIDTEMP)
 
   /**
@@ -6667,10 +6623,6 @@ inline void gcode_M428() {
       else {
         SERIAL_ERROR_START;
         SERIAL_ERRORLNPGM(MSG_ERR_M428_TOO_FAR);
-        // LCD_ALERTMESSAGEPGM("Err: Too far!"); // LCD support removed
-        #if HAS_BUZZER
-          buzz(200, 40);
-        #endif
         err = true;
         break;
       }
@@ -6679,11 +6631,6 @@ inline void gcode_M428() {
 
   if (!err) {
     sync_plan_position();
-    // LCD_MESSAGEPGM(MSG_HOME_OFFSETS_APPLIED); // LCD support removed
-    #if HAS_BUZZER
-      buzz(200, 659);
-      buzz(200, 698);
-    #endif
   }
 }
 
@@ -9127,18 +9074,6 @@ void process_next_command() {
       case 226: // M226 P<pin number> S<pin state>- Wait until the specified pin reaches the state required
         gcode_M226();
         break;
-
-      #if HAS_SERVOS
-        case 280: // M280 - set servo position absolute. P: servo index, S: angle or microseconds
-          gcode_M280();
-          break;
-      #endif // HAS_SERVOS
-
-      #if HAS_BUZZER
-        case 300: // M300 - Play beep tone
-          gcode_M300();
-          break;
-      #endif // HAS_BUZZER
 
       #if ENABLED(PIDTEMP)
         case 301: // M301
