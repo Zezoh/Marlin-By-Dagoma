@@ -102,8 +102,8 @@
   #if DISABLED(ULTRA_LCD)
     #error BABYSTEPPING requires an LCD controller.
   #endif
-  #if ENABLED(SCARA)
-    #error BABYSTEPPING is not implemented for SCARA yet.
+  #if ENABLED(DELTA)
+    #error BABYSTEPPING is not implemented for DELTA yet.
   #endif
   #if ENABLED(DELTA) && ENABLED(BABYSTEP_XY)
     #error BABYSTEPPING only implemented for Z axis on deltabots.

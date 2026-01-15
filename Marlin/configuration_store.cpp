@@ -100,9 +100,6 @@
  * DOGLCD:
  *  377  M250 C    lcd_contrast (int)
  *
- * SCARA:
- *  379  M365 XYZ  axis_scaling (float x3)
- *
  * FWRETRACT:
  *  391  M209 S    autoretract_enabled (bool)
  *  392  M207 S    retract_length (float)
@@ -301,12 +298,8 @@ void Config_StoreSettings()
 #endif
   EEPROM_WRITE_VAR(i, lcd_contrast);
 
-#if ENABLED(SCARA)
-  EEPROM_WRITE_VAR(i, axis_scaling); // 3 floats
-#else
   dummy = 1.0f;
   EEPROM_WRITE_VAR(i, dummy);
-#endif
 
 #if ENABLED(FWRETRACT)
   EEPROM_WRITE_VAR(i, autoretract_enabled);
@@ -508,11 +501,7 @@ void Config_RetrieveSettings()
 #endif
     EEPROM_READ_VAR(i, lcd_contrast);
 
-#if ENABLED(SCARA)
-    EEPROM_READ_VAR(i, axis_scaling); // 3 floats
-#else
-    EEPROM_READ_VAR(i, dummy);
-#endif
+  EEPROM_READ_VAR(i, dummy);
 
 #if ENABLED(FWRETRACT)
     EEPROM_READ_VAR(i, autoretract_enabled);
@@ -578,10 +567,6 @@ void Config_ResetDefault(bool resetZMagicThreshold)
     axis_steps_per_unit[i] = tmp1[i];
     max_feedrate[i] = tmp2[i];
     max_acceleration_units_per_sq_second[i] = tmp3[i];
-#if ENABLED(SCARA)
-    if (i < COUNT(axis_scaling))
-      axis_scaling[i] = 1;
-#endif
   }
 
   // steps per sq second need to be updated to agree with the units per sq second
@@ -719,19 +704,6 @@ void Config_PrintSettings(bool forReplay)
   SERIAL_EOL;
 
   CONFIG_ECHO_START;
-
-#if ENABLED(SCARA)
-  if (!forReplay)
-  {
-    SERIAL_ECHOLNPGM("Scaling factors:");
-    CONFIG_ECHO_START;
-  }
-  SERIAL_ECHOPAIR("  M365 X", axis_scaling[X_AXIS]);
-  SERIAL_ECHOPAIR(" Y", axis_scaling[Y_AXIS]);
-  SERIAL_ECHOPAIR(" Z", axis_scaling[Z_AXIS]);
-  SERIAL_EOL;
-  CONFIG_ECHO_START;
-#endif // SCARA
 
   if (!forReplay)
   {

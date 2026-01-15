@@ -315,10 +315,6 @@ extern bool axis_homed[3]; // axis[n].is_homed
     extern int delta_grid_spacing[2];
     void adjust_delta(float cartesian[3]);
   #endif
-#elif ENABLED(SCARA)
-  extern float axis_scaling[3];  // Build size scaling
-  void calculate_delta(float cartesian[3]);
-  void calculate_SCARA_forward_Transform(float f_scara[3]);
 #endif
 
 #if ENABLED(Z_DUAL_ENDSTOPS)

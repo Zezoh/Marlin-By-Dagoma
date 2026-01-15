@@ -323,11 +323,11 @@
   #endif
 
   /**
-   * SCARA
+   * DELTA
    */
-  #if ENABLED(SCARA)
+  #if ENABLED(DELTA)
     #undef SLOWDOWN
-    #define QUICK_HOME //SCARA needs Quickhome
+    #define QUICK_HOME // Delta needs Quick Home
   #endif
 
   /**
