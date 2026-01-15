@@ -147,19 +147,18 @@ FORCE_INLINE int8_t prev_block_index(int8_t block_index) { return BLOCK_MOD(bloc
 
 FORCE_INLINE float estimate_acceleration_distance(float initial_rate, float target_rate, float acceleration) {
   if (acceleration == 0) return 0;
-  return (target_rate * target_rate - initial_rate * initial_rate) / (acceleration * 2.0f);
+  return (sq(target_rate) - sq(initial_rate)) / (acceleration * 2);
 }
 
 FORCE_INLINE float intersection_distance(float initial_rate, float final_rate, float acceleration, float distance) {
   if (acceleration == 0) return 0;
-  return (acceleration * 2.0f * distance - initial_rate * initial_rate + final_rate * final_rate) / (acceleration * 4.0f);
+  return (acceleration * 2 * distance - sq(initial_rate) + sq(final_rate)) / (acceleration * 4);
 }
 
 void calculate_trapezoid_for_block(block_t* block, float entry_factor, float exit_factor) {
   unsigned long initial_rate = ceil(block->nominal_rate * entry_factor),
-                final_rate = ceil(block->nominal_rate * exit_factor); // (steps per second)
+                final_rate = ceil(block->nominal_rate * exit_factor);
 
-  // Limit minimal step rate (Otherwise the timer will overflow.)
   NOLESS(initial_rate, 120);
   NOLESS(final_rate, 120);
 
@@ -170,15 +169,15 @@ void calculate_trapezoid_for_block(block_t* block, float entry_factor, float exi
 
   if (plateau_steps < 0) {
     accelerate_steps = ceil(intersection_distance(initial_rate, final_rate, acceleration, block->step_event_count));
-    accelerate_steps = max(accelerate_steps, 0);
-    accelerate_steps = min((uint32_t)accelerate_steps, block->step_event_count);
+    NOMORE(accelerate_steps, block->step_event_count);
+    NOLESS(accelerate_steps, 0);
     plateau_steps = 0;
   }
 
   #if ENABLED(ADVANCE)
     volatile long initial_advance = block->advance * entry_factor * entry_factor;
     volatile long final_advance = block->advance * exit_factor * exit_factor;
-  #endif // ADVANCE
+  #endif
 
   CRITICAL_SECTION_START;
   if (!block->busy) {
@@ -195,34 +194,24 @@ void calculate_trapezoid_for_block(block_t* block, float entry_factor, float exi
 }
 
 FORCE_INLINE float max_allowable_speed(float acceleration, float target_velocity, float distance) {
-  return sqrt(target_velocity * target_velocity - 2.0f * acceleration * distance);
+  return sqrt(sq(target_velocity) - 2 * acceleration * distance);
 }
 
 // The kernel called by planner_recalculate() when scanning the plan from last to first entry.
 void planner_reverse_pass_kernel(block_t* previous, block_t* current, block_t* next) {
-  if (!current) return;
+  if (!current || !next) return;
   UNUSED(previous);
 
-  if (next) {
-    // If entry speed is already at the maximum entry speed, no need to recheck. Block is cruising.
-    // If not, block in state of acceleration or deceleration. Reset entry speed to maximum and
-    // check for maximum allowable speed reductions to ensure maximum possible planned speed.
-    float max_entry_speed = current->max_entry_speed;
-    if (current->entry_speed != max_entry_speed) {
-
-      // If nominal length true, max junction speed is guaranteed to be reached. Only compute
-      // for max allowable speed if block is decelerating and nominal length is false.
-      if (!current->nominal_length_flag && max_entry_speed > next->entry_speed) {
-        current->entry_speed = min(max_entry_speed,
-                                   max_allowable_speed(-current->acceleration, next->entry_speed, current->millimeters));
-      }
-      else {
-        current->entry_speed = max_entry_speed;
-      }
-      current->recalculate_flag = true;
-
+  if (current->entry_speed != current->max_entry_speed) {
+    if (!current->nominal_length_flag && current->max_entry_speed > next->entry_speed) {
+      current->entry_speed = min(current->max_entry_speed,
+                                 max_allowable_speed(-current->acceleration, next->entry_speed, current->millimeters));
     }
-  } // Skip last block. Already initialized and set for recalculation.
+    else {
+      current->entry_speed = current->max_entry_speed;
+    }
+    current->recalculate_flag = true;
+  }
 }
 
 // planner_recalculate() needs to go over the current plan twice. Once in reverse and once forward. This
@@ -249,22 +238,15 @@ void planner_reverse_pass() {
 
 // The kernel called by planner_recalculate() when scanning the plan from first to last entry.
 void planner_forward_pass_kernel(block_t* previous, block_t* current, block_t* next) {
-  if (!previous) return;
+  if (!previous || current->nominal_length_flag) return;
   UNUSED(next);
 
-  // If the previous block is an acceleration block, but it is not long enough to complete the
-  // full speed change within the block, we need to adjust the entry speed accordingly. Entry
-  // speeds have already been reset, maximized, and reverse planned by reverse planner.
-  // If nominal length is true, max junction speed is guaranteed to be reached. No need to recheck.
-  if (!previous->nominal_length_flag) {
-    if (previous->entry_speed < current->entry_speed) {
-      double entry_speed = min(current->entry_speed,
-                               max_allowable_speed(-previous->acceleration, previous->entry_speed, previous->millimeters));
-      // Check for junction speed change
-      if (current->entry_speed != entry_speed) {
-        current->entry_speed = entry_speed;
-        current->recalculate_flag = true;
-      }
+  if (previous->entry_speed < current->entry_speed) {
+    float entry_speed = min(current->entry_speed,
+                            max_allowable_speed(-previous->acceleration, previous->entry_speed, previous->millimeters));
+    if (current->entry_speed != entry_speed) {
+      current->entry_speed = entry_speed;
+      current->recalculate_flag = true;
     }
   }
 }
@@ -687,9 +669,7 @@ float junction_deviation = 0.1;
       square(delta_mm[X_AXIS]) + square(delta_mm[Y_AXIS]) + square(delta_mm[Z_AXIS])
     );
   }
-  float inverse_millimeters = 1.0 / block->millimeters;  // Inverse millimeters to remove multiple divides
-
-  // Calculate moves/second for this move. No divide by zero due to previous checks.
+  float inverse_millimeters = 1.0 / block->millimeters;
   float inverse_second = feed_rate * inverse_millimeters;
 
   int moves_queued = movesplanned();
@@ -701,16 +681,12 @@ float junction_deviation = 0.1;
       if (mq) feed_rate *= 2.0 * moves_queued / (BLOCK_BUFFER_SIZE);
     #endif
     #if ENABLED(SLOWDOWN)
-      //  segment time im micro seconds
-      unsigned long segment_time = lround(1000000.0/inverse_second);
-      if (mq) {
-        if (segment_time < minsegmenttime) {
-          // buffer is draining, add extra time.  The amount of time added increases if the buffer is still emptied more.
-          inverse_second = 1000000.0 / (segment_time + lround(2 * (minsegmenttime - segment_time) / moves_queued));
-          #ifdef XY_FREQUENCY_LIMIT
-            segment_time = lround(1000000.0 / inverse_second);
-          #endif
-        }
+      unsigned long segment_time = lround(1000000.0 / inverse_second);
+      if (mq && segment_time < minsegmenttime) {
+        inverse_second = 1000000.0 / (segment_time + lround(2 * (minsegmenttime - segment_time) / moves_queued));
+        #ifdef XY_FREQUENCY_LIMIT
+          segment_time = lround(1000000.0 / inverse_second);
+        #endif
       }
     #endif
   #endif
@@ -849,7 +825,7 @@ float junction_deviation = 0.1;
           dsy = current_speed[Y_AXIS] - previous_speed[Y_AXIS],
           dsz = fabs(csz - previous_speed[Z_AXIS]),
           dse = fabs(cse - previous_speed[E_AXIS]),
-          jerk = sqrt(dsx * dsx + dsy * dsy);
+          jerk = sqrt(sq(dsx) + sq(dsy));
 
     vmax_junction = block->nominal_speed;
     if (jerk > max_xy_jerk) vmax_junction_factor = max_xy_jerk / jerk;
@@ -860,7 +836,7 @@ float junction_deviation = 0.1;
   }
   block->max_entry_speed = vmax_junction;
 
-  double v_allowable = max_allowable_speed(-block->acceleration, MINIMUM_PLANNER_SPEED, block->millimeters);
+  float v_allowable = max_allowable_speed(-block->acceleration, MINIMUM_PLANNER_SPEED, block->millimeters);
   block->entry_speed = min(vmax_junction, v_allowable);
   block->nominal_length_flag = (block->nominal_speed <= v_allowable);
   block->recalculate_flag = true;
@@ -1231,12 +1207,7 @@ void checkHitEndstops() {
   }
 }
 
-#if ENABLED( Z_MIN_MAGIC )
-  #define LAST_MEASURE_NUMBER 10
-  volatile float last_measures[LAST_MEASURE_NUMBER] = { 0.0 };
-  volatile float last_measures_avg = { 0.0 };
-  volatile int last_measures_idx = 0;
-#endif
+
 
 // Check endstops - Called from ISR!
 inline void update_endstops() {
@@ -1448,15 +1419,13 @@ void st_wake_up() {
 }
 
 FORCE_INLINE unsigned short calc_timer(unsigned short step_rate) {
-  unsigned short timer;
-
   NOMORE(step_rate, MAX_STEP_FREQUENCY);
 
-  if (step_rate > 20000) { // If steprate > 20kHz >> step 4 times
+  if (step_rate > 20000) {
     step_rate = (step_rate >> 2) & 0x3fff;
     step_loops = 4;
   }
-  else if (step_rate > 10000) { // If steprate > 10kHz >> step 2 times
+  else if (step_rate > 10000) {
     step_rate = (step_rate >> 1) & 0x7fff;
     step_loops = 2;
   }
@@ -1465,21 +1434,28 @@ FORCE_INLINE unsigned short calc_timer(unsigned short step_rate) {
   }
 
   NOLESS(step_rate, F_CPU / 500000);
-  step_rate -= F_CPU / 500000; // Correct for minimal speed
-  if (step_rate >= (8 * 256)) { // higher step rate
+  step_rate -= F_CPU / 500000;
+  
+  unsigned short timer;
+  if (step_rate >= (8 * 256)) {
     unsigned short table_address = (unsigned short)&speed_lookuptable_fast[(unsigned char)(step_rate >> 8)][0];
     unsigned char tmp_step_rate = (step_rate & 0x00ff);
     unsigned short gain = (unsigned short)pgm_read_word_near(table_address + 2);
     MultiU16X8toH16(timer, tmp_step_rate, gain);
     timer = (unsigned short)pgm_read_word_near(table_address) - timer;
   }
-  else { // lower step rates
+  else {
     unsigned short table_address = (unsigned short)&speed_lookuptable_slow[0][0];
     table_address += ((step_rate) >> 1) & 0xfffc;
     timer = (unsigned short)pgm_read_word_near(table_address);
     timer -= (((unsigned short)pgm_read_word_near(table_address + 2) * (unsigned char)(step_rate & 0x0007)) >> 3);
   }
-  if (timer < 100) { timer = 100; MYSERIAL.print(MSG_STEPPER_TOO_HIGH); MYSERIAL.println(step_rate); }//(20kHz this should never happen)
+  
+  if (timer < 100) {
+    timer = 100;
+    MYSERIAL.print(MSG_STEPPER_TOO_HIGH);
+    MYSERIAL.println(step_rate);
+  }
   return timer;
 }
 
@@ -1865,7 +1841,7 @@ void st_init() {
     #endif
   #endif
 
-  #if HAS_Z_PROBE && ENABLED(Z_MIN_PROBE_ENDSTOP) && DISABLED(Z_MIN_MAGIC) // Check for Z_MIN_PROBE_ENDSTOP so we don't pull a pin high unless it's to be used.
+  #if HAS_Z_PROBE && ENABLED(Z_MIN_PROBE_ENDSTOP)
     SET_INPUT(Z_MIN_PROBE_PIN);
     #if ENABLED(ENDSTOPPULLUP_ZMIN_PROBE)
       WRITE(Z_MIN_PROBE_PIN,HIGH);
@@ -2435,13 +2411,18 @@ vector_3 vector_3::get_normal() {
   return normalized;
 }
 
-float vector_3::get_length() { return sqrt((x * x) + (y * y) + (z * z)); }
+float vector_3::get_length() {
+  return sqrt(sq(x) + sq(y) + sq(z));
+}
 
 void vector_3::normalize() {
-  float length = get_length();
-  x /= length;
-  y /= length;
-  z /= length;
+  float len = get_length();
+  if (len > 0) {
+    float inv_len = 1.0 / len;
+    x *= inv_len;
+    y *= inv_len;
+    z *= inv_len;
+  }
 }
 
 void vector_3::apply_rotation(matrix_3x3 matrix) {
