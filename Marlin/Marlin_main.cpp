@@ -427,7 +427,6 @@ static uint8_t target_extruder;
   float delta_diagonal_rod_2_tower_1 = sq(delta_diagonal_rod + delta_diagonal_rod_trim_tower_1);
   float delta_diagonal_rod_2_tower_2 = sq(delta_diagonal_rod + delta_diagonal_rod_trim_tower_2);
   float delta_diagonal_rod_2_tower_3 = sq(delta_diagonal_rod + delta_diagonal_rod_trim_tower_3);
-  //float delta_diagonal_rod_2 = sq(delta_diagonal_rod);
   float delta_segments_per_second = DELTA_SEGMENTS_PER_SECOND;
   #if ENABLED(AUTO_BED_LEVELING_FEATURE)
     int delta_grid_spacing[2] = { 0, 0 };
@@ -6893,26 +6892,15 @@ inline void gcode_M503() {
              Removing filament presence test here.
              @See: M600 FILAMENT_NEED_TO_BE_EXPULSED */
 
-          /*if (FILAMENT_PRESENT) {*/
-            SERIAL_ECHOLNPGM("Pause : Asked by tap tap");
+          SERIAL_ECHOLNPGM("Pause : Asked by tap tap");
 
-            //enqueue_and_echo_commands_P(PSTR("G28\nM104 S180\nG0 F150 X0 Y0 Z100\nM109 S180\nD600\nM106 S255\nM104 S0\nG28"));
+          printer_states.pause_asked = true;
 
-            printer_states.pause_asked = true;
-
-            if (!printer_states.homed) {
-              gcode_G28();
-            }
-
-            enqueue_and_echo_commands_P(PSTR(FILAMENTCHANGE_EXTRACTION_SCRIPT));
-            //enqueue_and_echo_commands_P(PSTR("G28\nM104 S180\nG0 F150 X0 Y0 Z100\nM109 S180\nD600\nM106 S255\nM104 S0\nG28"));
-          /*
+          if (!printer_states.homed) {
+            gcode_G28();
           }
-          else {
-            // Avoid filament expulsion if filament not present
-            set_notify_warning();
-          }
-          */
+
+          enqueue_and_echo_commands_P(PSTR(FILAMENTCHANGE_EXTRACTION_SCRIPT));
         }
       }
     }
@@ -7598,16 +7586,8 @@ inline void gcode_M503() {
              in case we have go to far away from detector
              Removing filament presence test here.
              @See: M600 FILAMENT_NEED_TO_BE_EXPULSED */
-          /* if (printer_states.filament_state == FILAMENT_IN) { */
-            filament_direction = FILAMENT_NEED_TO_BE_EXPULSED;
-            RESCHEDULE_HOTEND_AUTO_SHUTDOWN;
-          /*
-          }
-          else {
-            set_notify_warning();
-          }
-          */
-
+          filament_direction = FILAMENT_NEED_TO_BE_EXPULSED;
+          RESCHEDULE_HOTEND_AUTO_SHUTDOWN;
         }
       #endif
 

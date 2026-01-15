@@ -45,7 +45,7 @@
 #define STRING_DISTRIBUTION_DATE "2020-02-06"
 
 /**
- * @todo: Missing documentation block
+ * Protocol version for communication
  */
 #define PROTOCOL_VERSION "1.0"
 
