@@ -154,11 +154,11 @@ typedef struct {
 
 #define X2_DIR_INIT SET_OUTPUT(X2_DIR_PIN)
 #define X2_DIR_WRITE(STATE) WRITE(X2_DIR_PIN,STATE)
-#define X2_DIR_READ READ(X_DIR_PIN)
+#define X2_DIR_READ READ(X2_DIR_PIN)
 
 #define X2_ENABLE_INIT SET_OUTPUT(X2_ENABLE_PIN)
 #define X2_ENABLE_WRITE(STATE) WRITE(X2_ENABLE_PIN,STATE)
-#define X2_ENABLE_READ READ(X_ENABLE_PIN)
+#define X2_ENABLE_READ READ(X2_ENABLE_PIN)
 
 // Y motor
 #define Y_STEP_INIT SET_OUTPUT(Y_STEP_PIN)
@@ -524,7 +524,7 @@ typedef struct {
     #define Z_DIR_WRITE(STATE) stepperZ.Step_Clock(STATE)
 
     #undef Y_DIR_READ
-    #define Y_DIR_READ (stepperZ.getStatus() & STATUS_DIR)
+    #define Y_DIR_READ (stepperY.getStatus() & STATUS_DIR)
   #endif
   #if ENABLED(Z2_IS_L6470)
     extern L6470 stepperZ2;
@@ -544,7 +544,7 @@ typedef struct {
     #define Z2_DIR_WRITE(STATE) stepperZ2.Step_Clock(STATE)
 
     #undef Y2_DIR_READ
-    #define Y2_DIR_READ (stepperZ2.getStatus() & STATUS_DIR)
+    #define Y2_DIR_READ (stepperY2.getStatus() & STATUS_DIR)
   #endif
   #if ENABLED(E0_IS_L6470)
     extern L6470 stepperE0;
