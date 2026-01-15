@@ -1813,8 +1813,6 @@ fail:
 #endif  // ALLOW_DEPRECATED_FUNCTIONS
 
 
-#endif
-
 /**  Create a file object and open it in the current working directory.
  *
  * \param[in] path A path with a valid 8.3 DOS name for a file to be opened.
@@ -1882,6 +1880,3 @@ void SdFile::writeln_P(PGM_P str) {
   write_P(str);
   write_P(PSTR("\r\n"));
 }
-
-
-#endif

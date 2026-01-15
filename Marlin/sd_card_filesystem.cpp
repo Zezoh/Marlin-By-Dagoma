@@ -467,4 +467,3 @@ void SdFatUtil::SerialPrint_P(PGM_P str) {
 void SdFatUtil::SerialPrintln_P(PGM_P str) {
   println_P(str);
 }
-#endif

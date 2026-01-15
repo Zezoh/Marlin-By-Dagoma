@@ -1047,6 +1047,9 @@ using namespace SdFatUtil;  // NOLINT
  */
 #include "sd_card_hardware.h"
 
+// Forward declaration
+class Sd2Card;
+
 //==============================================================================
 // SdVolume class
 /**

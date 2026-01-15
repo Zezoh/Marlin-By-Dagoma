@@ -34,6 +34,7 @@
 #define sd_card_file_h
 
 #include "sd_card_filesystem.h"
+#include <Print.h>
 
 //==============================================================================
 // SDBASEFILE - Base file class
