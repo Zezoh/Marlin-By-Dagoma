@@ -67,12 +67,6 @@
   #define ENDL_CALLS_FLUSH 0
   //------------------------------------------------------------------------------
   /**
-  * Allow use of deprecated functions if ALLOW_DEPRECATED_FUNCTIONS is nonzero
-  * Disabled - use pointer-based API instead of reference-based deprecated functions
-  */
-  #define ALLOW_DEPRECATED_FUNCTIONS 0
-  //------------------------------------------------------------------------------
-  /**
   * Allow FAT12 volumes if FAT12_SUPPORT is nonzero.
   * FAT12 has not been well tested.
   */
@@ -922,24 +916,6 @@ class SdVolume {
   }
   bool readBlock(uint32_t block, uint8_t* dst);
   bool writeBlock(uint32_t block, const uint8_t* dst);
-  //------------------------------------------------------------------------------
-  // Deprecated functions  - suppress cpplint warnings with NOLINT comment
-#if ALLOW_DEPRECATED_FUNCTIONS && !defined(DOXYGEN)
- public:
-  /** \deprecated Use: bool SdVolume::init(Sd2Card* dev);
-   * \param[in] dev The SD card where the volume is located.
-   * \return true for success or false for failure.
-   */
-  bool init(Sd2Card& dev) {return init(&dev);}  // NOLINT
-  /** \deprecated Use: bool SdVolume::init(Sd2Card* dev, uint8_t vol);
-   * \param[in] dev The SD card where the volume is located.
-   * \param[in] part The partition to be used.
-   * \return true for success or false for failure.
-   */
-  bool init(Sd2Card& dev, uint8_t part) {  // NOLINT
-    return init(&dev, part);
-  }
-#endif  // ALLOW_DEPRECATED_FUNCTIONS
 };
 
 #endif // sd_card_filesystem_h

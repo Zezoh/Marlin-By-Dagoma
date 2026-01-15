@@ -1806,11 +1806,6 @@ fail:
   writeError = true;
   return -1;
 }
-//------------------------------------------------------------------------------
-// suppress cpplint warnings with NOLINT comment
-#if ALLOW_DEPRECATED_FUNCTIONS && !defined(DOXYGEN)
-  void (*SdBaseFile::oldDateTime_)(uint16_t& date, uint16_t& time) = 0;  // NOLINT
-#endif  // ALLOW_DEPRECATED_FUNCTIONS
 
 
 /**  Create a file object and open it in the current working directory.

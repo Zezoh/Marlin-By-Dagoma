@@ -46,7 +46,6 @@
 #include "language.h"
 #include "pins_arduino.h"
 #include "math.h"
-#include "buzzer.h"
 
 #if ENABLED(USE_WATCHDOG)
   #include "watchdog.h"
@@ -55,10 +54,6 @@
 #if ENABLED(BLINKM)
   #include "blinkm.h"
   #include "Wire.h"
-#endif
-
-#if HAS_SERVOS
-  #include "servo.h"
 #endif
 
 #if HAS_DIGIPOTSS
@@ -183,8 +178,6 @@
  * M226 - Wait until the specified pin reaches the state required: P<pin number> S<pin state>
  * M240 - Trigger a camera to take a photograph
  * M250 - Set LCD contrast C<contrast value> (value 0..63)
- * M280 - Set servo position absolute. P: servo index, S: angle or microseconds
- * M300 - Play beep sound S<frequency Hz> P<duration ms>
  * M301 - Set PID parameters P I and D
  * M302 - Allow cold extrudes, or set the minimum extrude S<temperature>.
  * M303 - PID relay autotune S<temperature> sets the target temperature. (default target temperature = 150C)
@@ -364,11 +357,6 @@ static uint8_t target_extruder;
   };
 #endif
 
-#if HAS_SERVO_ENDSTOPS
-  const int servo_endstop_id[] = SERVO_ENDSTOP_IDS;
-  const int servo_endstop_angle[][2] = SERVO_ENDSTOP_ANGLES;
-#endif
-
 #if ENABLED(BARICUDA)
   int baricuda_valve_pressure = 0;
   int baricuda_e_to_p_pressure = 0;
@@ -498,10 +486,6 @@ inline bool current_filament_present(uint8_t e) {
 #endif
 
 static bool send_ok[BUFSIZE];
-
-#if HAS_SERVOS
-  Servo servo[NUM_SERVOS];
-#endif
 
 #ifdef CHDK
   millis_t chdkHigh = 0;
@@ -813,47 +797,6 @@ void suicide() {
   #endif
 }
 
-void servo_init() {
-  #if NUM_SERVOS >= 1 && HAS_SERVO_0
-    servo[0].attach(SERVO0_PIN);
-    servo[0].detach(); // Just set up the pin. We don't have a position yet. Don't move to a random position.
-  #endif
-  #if NUM_SERVOS >= 2 && HAS_SERVO_1
-    servo[1].attach(SERVO1_PIN);
-    servo[1].detach();
-  #endif
-  #if NUM_SERVOS >= 3 && HAS_SERVO_2
-    servo[2].attach(SERVO2_PIN);
-    servo[2].detach();
-  #endif
-  #if NUM_SERVOS >= 4 && HAS_SERVO_3
-    servo[3].attach(SERVO3_PIN);
-    servo[3].detach();
-  #endif
-
-   #if HAS_SERVO_ENDSTOPS
-
-    z_probe_is_active = false;
-
-    /**
-     * Set position of all defined Servo Endstops
-     *
-     * ** UNSAFE! - NEEDS UPDATE! **
-     *
-     * The servo might be deployed and positioned too low to stow
-     * when starting up the machine or rebooting the board.
-     * There's no way to know where the nozzle is positioned until
-     * homing has been done - no homing with z-probe without init!
-     *
-     */
-    for (int i = 0; i < 3; i++)
-      if (servo_endstop_id[i] >= 0)
-        servo[servo_endstop_id[i]].move(servo_endstop_angle[i][1]);
-
-  #endif // HAS_SERVO_ENDSTOPS
-
-}
-
 /**
  * Stepper Reset (RigidBoard, et.al.)
  */
@@ -986,7 +929,6 @@ void setup() {
 
   st_init();    // Initialize stepper, this enables interrupts!
   setup_photpin();
-  servo_init();
 
   #if HAS_CONTROLLERFAN
     SET_OUTPUT(CONTROLLERFAN_PIN); //Set pin used for driver cooling fan
