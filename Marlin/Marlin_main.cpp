@@ -655,7 +655,7 @@ void gcode_M114();
 #endif
 
 #if ENABLED(SDSUPPORT)
-  #include "SdFatUtil.h"
+  #include "sd_card_filesystem.h"
   int freeMemory() { return SdFatUtil::FreeRam(); }
 #else
 extern "C" {

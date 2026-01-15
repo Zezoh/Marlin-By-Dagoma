@@ -26,18 +26,22 @@
  *
  * This file is part of the Arduino Sd2Card Library
  */
+
 #include "Marlin.h"
 #if ENABLED(SDSUPPORT)
 
-#ifndef SdBaseFile_h
-#define SdBaseFile_h
+#ifndef sd_card_file_h
+#define sd_card_file_h
+
+#include "sd_card_filesystem.h"
+
+//==============================================================================
+// SDBASEFILE - Base file class
+//==============================================================================
 /**
  * \file
  * \brief SdBaseFile class
  */
-#include "Marlin.h"
-#include "SdFatConfig.h"
-#include "SdVolume.h"
 //------------------------------------------------------------------------------
 /**
  * \struct filepos_t
@@ -489,4 +493,33 @@ class SdBaseFile {
 };
 
 #endif  // SdBaseFile_h
+
+//==============================================================================
+// SDFILE - File class with Print interface
+//==============================================================================
+//------------------------------------------------------------------------------
+/**
+ * \class SdFile
+ * \brief SdBaseFile with Print.
+ */
+class SdFile : public SdBaseFile, public Print {
+ public:
+  SdFile() {}
+  SdFile(const char* name, uint8_t oflag);
+  #if ARDUINO >= 100
+    size_t write(uint8_t b);
+  #else
+   void write(uint8_t b);
+  #endif
+
+  int16_t write(const void* buf, uint16_t nbyte);
+  void write(const char* str);
+  void write_P(PGM_P str);
+  void writeln_P(PGM_P str);
+};
+#endif  // SdFile_h
+
+
+#endif // sd_card_file_h
+
 #endif

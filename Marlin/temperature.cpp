@@ -44,7 +44,7 @@
 // LCD support removed - no ultralcd.h include
 #include "temperature.h"
 #include "language.h"
-#include "Sd2PinMap.h"
+#include "sd_card_hardware.h"
 
 #if ENABLED(USE_WATCHDOG)
   #include "watchdog.h"

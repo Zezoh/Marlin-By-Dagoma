@@ -26,11 +26,375 @@
  *
  * This file is part of the Arduino Sd2Card Library
  */
+
 #include "Marlin.h"
 #if ENABLED(SDSUPPORT)
 
-#ifndef SdFatStructs_h
-#define SdFatStructs_h
+#ifndef sd_card_filesystem_h
+#define sd_card_filesystem_h
+
+//==============================================================================
+// SDFATCONFIG - Configuration defines
+//==============================================================================
+  #include <stdint.h>
+  //------------------------------------------------------------------------------
+  /**
+  * To use multiple SD cards set USE_MULTIPLE_CARDS nonzero.
+  *
+  * Using multiple cards costs 400 - 500  bytes of flash.
+  *
+  * Each card requires about 550 bytes of SRAM so use of a Mega is recommended.
+  */
+  #define USE_MULTIPLE_CARDS 0
+  //------------------------------------------------------------------------------
+  /**
+  * Call flush for endl if ENDL_CALLS_FLUSH is nonzero
+  *
+  * The standard for iostreams is to call flush.  This is very costly for
+  * SdFat.  Each call to flush causes 2048 bytes of I/O to the SD.
+  *
+  * SdFat has a single 512 byte buffer for SD I/O so it must write the current
+  * data block to the SD, read the directory block from the SD, update the
+  * directory entry, write the directory block to the SD and read the data
+  * block back into the buffer.
+  *
+  * The SD flash memory controller is not designed for this many rewrites
+  * so performance may be reduced by more than a factor of 100.
+  *
+  * If ENDL_CALLS_FLUSH is zero, you must call flush and/or close to force
+  * all data to be written to the SD.
+  */
+  #define ENDL_CALLS_FLUSH 0
+  //------------------------------------------------------------------------------
+  /**
+  * Allow use of deprecated functions if ALLOW_DEPRECATED_FUNCTIONS is nonzero
+  */
+  #define ALLOW_DEPRECATED_FUNCTIONS 1
+  //------------------------------------------------------------------------------
+  /**
+  * Allow FAT12 volumes if FAT12_SUPPORT is nonzero.
+  * FAT12 has not been well tested.
+  */
+  #define FAT12_SUPPORT 0
+  //------------------------------------------------------------------------------
+  /**
+  * SPI init rate for SD initialization commands. Must be 5 (F_CPU/64)
+  * or 6 (F_CPU/128).
+  */
+  #define SPI_SD_INIT_RATE 5
+  //------------------------------------------------------------------------------
+  /**
+  * Set the SS pin high for hardware SPI.  If SS is chip select for another SPI
+  * device this will disable that device during the SD init phase.
+  */
+  #define SET_SPI_SS_HIGH 1
+  //------------------------------------------------------------------------------
+  /**
+  * Define MEGA_SOFT_SPI nonzero to use software SPI on Mega Arduinos.
+  * Pins used are SS 10, MOSI 11, MISO 12, and SCK 13.
+  *
+  * MEGA_SOFT_SPI allows an unmodified Adafruit GPS Shield to be used
+  * on Mega Arduinos.  Software SPI works well with GPS Shield V1.1
+  * but many SD cards will fail with GPS Shield V1.0.
+  */
+  #define MEGA_SOFT_SPI 0
+  //------------------------------------------------------------------------------
+  /**
+  * Set USE_SOFTWARE_SPI nonzero to always use software SPI.
+  */
+  #define USE_SOFTWARE_SPI 0
+  // define software SPI pins so Mega can use unmodified 168/328 shields
+  /** Software SPI chip select pin for the SD */
+  uint8_t const SOFT_SPI_CS_PIN = 10;
+  /** Software SPI Master Out Slave In pin */
+  uint8_t const SOFT_SPI_MOSI_PIN = 11;
+  /** Software SPI Master In Slave Out pin */
+  uint8_t const SOFT_SPI_MISO_PIN = 12;
+  /** Software SPI Clock pin */
+  uint8_t const SOFT_SPI_SCK_PIN = 13;
+  //------------------------------------------------------------------------------
+  /**
+  * The __cxa_pure_virtual function is an error handler that is invoked when
+  * a pure virtual function is called.
+  */
+  #define USE_CXA_PURE_VIRTUAL 1
+
+  /** Number of UTF-16 characters per entry */
+  #define FILENAME_LENGTH 13
+
+  /**
+  * Defines for long (vfat) filenames
+  */
+  /** Number of VFAT entries used. Every entry has 13 UTF-16 characters */
+  #define MAX_VFAT_ENTRIES (2)
+  /** Total size of the buffer used to store the long filenames */
+  #define LONG_FILENAME_LENGTH (FILENAME_LENGTH*MAX_VFAT_ENTRIES+1)
+#endif  // SdFatConfig_h
+
+
+
+//==============================================================================
+// SDINFO - SD card information structures
+//==============================================================================
+#include <stdint.h>
+// Based on the document:
+//
+// SD Specifications
+// Part 1
+// Physical Layer
+// Simplified Specification
+// Version 3.01
+// May 18, 2010
+//
+// http://www.sdcard.org/developers/tech/sdcard/pls/simplified_specs
+//------------------------------------------------------------------------------
+// SD card commands
+/** GO_IDLE_STATE - init card in spi mode if CS low */
+uint8_t const CMD0 = 0X00;
+/** SEND_IF_COND - verify SD Memory Card interface operating condition.*/
+uint8_t const CMD8 = 0X08;
+/** SEND_CSD - read the Card Specific Data (CSD register) */
+uint8_t const CMD9 = 0X09;
+/** SEND_CID - read the card identification information (CID register) */
+uint8_t const CMD10 = 0X0A;
+/** STOP_TRANSMISSION - end multiple block read sequence */
+uint8_t const CMD12 = 0X0C;
+/** SEND_STATUS - read the card status register */
+uint8_t const CMD13 = 0X0D;
+/** READ_SINGLE_BLOCK - read a single data block from the card */
+uint8_t const CMD17 = 0X11;
+/** READ_MULTIPLE_BLOCK - read a multiple data blocks from the card */
+uint8_t const CMD18 = 0X12;
+/** WRITE_BLOCK - write a single data block to the card */
+uint8_t const CMD24 = 0X18;
+/** WRITE_MULTIPLE_BLOCK - write blocks of data until a STOP_TRANSMISSION */
+uint8_t const CMD25 = 0X19;
+/** ERASE_WR_BLK_START - sets the address of the first block to be erased */
+uint8_t const CMD32 = 0X20;
+/** ERASE_WR_BLK_END - sets the address of the last block of the continuous
+    range to be erased*/
+uint8_t const CMD33 = 0X21;
+/** ERASE - erase all previously selected blocks */
+uint8_t const CMD38 = 0X26;
+/** APP_CMD - escape for application specific command */
+uint8_t const CMD55 = 0X37;
+/** READ_OCR - read the OCR register of a card */
+uint8_t const CMD58 = 0X3A;
+/** SET_WR_BLK_ERASE_COUNT - Set the number of write blocks to be
+     pre-erased before writing */
+uint8_t const ACMD23 = 0X17;
+/** SD_SEND_OP_COMD - Sends host capacity support information and
+    activates the card's initialization process */
+uint8_t const ACMD41 = 0X29;
+//------------------------------------------------------------------------------
+/** status for card in the ready state */
+uint8_t const R1_READY_STATE = 0X00;
+/** status for card in the idle state */
+uint8_t const R1_IDLE_STATE = 0X01;
+/** status bit for illegal command */
+uint8_t const R1_ILLEGAL_COMMAND = 0X04;
+/** start data token for read or write single block*/
+uint8_t const DATA_START_BLOCK = 0XFE;
+/** stop token for write multiple blocks*/
+uint8_t const STOP_TRAN_TOKEN = 0XFD;
+/** start data token for write multiple blocks*/
+uint8_t const WRITE_MULTIPLE_TOKEN = 0XFC;
+/** mask for data response tokens after a write block operation */
+uint8_t const DATA_RES_MASK = 0X1F;
+/** write data accepted token */
+uint8_t const DATA_RES_ACCEPTED = 0X05;
+//------------------------------------------------------------------------------
+/** Card IDentification (CID) register */
+typedef struct CID {
+  // byte 0
+  /** Manufacturer ID */
+  unsigned char mid;
+  // byte 1-2
+  /** OEM/Application ID */
+  char oid[2];
+  // byte 3-7
+  /** Product name */
+  char pnm[5];
+  // byte 8
+  /** Product revision least significant digit */
+  unsigned char prv_m : 4;
+  /** Product revision most significant digit */
+  unsigned char prv_n : 4;
+  // byte 9-12
+  /** Product serial number */
+  uint32_t psn;
+  // byte 13
+  /** Manufacturing date year low digit */
+  unsigned char mdt_year_high : 4;
+  /** not used */
+  unsigned char reserved : 4;
+  // byte 14
+  /** Manufacturing date month */
+  unsigned char mdt_month : 4;
+  /** Manufacturing date year low digit */
+  unsigned char mdt_year_low : 4;
+  // byte 15
+  /** not used always 1 */
+  unsigned char always1 : 1;
+  /** CRC7 checksum */
+  unsigned char crc : 7;
+} cid_t;
+//------------------------------------------------------------------------------
+/** CSD for version 1.00 cards */
+typedef struct CSDV1 {
+  // byte 0
+  unsigned char reserved1 : 6;
+  unsigned char csd_ver : 2;
+  // byte 1
+  unsigned char taac;
+  // byte 2
+  unsigned char nsac;
+  // byte 3
+  unsigned char tran_speed;
+  // byte 4
+  unsigned char ccc_high;
+  // byte 5
+  unsigned char read_bl_len : 4;
+  unsigned char ccc_low : 4;
+  // byte 6
+  unsigned char c_size_high : 2;
+  unsigned char reserved2 : 2;
+  unsigned char dsr_imp : 1;
+  unsigned char read_blk_misalign : 1;
+  unsigned char write_blk_misalign : 1;
+  unsigned char read_bl_partial : 1;
+  // byte 7
+  unsigned char c_size_mid;
+  // byte 8
+  unsigned char vdd_r_curr_max : 3;
+  unsigned char vdd_r_curr_min : 3;
+  unsigned char c_size_low : 2;
+  // byte 9
+  unsigned char c_size_mult_high : 2;
+  unsigned char vdd_w_cur_max : 3;
+  unsigned char vdd_w_curr_min : 3;
+  // byte 10
+  unsigned char sector_size_high : 6;
+  unsigned char erase_blk_en : 1;
+  unsigned char c_size_mult_low : 1;
+  // byte 11
+  unsigned char wp_grp_size : 7;
+  unsigned char sector_size_low : 1;
+  // byte 12
+  unsigned char write_bl_len_high : 2;
+  unsigned char r2w_factor : 3;
+  unsigned char reserved3 : 2;
+  unsigned char wp_grp_enable : 1;
+  // byte 13
+  unsigned char reserved4 : 5;
+  unsigned char write_partial : 1;
+  unsigned char write_bl_len_low : 2;
+  // byte 14
+  unsigned char reserved5: 2;
+  unsigned char file_format : 2;
+  unsigned char tmp_write_protect : 1;
+  unsigned char perm_write_protect : 1;
+  unsigned char copy : 1;
+  /** Indicates the file format on the card */
+  unsigned char file_format_grp : 1;
+  // byte 15
+  unsigned char always1 : 1;
+  unsigned char crc : 7;
+} csd1_t;
+//------------------------------------------------------------------------------
+/** CSD for version 2.00 cards */
+typedef struct CSDV2 {
+  // byte 0
+  unsigned char reserved1 : 6;
+  unsigned char csd_ver : 2;
+  // byte 1
+  /** fixed to 0X0E */
+  unsigned char taac;
+  // byte 2
+  /** fixed to 0 */
+  unsigned char nsac;
+  // byte 3
+  unsigned char tran_speed;
+  // byte 4
+  unsigned char ccc_high;
+  // byte 5
+  /** This field is fixed to 9h, which indicates READ_BL_LEN=512 Byte */
+  unsigned char read_bl_len : 4;
+  unsigned char ccc_low : 4;
+  // byte 6
+  /** not used */
+  unsigned char reserved2 : 4;
+  unsigned char dsr_imp : 1;
+  /** fixed to 0 */
+  unsigned char read_blk_misalign : 1;
+  /** fixed to 0 */
+  unsigned char write_blk_misalign : 1;
+  /** fixed to 0 - no partial read */
+  unsigned char read_bl_partial : 1;
+  // byte 7
+  /** not used */
+  unsigned char reserved3 : 2;
+  /** high part of card size */
+  unsigned char c_size_high : 6;
+  // byte 8
+  /** middle part of card size */
+  unsigned char c_size_mid;
+  // byte 9
+  /** low part of card size */
+  unsigned char c_size_low;
+  // byte 10
+  /** sector size is fixed at 64 KB */
+  unsigned char sector_size_high : 6;
+  /** fixed to 1 - erase single is supported */
+  unsigned char erase_blk_en : 1;
+  /** not used */
+  unsigned char reserved4 : 1;
+  // byte 11
+  unsigned char wp_grp_size : 7;
+  /** sector size is fixed at 64 KB */
+  unsigned char sector_size_low : 1;
+  // byte 12
+  /** write_bl_len fixed for 512 byte blocks */
+  unsigned char write_bl_len_high : 2;
+  /** fixed value of 2 */
+  unsigned char r2w_factor : 3;
+  /** not used */
+  unsigned char reserved5 : 2;
+  /** fixed value of 0 - no write protect groups */
+  unsigned char wp_grp_enable : 1;
+  // byte 13
+  unsigned char reserved6 : 5;
+  /** always zero - no partial block read*/
+  unsigned char write_partial : 1;
+  /** write_bl_len fixed for 512 byte blocks */
+  unsigned char write_bl_len_low : 2;
+  // byte 14
+  unsigned char reserved7: 2;
+  /** Do not use always 0 */
+  unsigned char file_format : 2;
+  unsigned char tmp_write_protect : 1;
+  unsigned char perm_write_protect : 1;
+  unsigned char copy : 1;
+  /** Do not use always 0 */
+  unsigned char file_format_grp : 1;
+  // byte 15
+  /** not used always 1 */
+  unsigned char always1 : 1;
+  /** checksum */
+  unsigned char crc : 7;
+} csd2_t;
+//------------------------------------------------------------------------------
+/** union of old and new style CSD register */
+union csd_t {
+  csd1_t v1;
+  csd2_t v2;
+};
+#endif  // SdInfo_h
+
+
+//==============================================================================
+// SDFATSTRUCTS - FAT filesystem data structures
+//==============================================================================
 
 #define PACKED __attribute__((__packed__))
 /**
@@ -215,7 +579,7 @@ struct fat_boot {
            * FAT volume. This field is generally only relevant for media
            * visible on interrupt 0x13.
            */
-  uint32_t hidddenSectors;
+  uint32_t hiddenSectors;
           /**
            * This field is the new 32-bit total count of sectors on the volume.
            * This count includes the count of all sectors in all four regions
@@ -331,7 +695,7 @@ struct fat32_boot {
            * FAT volume. This field is generally only relevant for media
            * visible on interrupt 0x13.
            */
-  uint32_t hidddenSectors;
+  uint32_t hiddenSectors;
           /**
            * Contains the total number of sectors in the FAT32 volume.
            */
@@ -651,5 +1015,229 @@ static inline uint8_t DIR_IS_FILE_OR_SUBDIR(const dir_t* dir) {
 }
 #endif  // SdFatStructs_h
 
+
+
+//==============================================================================
+// SDFATUTIL - Utility functions
+//==============================================================================
+/**
+ * \file
+ * \brief Useful utility functions.
+ */
+#include "MarlinSerial.h"
+/** Store and print a string in flash memory.*/
+#define PgmPrint(x) SerialPrint_P(PSTR(x))
+/** Store and print a string in flash memory followed by a CR/LF.*/
+#define PgmPrintln(x) SerialPrintln_P(PSTR(x))
+
+namespace SdFatUtil {
+  int FreeRam();
+  void print_P(PGM_P str);
+  void println_P(PGM_P str);
+  void SerialPrint_P(PGM_P str);
+  void SerialPrintln_P(PGM_P str);
+}
+
+using namespace SdFatUtil;  // NOLINT
+#endif  //#define SdFatUtil_h
+
+
+
+//==============================================================================
+// SDVOLUME - FAT volume management
+//==============================================================================
+/**
+ * \file
+ * \brief SdVolume class
+ */
+#include "sd_card_hardware.h"
+
+//==============================================================================
+// SdVolume class
+/**
+ * \brief Cache for an SD data block
+ */
+union cache_t {
+           /** Used to access cached file data blocks. */
+  uint8_t  data[512];
+           /** Used to access cached FAT16 entries. */
+  uint16_t fat16[256];
+           /** Used to access cached FAT32 entries. */
+  uint32_t fat32[128];
+           /** Used to access cached directory entries. */
+  dir_t    dir[16];
+           /** Used to access a cached Master Boot Record. */
+  mbr_t    mbr;
+           /** Used to access to a cached FAT boot sector. */
+  fat_boot_t fbs;
+           /** Used to access to a cached FAT32 boot sector. */
+  fat32_boot_t fbs32;
+           /** Used to access to a cached FAT32 FSINFO sector. */
+  fat32_fsinfo_t fsinfo;
+};
+//------------------------------------------------------------------------------
+/**
+ * \class SdVolume
+ * \brief Access FAT16 and FAT32 volumes on SD and SDHC cards.
+ */
+class SdVolume {
+ public:
+  /** Create an instance of SdVolume */
+  SdVolume() : fatType_(0) {}
+  /** Clear the cache and returns a pointer to the cache.  Used by the WaveRP
+   * recorder to do raw write to the SD card.  Not for normal apps.
+   * \return A pointer to the cache buffer or zero if an error occurs.
+   */
+  cache_t* cacheClear() {
+    if (!cacheFlush()) return 0;
+    cacheBlockNumber_ = 0XFFFFFFFF;
+    return &cacheBuffer_;
+  }
+  /** Initialize a FAT volume.  Try partition one first then try super
+   * floppy format.
+   *
+   * \param[in] dev The Sd2Card where the volume is located.
+   *
+   * \return The value one, true, is returned for success and
+   * the value zero, false, is returned for failure.  Reasons for
+   * failure include not finding a valid partition, not finding a valid
+   * FAT file system or an I/O error.
+   */
+  bool init(Sd2Card* dev) { return init(dev, 1) ? true : init(dev, 0);}
+  bool init(Sd2Card* dev, uint8_t part);
+
+  // inline functions that return volume info
+  /** \return The volume's cluster size in blocks. */
+  uint8_t blocksPerCluster() const {return blocksPerCluster_;}
+  /** \return The number of blocks in one FAT. */
+  uint32_t blocksPerFat()  const {return blocksPerFat_;}
+  /** \return The total number of clusters in the volume. */
+  uint32_t clusterCount() const {return clusterCount_;}
+  /** \return The shift count required to multiply by blocksPerCluster. */
+  uint8_t clusterSizeShift() const {return clusterSizeShift_;}
+  /** \return The logical block number for the start of file data. */
+  uint32_t dataStartBlock() const {return dataStartBlock_;}
+  /** \return The number of FAT structures on the volume. */
+  uint8_t fatCount() const {return fatCount_;}
+  /** \return The logical block number for the start of the first FAT. */
+  uint32_t fatStartBlock() const {return fatStartBlock_;}
+  /** \return The FAT type of the volume. Values are 12, 16 or 32. */
+  uint8_t fatType() const {return fatType_;}
+  int32_t freeClusterCount();
+  /** \return The number of entries in the root directory for FAT16 volumes. */
+  uint32_t rootDirEntryCount() const {return rootDirEntryCount_;}
+  /** \return The logical block number for the start of the root directory
+       on FAT16 volumes or the first cluster number on FAT32 volumes. */
+  uint32_t rootDirStart() const {return rootDirStart_;}
+  /** Sd2Card object for this volume
+   * \return pointer to Sd2Card object.
+   */
+  Sd2Card* sdCard() {return sdCard_;}
+  /** Debug access to FAT table
+   *
+   * \param[in] n cluster number.
+   * \param[out] v value of entry
+   * \return true for success or false for failure
+   */
+  bool dbgFat(uint32_t n, uint32_t* v) {return fatGet(n, v);}
+  //------------------------------------------------------------------------------
+ private:
+  // Allow SdBaseFile access to SdVolume private data.
+  friend class SdBaseFile;
+
+  // value for dirty argument in cacheRawBlock to indicate read from cache
+  static bool const CACHE_FOR_READ = false;
+  // value for dirty argument in cacheRawBlock to indicate write to cache
+  static bool const CACHE_FOR_WRITE = true;
+
+#if USE_MULTIPLE_CARDS
+  cache_t cacheBuffer_;        // 512 byte cache for device blocks
+  uint32_t cacheBlockNumber_;  // Logical number of block in the cache
+  Sd2Card* sdCard_;            // Sd2Card object for cache
+  bool cacheDirty_;            // cacheFlush() will write block if true
+  uint32_t cacheMirrorBlock_;  // block number for mirror FAT
+#else  // USE_MULTIPLE_CARDS
+  static cache_t cacheBuffer_;        // 512 byte cache for device blocks
+  static uint32_t cacheBlockNumber_;  // Logical number of block in the cache
+  static Sd2Card* sdCard_;            // Sd2Card object for cache
+  static bool cacheDirty_;            // cacheFlush() will write block if true
+  static uint32_t cacheMirrorBlock_;  // block number for mirror FAT
+#endif  // USE_MULTIPLE_CARDS
+  uint32_t allocSearchStart_;   // start cluster for alloc search
+  uint8_t blocksPerCluster_;    // cluster size in blocks
+  uint32_t blocksPerFat_;       // FAT size in blocks
+  uint32_t clusterCount_;       // clusters in one FAT
+  uint8_t clusterSizeShift_;    // shift to convert cluster count to block count
+  uint32_t dataStartBlock_;     // first data block number
+  uint8_t fatCount_;            // number of FATs on volume
+  uint32_t fatStartBlock_;      // start block for first FAT
+  uint8_t fatType_;             // volume type (12, 16, OR 32)
+  uint16_t rootDirEntryCount_;  // number of entries in FAT16 root dir
+  uint32_t rootDirStart_;       // root start block for FAT16, cluster for FAT32
+  //----------------------------------------------------------------------------
+  bool allocContiguous(uint32_t count, uint32_t* curCluster);
+  uint8_t blockOfCluster(uint32_t position) const {
+    return (position >> 9) & (blocksPerCluster_ - 1);
+  }
+  uint32_t clusterStartBlock(uint32_t cluster) const {
+    return dataStartBlock_ + ((cluster - 2) << clusterSizeShift_);
+  }
+  uint32_t blockNumber(uint32_t cluster, uint32_t position) const {
+    return clusterStartBlock(cluster) + blockOfCluster(position);
+  }
+  cache_t* cache() {return &cacheBuffer_;}
+  uint32_t cacheBlockNumber() {return cacheBlockNumber_;}
+#if USE_MULTIPLE_CARDS
+  bool cacheFlush();
+  bool cacheRawBlock(uint32_t blockNumber, bool dirty);
+#else  // USE_MULTIPLE_CARDS
+  static bool cacheFlush();
+  static bool cacheRawBlock(uint32_t blockNumber, bool dirty);
+#endif  // USE_MULTIPLE_CARDS
+  // used by SdBaseFile write to assign cache to SD location
+  void cacheSetBlockNumber(uint32_t blockNumber, bool dirty) {
+    cacheDirty_ = dirty;
+    cacheBlockNumber_  = blockNumber;
+  }
+  void cacheSetDirty() {cacheDirty_ |= CACHE_FOR_WRITE;}
+  bool chainSize(uint32_t beginCluster, uint32_t* size);
+  bool fatGet(uint32_t cluster, uint32_t* value);
+  bool fatPut(uint32_t cluster, uint32_t value);
+  bool fatPutEOC(uint32_t cluster) {
+    return fatPut(cluster, 0x0FFFFFFF);
+  }
+  bool freeChain(uint32_t cluster);
+  bool isEOC(uint32_t cluster) const {
+    if (FAT12_SUPPORT && fatType_ == 12) return  cluster >= FAT12EOC_MIN;
+    if (fatType_ == 16) return cluster >= FAT16EOC_MIN;
+    return  cluster >= FAT32EOC_MIN;
+  }
+  bool readBlock(uint32_t block, uint8_t* dst) {
+    return sdCard_->readBlock(block, dst);
+  }
+  bool writeBlock(uint32_t block, const uint8_t* dst) {
+    return sdCard_->writeBlock(block, dst);
+  }
+  //------------------------------------------------------------------------------
+  // Deprecated functions  - suppress cpplint warnings with NOLINT comment
+#if ALLOW_DEPRECATED_FUNCTIONS && !defined(DOXYGEN)
+ public:
+  /** \deprecated Use: bool SdVolume::init(Sd2Card* dev);
+   * \param[in] dev The SD card where the volume is located.
+   * \return true for success or false for failure.
+   */
+  bool init(Sd2Card& dev) {return init(&dev);}  // NOLINT
+  /** \deprecated Use: bool SdVolume::init(Sd2Card* dev, uint8_t vol);
+   * \param[in] dev The SD card where the volume is located.
+   * \param[in] part The partition to be used.
+   * \return true for success or false for failure.
+   */
+  bool init(Sd2Card& dev, uint8_t part) {  // NOLINT
+    return init(&dev, part);
+  }
+#endif  // ALLOW_DEPRECATED_FUNCTIONS
+};
+#endif  // SdVolume
+#endif // sd_card_filesystem_h
 
 #endif

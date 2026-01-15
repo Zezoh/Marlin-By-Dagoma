@@ -29,7 +29,7 @@
 #include "Marlin.h"
 
 #if ENABLED(SDSUPPORT)
-#include "Sd2Card.h"
+#include "sd_card_hardware.h"
 //------------------------------------------------------------------------------
 #if DISABLED(SOFTWARE_SPI)
   // functions for hardware SPI
