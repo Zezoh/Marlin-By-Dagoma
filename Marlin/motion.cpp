@@ -882,6 +882,7 @@ float junction_deviation = 0.1;
     }
   #endif
 
+  calculate_trapezoid_for_block(block, block->entry_speed / block->nominal_speed, safe_speed / block->nominal_speed);
   block_buffer_head = next_buffer_head;
   for (int i = 0; i < NUM_AXIS; i++) position[i] = target[i];
 
