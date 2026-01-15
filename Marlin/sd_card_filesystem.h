@@ -37,7 +37,6 @@
 // SDFATCONFIG - Configuration defines
 //==============================================================================
 // NOTE: SPI hardware configuration moved to sd_card_hardware.h
-  #include <stdint.h>
   //------------------------------------------------------------------------------
   /**
   * To use multiple SD cards set USE_MULTIPLE_CARDS nonzero.

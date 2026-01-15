@@ -44,29 +44,8 @@
  * or 6 (F_CPU/128).
  */
 #define SPI_SD_INIT_RATE 5
-/**
- * Set the SS pin high for hardware SPI.  If SS is chip select for another SPI
- * device this will disable that device during the SD init phase.
- */
-#define SET_SPI_SS_HIGH 1
-/**
- * Define MEGA_SOFT_SPI nonzero to use software SPI on Mega Arduinos.
- * Pins used are SS 10, MOSI 11, MISO 12, and SCK 13.
- */
-#define MEGA_SOFT_SPI 0
-/**
- * Set USE_SOFTWARE_SPI nonzero to always use software SPI.
- */
-#define USE_SOFTWARE_SPI 0
-// define software SPI pins so Mega can use unmodified 168/328 shields
-/** Software SPI chip select pin for the SD */
-uint8_t const SOFT_SPI_CS_PIN = 10;
-/** Software SPI Master Out Slave In pin */
-uint8_t const SOFT_SPI_MOSI_PIN = 11;
-/** Software SPI Master In Slave Out pin */
-uint8_t const SOFT_SPI_MISO_PIN = 12;
-/** Software SPI Clock pin */
-uint8_t const SOFT_SPI_SCK_PIN = 13;
+// Software SPI is disabled - using hardware SPI only
+// MEGA_SOFT_SPI disabled - using hardware SPI only
 
 //==============================================================================
 // SD2PINMAP - Pin mapping structures and functions
@@ -757,8 +736,7 @@ uint8_t const SD_CARD_ERROR_READ_TIMEOUT = 0X11;
 uint8_t const SD_CARD_ERROR_STOP_TRAN = 0X12;
 /** card returned an error token as a response to a write operation */
 uint8_t const SD_CARD_ERROR_WRITE = 0X13;
-/** attempt to write protected block zero */
-uint8_t const SD_CARD_ERROR_WRITE_BLOCK_ZERO = 0X14;  // REMOVE - not used
+// SD_CARD_ERROR_WRITE_BLOCK_ZERO (0X14) removed - unused
 /** card did not go ready for a multiple block write */
 uint8_t const SD_CARD_ERROR_WRITE_MULTIPLE = 0X15;
 /** card returned an error to a CMD13 status check after a write */
