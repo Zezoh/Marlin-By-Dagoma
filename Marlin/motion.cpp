@@ -60,17 +60,15 @@
 
 #include "speed_lookuptable.h"
 
-#if HAS_DIGIPOTSS
+#if HAS_DIGIPOTSS || ENABLED(HAVE_TMCDRIVER) || ENABLED(HAVE_L6470DRIVER)
   #include <SPI.h>
 #endif
 
 #if ENABLED(HAVE_TMCDRIVER)
-  #include <SPI.h>
   #include <TMC26XStepper.h>
 #endif
 
 #if ENABLED(HAVE_L6470DRIVER)
-  #include <SPI.h>
   #include <L6470.h>
 #endif
 
@@ -179,17 +177,12 @@ void calculate_trapezoid_for_block(block_t* block, float entry_factor, float exi
   long acceleration = block->acceleration_st;
   int32_t accelerate_steps = ceil(estimate_acceleration_distance(initial_rate, block->nominal_rate, acceleration));
   int32_t decelerate_steps = floor(estimate_acceleration_distance(block->nominal_rate, final_rate, -acceleration));
-
-  // Calculate the size of Plateau of Nominal Rate.
   int32_t plateau_steps = block->step_event_count - accelerate_steps - decelerate_steps;
 
-  // Is the Plateau of Nominal Rate smaller than nothing? That means no cruising, and we will
-  // have to use intersection_distance() to calculate when to abort acceleration and start braking
-  // in order to reach the final_rate exactly at the end of this block.
   if (plateau_steps < 0) {
     accelerate_steps = ceil(intersection_distance(initial_rate, final_rate, acceleration, block->step_event_count));
-    accelerate_steps = max(accelerate_steps, 0); // Check limits due to numerical round-off
-    accelerate_steps = min((uint32_t)accelerate_steps, block->step_event_count);//(We can cast here to unsigned, because the above line ensures that we are above zero)
+    accelerate_steps = max(accelerate_steps, 0);
+    accelerate_steps = min((uint32_t)accelerate_steps, block->step_event_count);
     plateau_steps = 0;
   }
 
@@ -198,10 +191,8 @@ void calculate_trapezoid_for_block(block_t* block, float entry_factor, float exi
     volatile long final_advance = block->advance * exit_factor * exit_factor;
   #endif // ADVANCE
 
-  // block->accelerate_until = accelerate_steps;
-  // block->decelerate_after = accelerate_steps+plateau_steps;
-  CRITICAL_SECTION_START;  // Fill variables used by the stepper in a critical section
-  if (!block->busy) { // Don't update variables if block is busy.
+  CRITICAL_SECTION_START;
+  if (!block->busy) {
     block->accelerate_until = accelerate_steps;
     block->decelerate_after = accelerate_steps + plateau_steps;
     block->initial_rate = initial_rate;
@@ -219,15 +210,6 @@ void calculate_trapezoid_for_block(block_t* block, float entry_factor, float exi
 FORCE_INLINE float max_allowable_speed(float acceleration, float target_velocity, float distance) {
   return sqrt(target_velocity * target_velocity - 2 * acceleration * distance);
 }
-
-// "Junction jerk" in this context is the immediate change in speed at the junction of two blocks.
-// This method will calculate the junction jerk as the euclidean distance between the nominal
-// velocities of the respective blocks.
-//inline float junction_jerk(block_t *before, block_t *after) {
-//  return sqrt(
-//    pow((before->speed_x-after->speed_x), 2)+pow((before->speed_y-after->speed_y), 2));
-//}
-
 
 // The kernel called by planner_recalculate() when scanning the plan from last to first entry.
 void planner_reverse_pass_kernel(block_t* previous, block_t* current, block_t* next) {
@@ -261,7 +243,6 @@ void planner_reverse_pass_kernel(block_t* previous, block_t* current, block_t* n
 void planner_reverse_pass() {
   uint8_t block_index = block_buffer_head;
 
-  //Make a local copy of block_buffer_tail, because the interrupt can alter it
   CRITICAL_SECTION_START;
     unsigned char tail = block_buffer_tail;
   CRITICAL_SECTION_END
@@ -329,40 +310,20 @@ void planner_recalculate_trapezoids() {
     current = next;
     next = &block_buffer[block_index];
     if (current) {
-      // Recalculate if current block entry or exit junction speed has changed.
       if (current->recalculate_flag || next->recalculate_flag) {
-        // NOTE: Entry and exit factors always > 0 by all previous logic operations.
         float nom = current->nominal_speed;
         calculate_trapezoid_for_block(current, current->entry_speed / nom, next->entry_speed / nom);
-        current->recalculate_flag = false; // Reset current only to ensure next trapezoid is computed
+        current->recalculate_flag = false;
       }
     }
     block_index = next_block_index(block_index);
   }
-  // Last/newest block in buffer. Exit speed is set with MINIMUM_PLANNER_SPEED. Always recalculated.
   if (next) {
     float nom = next->nominal_speed;
     calculate_trapezoid_for_block(next, next->entry_speed / nom, (MINIMUM_PLANNER_SPEED) / nom);
     next->recalculate_flag = false;
   }
 }
-
-// Recalculates the motion plan according to the following algorithm:
-//
-//   1. Go over every block in reverse order and calculate a junction speed reduction (i.e. block_t.entry_factor)
-//      so that:
-//     a. The junction jerk is within the set limit
-//     b. No speed reduction within one block requires faster deceleration than the one, true constant
-//        acceleration.
-//   2. Go over every block in chronological order and dial down junction speed reduction values if
-//     a. The speed increase within one block would require faster acceleration than the one, true
-//        constant acceleration.
-//
-// When these stages are complete all blocks have an entry_factor that will allow all speed changes to
-// be performed using only the one, true constant acceleration, and where no junction jerk is jerkier than
-// the set limit. Finally it will:
-//
-//   3. Recalculate trapezoids for all blocks.
 
 void planner_recalculate() {
   planner_reverse_pass();
@@ -886,46 +847,6 @@ float junction_deviation = 0.1;
   block->acceleration = acc_st / steps_per_mm;
   block->acceleration_rate = (long)(acc_st * 16777216.0 / (F_CPU / 8.0));
 
-  #if 0  // Use old jerk for now
-    // Compute path unit vector
-    double unit_vec[3];
-
-    unit_vec[X_AXIS] = delta_mm[X_AXIS] * inverse_millimeters;
-    unit_vec[Y_AXIS] = delta_mm[Y_AXIS] * inverse_millimeters;
-    unit_vec[Z_AXIS] = delta_mm[Z_AXIS] * inverse_millimeters;
-
-    // Compute maximum allowable entry speed at junction by centripetal acceleration approximation.
-    // Let a circle be tangent to both previous and current path line segments, where the junction
-    // deviation is defined as the distance from the junction to the closest edge of the circle,
-    // collinear with the circle center. The circular segment joining the two paths represents the
-    // path of centripetal acceleration. Solve for max velocity based on max acceleration about the
-    // radius of the circle, defined indirectly by junction deviation. This may be also viewed as
-    // path width or max_jerk in the previous grbl version. This approach does not actually deviate
-    // from path, but used as a robust way to compute cornering speeds, as it takes into account the
-    // nonlinearities of both the junction angle and junction velocity.
-    double vmax_junction = MINIMUM_PLANNER_SPEED; // Set default max junction speed
-
-    // Skip first block or when previous_nominal_speed is used as a flag for homing and offset cycles.
-    if ((block_buffer_head != block_buffer_tail) && (previous_nominal_speed > 0.0)) {
-      // Compute cosine of angle between previous and current path. (prev_unit_vec is negative)
-      // NOTE: Max junction velocity is computed without sin() or acos() by trig half angle identity.
-      double cos_theta = - previous_unit_vec[X_AXIS] * unit_vec[X_AXIS]
-                         - previous_unit_vec[Y_AXIS] * unit_vec[Y_AXIS]
-                         - previous_unit_vec[Z_AXIS] * unit_vec[Z_AXIS] ;
-      // Skip and use default max junction speed for 0 degree acute junction.
-      if (cos_theta < 0.95) {
-        vmax_junction = min(previous_nominal_speed, block->nominal_speed);
-        // Skip and avoid divide by zero for straight junctions at 180 degrees. Limit to min() of nominal speeds.
-        if (cos_theta > -0.95) {
-          // Compute maximum junction velocity based on maximum acceleration and junction deviation
-          double sin_theta_d2 = sqrt(0.5 * (1.0 - cos_theta)); // Trig half angle identity. Always positive.
-          vmax_junction = min(vmax_junction,
-                              sqrt(block->acceleration * junction_deviation * sin_theta_d2 / (1.0 - sin_theta_d2)));
-        }
-      }
-    }
-  #endif
-
   // Start with a safe speed
   float vmax_junction = max_xy_jerk / 2;
   float vmax_junction_factor = 1.0;
@@ -943,33 +864,20 @@ float junction_deviation = 0.1;
           dse = fabs(cse - previous_speed[E_AXIS]),
           jerk = sqrt(dsx * dsx + dsy * dsy);
 
-    //    if ((fabs(previous_speed[X_AXIS]) > 0.0001) || (fabs(previous_speed[Y_AXIS]) > 0.0001)) {
     vmax_junction = block->nominal_speed;
-    //    }
     if (jerk > max_xy_jerk) vmax_junction_factor = max_xy_jerk / jerk;
     if (dsz > max_z_jerk) vmax_junction_factor = min(vmax_junction_factor, max_z_jerk / dsz);
     if (dse > max_e_jerk) vmax_junction_factor = min(vmax_junction_factor, max_e_jerk / dse);
 
-    vmax_junction = min(previous_nominal_speed, vmax_junction * vmax_junction_factor); // Limit speed to max previous speed
+    vmax_junction = min(previous_nominal_speed, vmax_junction * vmax_junction_factor);
   }
   block->max_entry_speed = vmax_junction;
 
-  // Initialize block entry speed. Compute based on deceleration to user-defined MINIMUM_PLANNER_SPEED.
   double v_allowable = max_allowable_speed(-block->acceleration, MINIMUM_PLANNER_SPEED, block->millimeters);
   block->entry_speed = min(vmax_junction, v_allowable);
-
-  // Initialize planner efficiency flags
-  // Set flag if block will always reach maximum junction speed regardless of entry/exit speeds.
-  // If a block can de/ac-celerate from nominal speed to zero within the length of the block, then
-  // the current block and next block junction speeds are guaranteed to always be at their maximum
-  // junction speeds in deceleration and acceleration, respectively. This is due to how the current
-  // block nominal speed limits both the current and next maximum junction speeds. Hence, in both
-  // the reverse and forward planners, the corresponding block junction speed will always be at the
-  // the maximum junction speed and may always be ignored for any speed reduction checks.
   block->nominal_length_flag = (block->nominal_speed <= v_allowable);
-  block->recalculate_flag = true; // Always calculate trapezoid for new block
+  block->recalculate_flag = true;
 
-  // Update previous path unit_vector and nominal speed
   for (int i = 0; i < NUM_AXIS; i++) previous_speed[i] = current_speed[i];
   previous_nominal_speed = block->nominal_speed;
 
@@ -985,28 +893,14 @@ float junction_deviation = 0.1;
       block->advance = advance;
       block->advance_rate = acc_dist ? advance / (float)acc_dist : 0;
     }
-    /**
-      SERIAL_ECHO_START;
-     SERIAL_ECHOPGM("advance :");
-     SERIAL_ECHO(block->advance/256.0);
-     SERIAL_ECHOPGM("advance rate :");
-     SERIAL_ECHOLN(block->advance_rate/256.0);
-     */
-  #endif // ADVANCE
+  #endif
 
-  calculate_trapezoid_for_block(block, block->entry_speed / block->nominal_speed, safe_speed / block->nominal_speed);
-
-  // Move buffer head
   block_buffer_head = next_buffer_head;
-
-  // Update position
   for (int i = 0; i < NUM_AXIS; i++) position[i] = target[i];
 
   planner_recalculate();
-
   st_wake_up();
-
-} // plan_buffer_line()
+}
 
 #if ENABLED(AUTO_BED_LEVELING_FEATURE) && DISABLED(DELTA)
 
@@ -1081,10 +975,8 @@ block_t* current_block;  // A pointer to the block currently being traced
 //===========================================================================
 //============================= private variables ===========================
 //===========================================================================
-//static makes it impossible to be called from outside of this file by extern.!
 
-// Variables used by The Stepper Driver Interrupt
-static unsigned char out_bits = 0;        // The next stepping-bits to be output
+static unsigned char out_bits = 0;
 static unsigned int cleaning_buffer_counter;
 
 #if ENABLED(Z_DUAL_ENDSTOPS)
@@ -1093,9 +985,8 @@ static unsigned int cleaning_buffer_counter;
               locked_z2_motor = false;
 #endif
 
-// Counter variables for the Bresenham line tracer
 static long counter_x, counter_y, counter_z, counter_e;
-volatile static unsigned long step_events_completed; // The number of step events executed in the current block
+volatile static unsigned long step_events_completed;
 
 #if ENABLED(ADVANCE)
   static long advance_rate, advance, final_advance = 0;
@@ -1104,22 +995,21 @@ volatile static unsigned long step_events_completed; // The number of step event
 #endif
 
 static long acceleration_time, deceleration_time;
-//static unsigned long accelerate_until, decelerate_after, acceleration_rate, initial_rate, final_rate, nominal_rate;
-static unsigned short acc_step_rate; // needed for deceleration start point
+static unsigned short acc_step_rate;
 static uint8_t step_loops;
 static uint8_t step_loops_nominal;
 static unsigned short OCR1A_nominal;
 
 volatile long endstops_trigsteps[3] = { 0 };
 volatile long endstops_stepsTotal, endstops_stepsDone;
-static volatile char endstop_hit_bits = 0; // use X_MIN, Y_MIN, Z_MIN and Z_MIN_PROBE as BIT value
+static volatile char endstop_hit_bits = 0;
 
 #if DISABLED(Z_DUAL_ENDSTOPS)
   static byte
 #else
   static uint16_t
 #endif
-    old_endstop_bits = 0; // use X_MIN, X_MAX... Z_MAX, Z_MIN_PROBE, Z2_MIN, Z2_MAX
+  old_endstop_bits = 0;
 
 #if ENABLED(ABORT_ON_ENDSTOP_HIT_FEATURE_ENABLED)
   bool abort_on_endstop_hit = false;
@@ -1459,22 +1349,20 @@ inline void update_endstops() {
           #endif // !Z_DUAL_ENDSTOPS
         #endif
 
-        // Check if pause is triggered during z probe
         #if ENABLED(HAS_Z_MIN_PROBE)
           #if ENABLED(EMERGENCY_STOP)
-            #if ENABLED(DELTA) && ENABLED(ONE_BUTTON) // Delta
+            #if ENABLED(DELTA) && ENABLED(ONE_BUTTON)
               if ( (READ(ONE_BUTTON_PIN) ^ ONE_BUTTON_INVERTING) ) {
-                SET_BIT(current_endstop_bits, Z_MIN_PROBE, 1 ); // Emulate endstops hit (here: Z_MIN)
+                SET_BIT(current_endstop_bits, Z_MIN_PROBE, 1 );
                 trigger_emergency_stop = true;
               }
-            #elif ENABLED(SUMMON_PRINT_PAUSE) // E200 Neva-like (with pause button)
+            #elif ENABLED(SUMMON_PRINT_PAUSE)
               if ( (READ(SUMMON_PRINT_PAUSE_PIN) ^ SUMMON_PRINT_PAUSE_INVERTING) ) {
-                SET_BIT(current_endstop_bits, Z_MIN_PROBE, 1 ); // Emulate endstops hit (here: Z_MIN)
+                SET_BIT(current_endstop_bits, Z_MIN_PROBE, 1 );
                 trigger_emergency_stop = true;
               }
             #endif
 
-            // Assumption: this piece of code is used to stop the move in checking bit in Z_MIN_PROBE flag.
             if (TEST_ENDSTOP(_ENDSTOP(Z, MIN_PROBE)) && current_block->steps[_AXIS(Z)] > 0) {
               _SET_TRIGSTEPS(Z);
               _ENDSTOP_HIT(Z);
@@ -1483,10 +1371,6 @@ inline void update_endstops() {
 
             if (TEST_ENDSTOP(Z_MIN_PROBE)) SBI(endstop_hit_bits, Z_MIN_PROBE);
 
-            // FIXME: Quick fix to exit earlier
-            //        If emergency stop is triggered
-            // TODO:  See if this code can be avoided with below Z_MIN_MAGIC possible override
-            //        of emergency occurrences
             if (trigger_emergency_stop) {
               old_endstop_bits = current_endstop_bits;
               return;
@@ -1642,10 +1526,7 @@ void set_stepper_direction() {
   #endif //!ADVANCE
 }
 
-// Initializes the trapezoid generator from the current block. Called whenever a new
-// block begins.
 FORCE_INLINE void trapezoid_generator_reset() {
-
   static int8_t last_extruder = -1;
 
   if (current_block->direction_bits != out_bits || current_block->active_extruder != last_extruder) {
@@ -1662,29 +1543,14 @@ FORCE_INLINE void trapezoid_generator_reset() {
     old_advance = advance >>8;
   #endif
   deceleration_time = 0;
-  // step_rate to timer interval
   OCR1A_nominal = calc_timer(current_block->nominal_rate);
-  // make a note of the number of step loops required at nominal speed
   step_loops_nominal = step_loops;
   acc_step_rate = current_block->initial_rate;
   acceleration_time = calc_timer(acc_step_rate);
   OCR1A = acceleration_time;
-
-  // SERIAL_ECHO_START;
-  // SERIAL_ECHOPGM("advance :");
-  // SERIAL_ECHO(current_block->advance/256.0);
-  // SERIAL_ECHOPGM("advance rate :");
-  // SERIAL_ECHO(current_block->advance_rate/256.0);
-  // SERIAL_ECHOPGM("initial advance :");
-  // SERIAL_ECHO(current_block->initial_advance/256.0);
-  // SERIAL_ECHOPGM("final advance :");
-  // SERIAL_ECHOLN(current_block->final_advance/256.0);
 }
 
-// "The Stepper Driver Interrupt" - This timer interrupt is the workhorse.
-// It pops blocks from the block_buffer and executes them by pulsing the stepper pins appropriately.
 ISR(TIMER1_COMPA_vect) {
-
   if (cleaning_buffer_counter) {
     current_block = NULL;
     plan_discard_current_block();
@@ -1696,9 +1562,7 @@ ISR(TIMER1_COMPA_vect) {
     return;
   }
 
-  // If there is no current block, attempt to pop one from the buffer
   if (!current_block) {
-    // Anything in the buffer?
     current_block = plan_get_current_block();
     if (current_block) {
       current_block->busy = true;
@@ -1710,30 +1574,23 @@ ISR(TIMER1_COMPA_vect) {
       #if ENABLED(Z_LATE_ENABLE)
         if (current_block->steps[Z_AXIS] > 0) {
           enable_z();
-          OCR1A = 2000; //1ms wait
+          OCR1A = 2000;
           return;
         }
       #endif
-
-      // #if ENABLED(ADVANCE)
-      //   e_steps[current_block->active_extruder] = 0;
-      // #endif
     }
     else {
-      OCR1A = 2000; // 1kHz.
+      OCR1A = 2000;
     }
   }
 
   if (current_block != NULL) {
-
-    // Update endstops state, if enabled
     #if ENABLED(HAS_Z_MIN_PROBE)
       if (check_endstops || z_probe_is_active) update_endstops();
     #else
       if (check_endstops) update_endstops();
     #endif
 
-    // Take multiple steps per interrupt (For high speed moves)
     for (int8_t i = 0; i < step_loops; i++) {
       #ifndef USBCON
         customizedSerial.checkRx(); // Check for serial chars.
@@ -1779,44 +1636,32 @@ ISR(TIMER1_COMPA_vect) {
       step_events_completed++;
       if (step_events_completed >= current_block->step_event_count) break;
     }
-    // Calculate new timer value
     unsigned short timer;
     unsigned short step_rate;
     if (step_events_completed <= (unsigned long)current_block->accelerate_until) {
-
       MultiU24X32toH16(acc_step_rate, acceleration_time, current_block->acceleration_rate);
       acc_step_rate += current_block->initial_rate;
-
-      // upper limit
       NOMORE(acc_step_rate, current_block->nominal_rate);
-
-      // step_rate to timer interval
       timer = calc_timer(acc_step_rate);
       OCR1A = timer;
       acceleration_time += timer;
 
       #if ENABLED(ADVANCE)
-
         advance += advance_rate * step_loops;
-        //NOLESS(advance, current_block->advance);
-
-        // Do E steps + advance steps
         e_steps[current_block->active_extruder] += ((advance >> 8) - old_advance);
         old_advance = advance >> 8;
-
-      #endif //ADVANCE
+      #endif
     }
     else if (step_events_completed > (unsigned long)current_block->decelerate_after) {
       MultiU24X32toH16(step_rate, deceleration_time, current_block->acceleration_rate);
 
-      if (step_rate <= acc_step_rate) { // Still decelerating?
+      if (step_rate <= acc_step_rate) {
         step_rate = acc_step_rate - step_rate;
         NOLESS(step_rate, current_block->final_rate);
       }
       else
         step_rate = current_block->final_rate;
 
-      // step_rate to timer interval
       timer = calc_timer(step_rate);
       OCR1A = timer;
       deceleration_time += timer;
@@ -1833,13 +1678,11 @@ ISR(TIMER1_COMPA_vect) {
     }
     else {
       OCR1A = OCR1A_nominal;
-      // ensure we're running at the correct step rate, even if we just came off an acceleration
       step_loops = step_loops_nominal;
     }
 
     OCR1A = (OCR1A < (TCNT1 + 16)) ? (TCNT1 + 16) : OCR1A;
 
-    // If current block is finished, reset pointer
     if (step_events_completed >= current_block->step_event_count) {
       current_block = NULL;
       plan_discard_current_block();
@@ -1849,10 +1692,8 @@ ISR(TIMER1_COMPA_vect) {
 
 #if ENABLED(ADVANCE)
   unsigned char old_OCR0A;
-  // Timer interrupt for E. e_steps is set in the main routine;
-  // Timer 0 is shared with millies
   ISR(TIMER0_COMPA_vect) {
-    old_OCR0A += 52; // ~10kHz interrupt (250000 / 26 = 9615kHz)
+    old_OCR0A += 52;
     OCR0A = old_OCR0A;
 
     #define STEP_E_ONCE(INDEX) \
@@ -1869,7 +1710,6 @@ ISR(TIMER1_COMPA_vect) {
         E## INDEX ##_STEP_WRITE(!INVERT_E_STEP_PIN); \
       }
 
-    // Step all E steppers that have steps, up to 4 steps per interrupt
     for (unsigned char i = 0; i < 4; i++) {
       STEP_E_ONCE(0);
       #if EXTRUDERS > 1
@@ -1886,19 +1726,15 @@ ISR(TIMER1_COMPA_vect) {
 #endif // ADVANCE
 
 void st_init() {
-  digipot_init(); //Initialize Digipot Motor Current
-  microstep_init(); //Initialize Microstepping Pins
+  digipot_init();
+  microstep_init();
 
-  // initialise TMC Steppers
   #if ENABLED(HAVE_TMCDRIVER)
     tmc_init();
   #endif
-    // initialise L6470 Steppers
   #if ENABLED(HAVE_L6470DRIVER)
     L6470_init();
   #endif
-
-  // Initialize Dir Pins
   #if HAS_X_DIR
     X_DIR_INIT;
   #endif
@@ -1943,16 +1779,14 @@ void st_init() {
   #if HAS_Y_ENABLE
     Y_ENABLE_INIT;
     if (!Y_ENABLE_ON) Y_ENABLE_WRITE(HIGH);
-
-  #if ENABLED(Y_DUAL_STEPPER_DRIVERS) && HAS_Y2_ENABLE
-    Y2_ENABLE_INIT;
-    if (!Y_ENABLE_ON) Y2_ENABLE_WRITE(HIGH);
-  #endif
+    #if ENABLED(Y_DUAL_STEPPER_DRIVERS) && HAS_Y2_ENABLE
+      Y2_ENABLE_INIT;
+      if (!Y_ENABLE_ON) Y2_ENABLE_WRITE(HIGH);
+    #endif
   #endif
   #if HAS_Z_ENABLE
     Z_ENABLE_INIT;
     if (!Z_ENABLE_ON) Z_ENABLE_WRITE(HIGH);
-
     #if ENABLED(Z_DUAL_STEPPER_DRIVERS) && HAS_Z2_ENABLE
       Z2_ENABLE_INIT;
       if (!Z_ENABLE_ON) Z2_ENABLE_WRITE(HIGH);
@@ -1974,8 +1808,6 @@ void st_init() {
     E3_ENABLE_INIT;
     if (!E_ENABLE_ON) E3_ENABLE_WRITE(HIGH);
   #endif
-
-  //endstops and pullups
 
   #if HAS_X_MIN
     SET_INPUT(X_MIN_PIN);
@@ -2097,20 +1929,13 @@ void st_init() {
     E_AXIS_INIT(3);
   #endif
 
-  // waveform generation = 0100 = CTC
   CBI(TCCR1B, WGM13);
   SBI(TCCR1B, WGM12);
   CBI(TCCR1A, WGM11);
   CBI(TCCR1A, WGM10);
 
-  // output mode = 00 (disconnected)
   TCCR1A &= ~(3 << COM1A0);
   TCCR1A &= ~(3 << COM1B0);
-  // Set the timer pre-scaler
-  // Generally we use a divider of 8, resulting in a 2MHz timer
-  // frequency on a 16MHz MCU. If you are going to change this, be
-  // sure to regenerate speed_lookuptable.h with
-  // create_speed_lookuptable.py
   TCCR1B = (TCCR1B & ~(0x07 << CS10)) | (2 << CS10);
 
   OCR1A = 0x4000;
@@ -2124,12 +1949,11 @@ void st_init() {
     #endif
     e_steps[0] = e_steps[1] = e_steps[2] = e_steps[3] = 0;
     SBI(TIMSK0, OCIE0A);
-  #endif //ADVANCE
+  #endif
 
-  enable_endstops(true); // Start with endstops active. After homing they can be disabled
+  enable_endstops(true);
   sei();
-
-  set_stepper_direction(); // Init directions to out_bits = 0
+  set_stepper_direction();
 }
 
 
@@ -2243,11 +2067,9 @@ void quickStop() {
           uint8_t old_x_dir_pin = X_DIR_READ,
                   old_y_dir_pin = Y_DIR_READ,
                   old_z_dir_pin = Z_DIR_READ;
-          //setup new step
           X_DIR_WRITE(INVERT_X_DIR ^ z_direction);
           Y_DIR_WRITE(INVERT_Y_DIR ^ z_direction);
           Z_DIR_WRITE(INVERT_Z_DIR ^ z_direction);
-          //perform step
           X_STEP_WRITE(!INVERT_X_STEP_PIN);
           Y_STEP_WRITE(!INVERT_Y_STEP_PIN);
           Z_STEP_WRITE(!INVERT_Z_STEP_PIN);
@@ -2255,11 +2077,9 @@ void quickStop() {
           X_STEP_WRITE(INVERT_X_STEP_PIN);
           Y_STEP_WRITE(INVERT_Y_STEP_PIN);
           Z_STEP_WRITE(INVERT_Z_STEP_PIN);
-          //get old pin state back.
           X_DIR_WRITE(old_x_dir_pin);
           Y_DIR_WRITE(old_y_dir_pin);
           Z_DIR_WRITE(old_z_dir_pin);
-
         #endif
 
       } break;
@@ -2271,19 +2091,14 @@ void quickStop() {
 #endif //BABYSTEPPING
 
 #if HAS_DIGIPOTSS
-
-  // From Arduino DigitalPotControl example
   void digitalPotWrite(int address, int value) {
-    digitalWrite(DIGIPOTSS_PIN, LOW); // take the SS pin low to select the chip
-    SPI.transfer(address); //  send in the address and value via SPI:
+    digitalWrite(DIGIPOTSS_PIN, LOW);
+    SPI.transfer(address);
     SPI.transfer(value);
-    digitalWrite(DIGIPOTSS_PIN, HIGH); // take the SS pin high to de-select the chip:
-    //delay(10);
+    digitalWrite(DIGIPOTSS_PIN, HIGH);
   }
+#endif
 
-#endif //HAS_DIGIPOTSS
-
-// Initialize Digipot Motor Current
 void digipot_init() {
   #if HAS_DIGIPOTSS
     const uint8_t digipot_motor_current[] = DIGIPOT_MOTOR_CURRENT;
@@ -2291,7 +2106,6 @@ void digipot_init() {
     SPI.begin();
     pinMode(DIGIPOTSS_PIN, OUTPUT);
     for (int i = 0; i < COUNT(digipot_motor_current); i++) {
-      //digitalPotWrite(digipot_ch[i], digipot_motor_current[i]);
       digipot_current(i, digipot_motor_current[i]);
     }
   #endif
@@ -2308,7 +2122,6 @@ void digipot_init() {
       pinMode(MOTOR_CURRENT_PWM_E_PIN, OUTPUT);
       digipot_current(2, motor_current_setting[2]);
     #endif
-    //Set timer5 to 31khz so the PWM of the motor power is as constant as possible. (removes a buzzing noise)
     TCCR5B = (TCCR5B & ~(_BV(CS50) | _BV(CS51) | _BV(CS52))) | _BV(CS50);
   #endif
 }
@@ -2680,14 +2493,10 @@ void apply_rotation_xyz(matrix_3x3 matrix, float& x, float& y, float& z) {
 }
 
 matrix_3x3 matrix_3x3::create_from_rows(vector_3 row_0, vector_3 row_1, vector_3 row_2) {
-  //row_0.debug("row_0");
-  //row_1.debug("row_1");
-  //row_2.debug("row_2");
   matrix_3x3 new_matrix;
   new_matrix.matrix[0] = row_0.x; new_matrix.matrix[1] = row_0.y; new_matrix.matrix[2] = row_0.z;
   new_matrix.matrix[3] = row_1.x; new_matrix.matrix[4] = row_1.y; new_matrix.matrix[5] = row_1.z;
   new_matrix.matrix[6] = row_2.x; new_matrix.matrix[7] = row_2.y; new_matrix.matrix[8] = row_2.z;
-  //new_matrix.debug("new_matrix");
   return new_matrix;
 }
 
@@ -2701,15 +2510,7 @@ matrix_3x3 matrix_3x3::create_look_at(vector_3 target) {
   vector_3 z_row = target.get_normal();
   vector_3 x_row = vector_3(1, 0, -target.x / target.z).get_normal();
   vector_3 y_row = vector_3::cross(z_row, x_row).get_normal();
-
-  // x_row.debug("x_row");
-  // y_row.debug("y_row");
-  // z_row.debug("z_row");
-
-  // create the matrix already correctly transposed
   matrix_3x3 rot = matrix_3x3::create_from_rows(x_row, y_row, z_row);
-
-  // rot.debug("rot");
   return rot;
 }
 
