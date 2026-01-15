@@ -77,7 +77,7 @@ void CardReader::lsDive(const char *prepend, SdFile parent, const char * const m
   uint8_t cnt = 0;
 
   // Read the next entry from a directory
-  while (parent.readDir(p, longFilename) > 0) {
+  while (parent.readDir(&p, longFilename) > 0) {
 
     // If the entry is a directory and the action is LS_SerialPrint
     if (DIR_IS_SUBDIR(&p) && lsAction != LS_Count && lsAction != LS_GetFilename) {
@@ -103,7 +103,7 @@ void CardReader::lsDive(const char *prepend, SdFile parent, const char * const m
       // Get a new directory object using the full path
       // and dive recursively into it.
       SdFile dir;
-      if (!dir.open(parent, lfilename, O_READ)) {
+      if (!dir.open(&parent, lfilename, O_READ)) {
         if (lsAction == LS_SerialPrint) {
           SERIAL_ECHO_START;
           SERIAL_ECHOLN(MSG_SD_CANT_OPEN_SUBDIR);
@@ -199,7 +199,7 @@ void CardReader::ls()  {
 
       // Open the sub-item as the new dive parent
       SdFile dir;
-      if (!dir.open(diveDir, segment, O_READ)) {
+      if (!dir.open(&diveDir, segment, O_READ)) {
         SERIAL_EOL;
         SERIAL_ECHO_START;
         SERIAL_ECHOPGM(MSG_SD_CANT_OPEN_SUBDIR);
@@ -566,7 +566,7 @@ void CardReader::checkautostart(bool force) {
   root.rewind();
 
   bool found = false;
-  while (root.readDir(p, NULL) > 0) {
+  while (root.readDir(&p, NULL) > 0) {
     for (int8_t i = 0; i < (int8_t)strlen((char*)p.name); i++) p.name[i] = tolower(p.name[i]);
       #if ENABLED(DISABLE_DAGAUTO_START)
         if (p.name[9] != '~' && strncmp((char*)p.name, autoname, 5) == 0) {
@@ -594,7 +594,7 @@ bool CardReader::check_auto_consume() {
 
   // Detected scheme : _XY.g
   // Where X and Y are digits
-  while (root.readDir(p, NULL) > 0) {
+  while (root.readDir(&p, NULL) > 0) {
     if (
       p.name[0] != '_' ||
       (! isDigit(p.name[1])) ||
@@ -661,7 +661,7 @@ void CardReader::chdir(const char * relpath) {
 
   if (workDir.isOpen()) parent = &workDir;
 
-  if (!newfile.open(*parent, relpath, O_READ)) {
+  if (!newfile.open(parent, relpath, O_READ)) {
     SERIAL_ECHO_START;
     SERIAL_ECHOPGM(MSG_SD_CANT_ENTER_SUBDIR);
     SERIAL_ECHOLN(relpath);
