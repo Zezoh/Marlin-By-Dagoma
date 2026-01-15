@@ -2301,14 +2301,6 @@ void tmc_init() {
 }
 #endif
 
-// L6470 Driver objects and inits
-
-#if ENABLED(HAVE_L6470DRIVER)
-  #include <SPI.h>
-  #include <L6470.h>
-#endif
-
-// L6470 Stepper objects
 #if ENABLED(X_IS_L6470)
   L6470 stepperX(X_ENABLE_PIN);
 #endif
