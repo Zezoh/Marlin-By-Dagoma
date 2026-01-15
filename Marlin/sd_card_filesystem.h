@@ -36,6 +36,7 @@
 //==============================================================================
 // SDFATCONFIG - Configuration defines
 //==============================================================================
+// NOTE: SPI hardware configuration moved to sd_card_hardware.h
   #include <stdint.h>
   //------------------------------------------------------------------------------
   /**
@@ -76,42 +77,6 @@
   * FAT12 has not been well tested.
   */
   #define FAT12_SUPPORT 0
-  //------------------------------------------------------------------------------
-  /**
-  * SPI init rate for SD initialization commands. Must be 5 (F_CPU/64)
-  * or 6 (F_CPU/128).
-  */
-  #define SPI_SD_INIT_RATE 5
-  //------------------------------------------------------------------------------
-  /**
-  * Set the SS pin high for hardware SPI.  If SS is chip select for another SPI
-  * device this will disable that device during the SD init phase.
-  */
-  #define SET_SPI_SS_HIGH 1
-  //------------------------------------------------------------------------------
-  /**
-  * Define MEGA_SOFT_SPI nonzero to use software SPI on Mega Arduinos.
-  * Pins used are SS 10, MOSI 11, MISO 12, and SCK 13.
-  *
-  * MEGA_SOFT_SPI allows an unmodified Adafruit GPS Shield to be used
-  * on Mega Arduinos.  Software SPI works well with GPS Shield V1.1
-  * but many SD cards will fail with GPS Shield V1.0.
-  */
-  #define MEGA_SOFT_SPI 0
-  //------------------------------------------------------------------------------
-  /**
-  * Set USE_SOFTWARE_SPI nonzero to always use software SPI.
-  */
-  #define USE_SOFTWARE_SPI 0
-  // define software SPI pins so Mega can use unmodified 168/328 shields
-  /** Software SPI chip select pin for the SD */
-  uint8_t const SOFT_SPI_CS_PIN = 10;
-  /** Software SPI Master Out Slave In pin */
-  uint8_t const SOFT_SPI_MOSI_PIN = 11;
-  /** Software SPI Master In Slave Out pin */
-  uint8_t const SOFT_SPI_MISO_PIN = 12;
-  /** Software SPI Clock pin */
-  uint8_t const SOFT_SPI_SCK_PIN = 13;
   //------------------------------------------------------------------------------
   /**
   * The __cxa_pure_virtual function is an error handler that is invoked when

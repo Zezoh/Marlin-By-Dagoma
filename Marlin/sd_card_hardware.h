@@ -37,6 +37,38 @@
 #include <avr/io.h>
 
 //==============================================================================
+// SD CARD HARDWARE CONFIGURATION
+//==============================================================================
+/**
+ * SPI init rate for SD initialization commands. Must be 5 (F_CPU/64)
+ * or 6 (F_CPU/128).
+ */
+#define SPI_SD_INIT_RATE 5
+/**
+ * Set the SS pin high for hardware SPI.  If SS is chip select for another SPI
+ * device this will disable that device during the SD init phase.
+ */
+#define SET_SPI_SS_HIGH 1
+/**
+ * Define MEGA_SOFT_SPI nonzero to use software SPI on Mega Arduinos.
+ * Pins used are SS 10, MOSI 11, MISO 12, and SCK 13.
+ */
+#define MEGA_SOFT_SPI 0
+/**
+ * Set USE_SOFTWARE_SPI nonzero to always use software SPI.
+ */
+#define USE_SOFTWARE_SPI 0
+// define software SPI pins so Mega can use unmodified 168/328 shields
+/** Software SPI chip select pin for the SD */
+uint8_t const SOFT_SPI_CS_PIN = 10;
+/** Software SPI Master Out Slave In pin */
+uint8_t const SOFT_SPI_MOSI_PIN = 11;
+/** Software SPI Master In Slave Out pin */
+uint8_t const SOFT_SPI_MISO_PIN = 12;
+/** Software SPI Clock pin */
+uint8_t const SOFT_SPI_SCK_PIN = 13;
+
+//==============================================================================
 // SD2PINMAP - Pin mapping structures and functions
 //==============================================================================
 
