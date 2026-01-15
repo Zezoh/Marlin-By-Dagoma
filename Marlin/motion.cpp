@@ -51,6 +51,9 @@
 #include "language.h"
 #include "cardreader.h"
 
+#include <math.h>
+#include <stdlib.h>
+
 #if ENABLED(MESH_BED_LEVELING)
   #include "mesh_bed_leveling.h"
 #endif
@@ -2421,7 +2424,6 @@ void microstep_readings() {
 //============== Stepper Indirection Implementation =========================
 //===========================================================================
 
-#include <math.h>
 // Stepper objects of TMC steppers used
 #if ENABLED(X_IS_TMC)
   TMC26XStepper stepperX(200, X_ENABLE_PIN, X_STEP_PIN, X_DIR_PIN, X_MAX_CURRENT, X_SENSE_RESISTOR);
@@ -2615,8 +2617,11 @@ void L6470_init() {
 }
 #endif
 
+//===========================================================================
+//===================== Vector 3 Implementation =============================
+//===========================================================================
+
 #if ENABLED(AUTO_BED_LEVELING_FEATURE)
-#include "vector_3.h"
 
 vector_3::vector_3() : x(0), y(0), z(0) { }
 
@@ -2738,9 +2743,6 @@ void matrix_3x3::debug(const char title[]) {
 //===========================================================================
 
 #if ENABLED(AUTO_BED_LEVELING_GRID)
-
-#include <stdlib.h>
-#include <math.h>
 
 int i4_min(int i1, int i2)
 
