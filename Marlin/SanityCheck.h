@@ -83,31 +83,16 @@
 /**
  * Progress Bar
  */
+// LCD_PROGRESS_BAR - LCD support has been removed
 #if ENABLED(LCD_PROGRESS_BAR)
-  #if DISABLED(SDSUPPORT)
-    #error LCD_PROGRESS_BAR requires SDSUPPORT.
-  #endif
-  #if ENABLED(DOGLCD)
-    #error LCD_PROGRESS_BAR does not apply to graphical displays.
-  #endif
-  #if ENABLED(FILAMENT_LCD_DISPLAY)
-    #error LCD_PROGRESS_BAR and FILAMENT_LCD_DISPLAY are not fully compatible. Comment out this line to use both.
-  #endif
+  #error LCD_PROGRESS_BAR requires LCD support which has been removed from this firmware.
 #endif
 
 /**
- * Babystepping
+ * Babystepping - LCD support has been removed so babystepping is disabled
  */
 #if ENABLED(BABYSTEPPING)
-  #if DISABLED(ULTRA_LCD)
-    #error BABYSTEPPING requires an LCD controller.
-  #endif
-  #if ENABLED(DELTA)
-    #error BABYSTEPPING is not implemented for DELTA yet.
-  #endif
-  #if ENABLED(DELTA) && ENABLED(BABYSTEP_XY)
-    #error BABYSTEPPING only implemented for Z axis on deltabots.
-  #endif
+  #error BABYSTEPPING requires LCD support which has been removed from this firmware.
 #endif
 
 /**
@@ -172,9 +157,8 @@
 /**
  * Required LCD language
  */
-#if DISABLED(DOGLCD) && ENABLED(ULTRA_LCD) && DISABLED(DISPLAY_CHARSET_HD44780_JAPAN) && DISABLED(DISPLAY_CHARSET_HD44780_WESTERN) && DISABLED(DISPLAY_CHARSET_HD44780_CYRILLIC)
-  #error You must enable either DISPLAY_CHARSET_HD44780_JAPAN or DISPLAY_CHARSET_HD44780_WESTERN  or DISPLAY_CHARSET_HD44780_CYRILLIC for your LCD controller.
-#endif
+// LCD CHARACTER SET - LCD support removed
+// #if DISABLED(DOGLCD) && ENABLED(ULTRA_LCD) ...
 
 /**
  * Bed Heating Options - PID vs Limit Switching

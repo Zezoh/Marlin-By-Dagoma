@@ -26,6 +26,7 @@
  */
 
 #ifndef CONDITIONALS_H
+#define CONDITIONALS_H
 
 /**
 * Miscellaneous
@@ -42,18 +43,10 @@
  #define EXTRUDE_MINTEMP 170
 #endif
 
-#ifndef CONFIGURATION_LCD // Get the LCD defines which are needed first
+// LCD support has been removed from this firmware.
+// No LCD-related conditionals are needed.
 
-  #define CONFIGURATION_LCD
-
-  // LCD support has been removed from this firmware.
-  // No LCD-related conditionals are needed.
-
-#else // CONFIGURATION_LCD
-
-  #define CONDITIONALS_H
-
-  #include "pins.h"
+#include "pins.h"
 
   #ifndef USBCON
     #ifndef USE_SECOND_SERIAL
@@ -497,5 +490,4 @@
     #define HAS_Z_MIN_PROBE
   #endif
 
-#endif //CONFIGURATION_LCD
 #endif //CONDITIONALS_H

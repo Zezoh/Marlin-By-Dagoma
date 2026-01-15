@@ -366,16 +366,6 @@ static uint8_t target_extruder;
 
 #endif // FWRETRACT
 
-#if ENABLED(ULTIPANEL) && HAS_POWER_SWITCH
-  bool powersupply =
-    #if ENABLED(PS_DEFAULT_OFF)
-      false
-    #else
-      true
-    #endif
-  ;
-#endif
-
 #if ENABLED(DELTA)
 
   #define TOWER_1 X_AXIS
@@ -1074,21 +1064,6 @@ void setup() {
  */
 void loop() {
   #if ENABLED(SDSUPPORT)
-    #if ENABLED(ULTIPANEL)
-      if (abort_sd_printing) {
-        abort_sd_printing = false;
-        card.sdprinting = false;
-        card.closefile();
-        clear_command_queue();
-        quickStop();
-        print_job_timer.stop();
-        disable_all_heaters();
-        #if FAN_COUNT > 0
-          for (uint8_t i = 0; i < FAN_COUNT; i++) fanSpeeds[i] = 0;
-        #endif
-        cancel_heatup = true;
-      }
-    #endif
   #endif // SDSUPPORT
 
   #if ENABLED( WIFI_PRINT )
@@ -4482,41 +4457,6 @@ inline void gcode_G92() {
   }
 }
 
-#if ENABLED(ULTIPANEL)
-
-  /**
-   * M0: // M0 - Unconditional stop - Wait for user button press on LCD
-   * M1: // M1 - Conditional stop - Wait for user button press on LCD
-   */
-  inline void gcode_M0_M1() {
-    char* args = current_command_args;
-
-    uint8_t test_value = 12;
-    SERIAL_ECHOPAIR("TEST", test_value);
-
-    millis_t codenum = 0;
-    bool hasP = false, hasS = false;
-    if (code_seen('P')) {
-      codenum = code_value_short(); // milliseconds to wait
-      hasP = codenum > 0;
-    }
-    if (code_seen('S')) {
-      codenum = code_value() * 1000UL; // seconds to wait
-      hasS = codenum > 0;
-    }
-
-    st_synchronize();
-    refresh_cmd_timeout();
-    if (codenum > 0) {
-      codenum += previous_cmd_ms;  // wait until this time for a click
-      KEEPALIVE_STATE(PAUSED_FOR_USER);
-      while (PENDING(millis(), codenum)) idle();
-      KEEPALIVE_STATE(IN_HANDLER);
-    }
-  }
-
-#endif // ULTIPANEL
-
 /**
  * M17: Enable power on all stepper motors
  */
@@ -5579,62 +5519,6 @@ inline void gcode_M140() {
   if (code_seen('S')) setTargetBed(code_value());
 }
 
-#if ENABLED(ULTIPANEL)
-
-  /**
-   * M145: Set the heatup state for a material in the LCD menu
-   *   S<material> (0=PLA, 1=ABS)
-   *   H<hotend temp>
-   *   B<bed temp>
-   *   F<fan speed>
-   */
-  inline void gcode_M145() {
-    int8_t material = code_seen('S') ? code_value_short() : 0;
-    if (material < 0 || material > 1) {
-      SERIAL_ERROR_START;
-      SERIAL_ERRORLNPGM(MSG_ERR_MATERIAL_INDEX);
-    }
-    else {
-      int v;
-      switch (material) {
-        case 0:
-          if (code_seen('H')) {
-            v = code_value_short();
-            plaPreheatHotendTemp = constrain(v, EXTRUDE_MINTEMP, HEATER_0_MAXTEMP - 15);
-          }
-          if (code_seen('F')) {
-            v = code_value_short();
-            plaPreheatFanSpeed = constrain(v, 0, 255);
-          }
-          #if TEMP_SENSOR_BED != 0
-            if (code_seen('B')) {
-              v = code_value_short();
-              plaPreheatHPBTemp = constrain(v, BED_MINTEMP, BED_MAXTEMP - 15);
-            }
-          #endif
-          break;
-        case 1:
-          if (code_seen('H')) {
-            v = code_value_short();
-            absPreheatHotendTemp = constrain(v, EXTRUDE_MINTEMP, HEATER_0_MAXTEMP - 15);
-          }
-          if (code_seen('F')) {
-            v = code_value_short();
-            absPreheatFanSpeed = constrain(v, 0, 255);
-          }
-          #if TEMP_SENSOR_BED != 0
-            if (code_seen('B')) {
-              v = code_value_short();
-              absPreheatHPBTemp = constrain(v, BED_MINTEMP, BED_MAXTEMP - 15);
-            }
-          #endif
-          break;
-      }
-    }
-  }
-
-#endif
-
 #if HAS_POWER_SWITCH
 
   /**
@@ -5650,12 +5534,6 @@ inline void gcode_M140() {
      */
     #if HAS_SUICIDE
       OUT_WRITE(SUICIDE_PIN, HIGH);
-    #endif
-
-    #if ENABLED(ULTIPANEL)
-      powersupply = true;
-      // LCD_MESSAGEPGM(WELCOME_MSG); // LCD support removed
-      // lcd_update(); // LCD support removed
     #endif
   }
 
@@ -5682,13 +5560,6 @@ inline void gcode_M81() {
     suicide();
   #elif HAS_POWER_SWITCH
     OUT_WRITE(PS_ON_PIN, PS_ON_ASLEEP);
-  #endif
-  #if ENABLED(ULTIPANEL)
-    #if HAS_POWER_SWITCH
-      powersupply = false;
-    #endif
-    // LCD_MESSAGEPGM(MACHINE_NAME " " MSG_OFF "."); // LCD support removed
-    // lcd_update(); // LCD support removed
   #endif
 }
 
@@ -8693,13 +8564,6 @@ void process_next_command() {
     break;
 
     case 'M': switch (codenum) {
-      #if ENABLED(ULTIPANEL)
-        case 0: // M0 - Unconditional stop - Wait for user button press on LCD
-        case 1: // M1 - Conditional stop - Wait for user button press on LCD
-          gcode_M0_M1();
-          break;
-      #endif // ULTIPANEL
-
       case 17:
         gcode_M17();
         break;
@@ -8893,14 +8757,6 @@ void process_next_command() {
       case 119: // M119: Report endstop states
         gcode_M119();
         break;
-
-      #if ENABLED(ULTIPANEL)
-
-        case 145: // M145: Set material heatup parameters
-          gcode_M145();
-          break;
-
-      #endif
 
       #if ENABLED(BLINKM)
 
