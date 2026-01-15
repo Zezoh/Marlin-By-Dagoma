@@ -293,13 +293,26 @@ typedef struct {
 #endif
 
 //===========================================================================
+//================ TMC/L6470 Driver Includes =================================
+//===========================================================================
+
+#if ENABLED(HAVE_TMCDRIVER) || ENABLED(HAVE_L6470DRIVER)
+  #include <SPI.h>
+#endif
+
+#if ENABLED(HAVE_TMCDRIVER)
+  #include <TMC26XStepper.h>
+#endif
+
+#if ENABLED(HAVE_L6470DRIVER)
+  #include <L6470.h>
+#endif
+
+//===========================================================================
 //================ TMC Driver Pin Redefines (SPI/I2C) =======================
 //===========================================================================
 
 #if ENABLED(HAVE_TMCDRIVER)
-  #include <SPI.h>
-  #include <TMC26XStepper.h>
-
   void tmc_init();
   #if ENABLED(X_IS_TMC)
     extern TMC26XStepper stepperX;
@@ -420,10 +433,6 @@ typedef struct {
 //===========================================================================
 
 #if ENABLED(HAVE_L6470DRIVER)
-
-  #include <SPI.h>
-  #include <L6470.h>
-
   void L6470_init();
   #if ENABLED(X_IS_L6470)
     extern L6470 stepperX;

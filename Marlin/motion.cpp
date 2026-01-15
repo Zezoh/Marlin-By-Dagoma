@@ -142,29 +142,18 @@ uint8_t g_uc_extruder_last_move[EXTRUDERS] = { 0 };
 //================================ functions ================================
 //===========================================================================
 
-// Get the next / previous index of the next block in the ring buffer
-// NOTE: Using & here (not %) because BLOCK_BUFFER_SIZE is always a power of 2
 FORCE_INLINE int8_t next_block_index(int8_t block_index) { return BLOCK_MOD(block_index + 1); }
 FORCE_INLINE int8_t prev_block_index(int8_t block_index) { return BLOCK_MOD(block_index - 1); }
 
-// Calculates the distance (not time) it takes to accelerate from initial_rate to target_rate using the
-// given acceleration:
 FORCE_INLINE float estimate_acceleration_distance(float initial_rate, float target_rate, float acceleration) {
-  if (acceleration == 0) return 0; // acceleration was 0, set acceleration distance to 0
-  return (target_rate * target_rate - initial_rate * initial_rate) / (acceleration * 2);
+  if (acceleration == 0) return 0;
+  return (target_rate * target_rate - initial_rate * initial_rate) / (acceleration * 2.0f);
 }
-
-// This function gives you the point at which you must start braking (at the rate of -acceleration) if
-// you started at speed initial_rate and accelerated until this point and want to end at the final_rate after
-// a total travel of distance. This can be used to compute the intersection point between acceleration and
-// deceleration in the cases where the trapezoid has no plateau (i.e. never reaches maximum speed)
 
 FORCE_INLINE float intersection_distance(float initial_rate, float final_rate, float acceleration, float distance) {
-  if (acceleration == 0) return 0; // acceleration was 0, set intersection distance to 0
-  return (acceleration * 2 * distance - initial_rate * initial_rate + final_rate * final_rate) / (acceleration * 4);
+  if (acceleration == 0) return 0;
+  return (acceleration * 2.0f * distance - initial_rate * initial_rate + final_rate * final_rate) / (acceleration * 4.0f);
 }
-
-// Calculates trapezoid parameters so that the entry- and exit-speed is compensated by the provided factors.
 
 void calculate_trapezoid_for_block(block_t* block, float entry_factor, float exit_factor) {
   unsigned long initial_rate = ceil(block->nominal_rate * entry_factor),
@@ -205,10 +194,8 @@ void calculate_trapezoid_for_block(block_t* block, float entry_factor, float exi
   CRITICAL_SECTION_END;
 }
 
-// Calculates the maximum allowable speed at this point when you must be able to reach target_velocity using the
-// acceleration within the allotted distance.
 FORCE_INLINE float max_allowable_speed(float acceleration, float target_velocity, float distance) {
-  return sqrt(target_velocity * target_velocity - 2 * acceleration * distance);
+  return sqrt(target_velocity * target_velocity - 2.0f * acceleration * distance);
 }
 
 // The kernel called by planner_recalculate() when scanning the plan from last to first entry.
