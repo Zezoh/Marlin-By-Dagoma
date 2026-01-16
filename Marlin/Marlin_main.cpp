@@ -166,12 +166,6 @@
  * M350 - Set microstepping mode (HAS_MICROSTEPS)
  * M351 - Toggle MS1 MS2 pins directly (HAS_MICROSTEPS)
  * M400 - Finish all moves
- * M401 - Lower Z probe if present (AUTO_BED_LEVELING_FEATURE)
- * M402 - Raise Z probe if present (AUTO_BED_LEVELING_FEATURE)
- * M404 - N<dia in mm> Enter the nominal filament width or display it (FILAMENT_WIDTH_SENSOR)
- * M405 - Turn on Filament Sensor extrusion control (FILAMENT_WIDTH_SENSOR)
- * M406 - Turn off Filament Sensor extrusion control (FILAMENT_WIDTH_SENSOR)
- * M407 - Display measured filament diameter (FILAMENT_WIDTH_SENSOR)
  * M410 - Quickstop. Abort all the planned moves
  * M428 - Set the home_offset logically based on the current_position
  * M500 - Store parameters in EEPROM
@@ -182,11 +176,6 @@
  * M600 - Pause for filament change (FILAMENTCHANGEENABLE)
  * M665 - Set delta configurations: L<diagonal rod> R<delta radius> S<segments/s> (DELTA)
  * M666 - Set delta endstop adjustment (DELTA)
- * M851 - Set Z probe's Z offset (CUSTOM_M_CODE_SET_Z_PROBE_OFFSET)
- * M907 - Set digital trimpot motor current using axis codes
- * M908 - Control digital trimpot directly (DAC_STEPPER_CURRENT)
- * M909 - Print digipot/DAC current value (DAC_STEPPER_CURRENT)
- * M910 - Commit digipot/DAC value to external EEPROM via I2C (DAC_STEPPER_CURRENT)
  * M928 - Start SD logging: M928 filename.g - ended by M29 (SDSUPPORT)
  * M999 - Restart after being stopped by error
  *
