@@ -79,13 +79,8 @@
  * Z_DUAL_ENDSTOPS:
  *  283  M666 Z    z_endstop_adj (float)
  *
- * Preheat settings (preserved for EEPROM compatibility):
- *  287  M145 S0 H plaPreheatHotendTemp (int)
- *  289  M145 S0 B plaPreheatHPBTemp (int)
- *  291  M145 S0 F plaPreheatFanSpeed (int)
- *  293  M145 S1 H absPreheatHotendTemp (int)
- *  295  M145 S1 B absPreheatHPBTemp (int)
- *  297  M145 S1 F absPreheatFanSpeed (int)
+ * Reserved bytes (formerly preheat settings):
+ *  287-298  Reserved (6 ints = 12 bytes for EEPROM layout compatibility)
  *
  * PIDTEMP:
  *  299  M301 E0 PIDC  Kp[0], Ki[0], Kd[0], Kc[0] (float x4)
@@ -224,16 +219,10 @@ void Config_StoreSettings()
     EEPROM_WRITE_VAR(i, dummy);
 #endif
 
-  // LCD support removed - use default preheat values for EEPROM storage
-  int plaPreheatHotendTemp = PLA_PREHEAT_HOTEND_TEMP, plaPreheatHPBTemp = PLA_PREHEAT_HPB_TEMP, plaPreheatFanSpeed = PLA_PREHEAT_FAN_SPEED,
-      absPreheatHotendTemp = ABS_PREHEAT_HOTEND_TEMP, absPreheatHPBTemp = ABS_PREHEAT_HPB_TEMP, absPreheatFanSpeed = ABS_PREHEAT_FAN_SPEED;
-
-  EEPROM_WRITE_VAR(i, plaPreheatHotendTemp);
-  EEPROM_WRITE_VAR(i, plaPreheatHPBTemp);
-  EEPROM_WRITE_VAR(i, plaPreheatFanSpeed);
-  EEPROM_WRITE_VAR(i, absPreheatHotendTemp);
-  EEPROM_WRITE_VAR(i, absPreheatHPBTemp);
-  EEPROM_WRITE_VAR(i, absPreheatFanSpeed);
+  // Reserved bytes for EEPROM layout compatibility (6 ints = 12 bytes at offset 287-298)
+  int reserved_dummy = 0;
+  for (uint8_t q = 6; q--;)
+    EEPROM_WRITE_VAR(i, reserved_dummy);
 
   for (uint8_t e = 0; e < 4; e++)
   {
@@ -403,16 +392,10 @@ void Config_RetrieveSettings()
       EEPROM_READ_VAR(i, dummy);
 #endif
 
-    // LCD support removed - read preheat values from EEPROM but don't use them
-    int plaPreheatHotendTemp, plaPreheatHPBTemp, plaPreheatFanSpeed,
-        absPreheatHotendTemp, absPreheatHPBTemp, absPreheatFanSpeed;
-
-    EEPROM_READ_VAR(i, plaPreheatHotendTemp);
-    EEPROM_READ_VAR(i, plaPreheatHPBTemp);
-    EEPROM_READ_VAR(i, plaPreheatFanSpeed);
-    EEPROM_READ_VAR(i, absPreheatHotendTemp);
-    EEPROM_READ_VAR(i, absPreheatHPBTemp);
-    EEPROM_READ_VAR(i, absPreheatFanSpeed);
+    // Skip reserved bytes for EEPROM layout compatibility (6 ints = 12 bytes)
+    int reserved_dummy;
+    for (uint8_t q = 6; q--;)
+      EEPROM_READ_VAR(i, reserved_dummy);
 
 #if ENABLED(PIDTEMP)
     for (uint8_t e = 0; e < 4; e++)
@@ -569,8 +552,6 @@ void Config_ResetDefault(bool resetZMagicThreshold)
   delta_diagonal_rod_trim_tower_3 = DELTA_DIAGONAL_ROD_TRIM_TOWER_3;
   recalc_delta_settings(delta_radius, delta_diagonal_rod);
 #endif
-
-  // LCD support removed - preheat settings not needed
 
 #if ENABLED(PIDTEMP)
 #if ENABLED(PID_PARAMS_PER_HOTEND)

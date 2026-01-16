@@ -349,19 +349,16 @@
 #endif
 
 // Add support for experimental filament exchange support M600
-// LCD support removed - using NO_LCD_FOR_FILAMENTCHANGEABLE for headless operation
-#if ENABLED(NO_LCD_FOR_FILAMENTCHANGEABLE)
-  #define FILAMENTCHANGEENABLE
-  #if ENABLED(FILAMENTCHANGEENABLE)
-    #define FILAMENTCHANGE_XPOS 0
-    #define FILAMENTCHANGE_YPOS 0
-    #define FILAMENTCHANGE_ZADD 60
-    #define FILAMENTCHANGE_FIRSTRETRACT -4.5
-    #define FILAMENTCHANGE_FINALRETRACT -850
-    #define AUTO_FILAMENT_CHANGE                //This extrude filament until you press the button on LCD
-    #define AUTO_FILAMENT_CHANGE_LENGTH 0.04    //Extrusion length on automatic extrusion loop
-    #define AUTO_FILAMENT_CHANGE_FEEDRATE 300   //Extrusion feedrate (mm/min) on automatic extrusion loop
-  #endif
+#define FILAMENTCHANGEENABLE
+#if ENABLED(FILAMENTCHANGEENABLE)
+  #define FILAMENTCHANGE_XPOS 0
+  #define FILAMENTCHANGE_YPOS 0
+  #define FILAMENTCHANGE_ZADD 60
+  #define FILAMENTCHANGE_FIRSTRETRACT -4.5
+  #define FILAMENTCHANGE_FINALRETRACT -850
+  #define AUTO_FILAMENT_CHANGE                //This extrude filament until you press the button
+  #define AUTO_FILAMENT_CHANGE_LENGTH 0.04    //Extrusion length on automatic extrusion loop
+  #define AUTO_FILAMENT_CHANGE_FEEDRATE 300   //Extrusion feedrate (mm/min) on automatic extrusion loop
 #endif
 
 #include "Conditionals.h"
