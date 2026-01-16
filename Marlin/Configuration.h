@@ -766,23 +766,6 @@ const bool Z_MIN_PROBE_ENDSTOP_INVERTING = true;
 //#define M100_FREE_MEMORY_WATCHER
 
 //===========================================================================
-//============================ PREHEAT PRESETS ==============================
-//===========================================================================
-// Temperature presets for common materials.
-
-// @section preheat
-
-// PLA preset
-#define PLA_PREHEAT_HOTEND_TEMP 180
-#define PLA_PREHEAT_HPB_TEMP 60
-#define PLA_PREHEAT_FAN_SPEED 128     // (0-255)
-
-// ABS preset
-#define ABS_PREHEAT_HOTEND_TEMP 240
-#define ABS_PREHEAT_HPB_TEMP 110
-#define ABS_PREHEAT_FAN_SPEED 128     // (0-255)
-
-//===========================================================================
 //=========================== LANGUAGE SETTINGS =============================
 //===========================================================================
 // Display language configuration.

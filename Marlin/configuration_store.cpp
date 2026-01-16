@@ -79,7 +79,7 @@
  * Z_DUAL_ENDSTOPS:
  *  283  M666 Z    z_endstop_adj (float)
  *
- * Preheat settings (preserved for EEPROM compatibility):
+ * Preheat settings (dummy values for EEPROM layout compatibility - no LCD):
  *  287  M145 S0 H plaPreheatHotendTemp (int)
  *  289  M145 S0 B plaPreheatHPBTemp (int)
  *  291  M145 S0 F plaPreheatFanSpeed (int)
@@ -224,9 +224,9 @@ void Config_StoreSettings()
     EEPROM_WRITE_VAR(i, dummy);
 #endif
 
-  // LCD support removed - use default preheat values for EEPROM storage
-  int plaPreheatHotendTemp = PLA_PREHEAT_HOTEND_TEMP, plaPreheatHPBTemp = PLA_PREHEAT_HPB_TEMP, plaPreheatFanSpeed = PLA_PREHEAT_FAN_SPEED,
-      absPreheatHotendTemp = ABS_PREHEAT_HOTEND_TEMP, absPreheatHPBTemp = ABS_PREHEAT_HPB_TEMP, absPreheatFanSpeed = ABS_PREHEAT_FAN_SPEED;
+  // Preheat values - hardcoded dummy values for EEPROM compatibility (no LCD)
+  int plaPreheatHotendTemp = 180, plaPreheatHPBTemp = 60, plaPreheatFanSpeed = 128,
+      absPreheatHotendTemp = 240, absPreheatHPBTemp = 110, absPreheatFanSpeed = 128;
 
   EEPROM_WRITE_VAR(i, plaPreheatHotendTemp);
   EEPROM_WRITE_VAR(i, plaPreheatHPBTemp);
