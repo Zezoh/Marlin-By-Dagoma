@@ -6088,8 +6088,7 @@ inline void gcode_M503() {
       if ( !printer_states.pause_asked ) {
         if (z_magic_tap_count == 2) {
           if (NOT_YET_CALIBRATED) {
-            SERIAL_ERRORLNPGM("Printer not yet calibrated. Please calibrate.");
-            set_notify_not_calibrated();
+            show_calibration_warning_once();
             return;
           }
 
@@ -7575,6 +7574,9 @@ inline void gcode_D851() {
   gcode_G28();
 
   printer_states.activity_state = ACTIVITY_IDLE;
+  #if ENABLED(ONE_LED)
+    reset_calibration_warning_flag();
+  #endif
 }
 
 #if ENABLED(Z_MIN_MAGIC)
@@ -8861,6 +8863,21 @@ void disable_all_steppers() {
     led_refresh_rate_speed = 50UL;
   }
 
+  // Flag to track if calibration warning has been shown
+  static bool calibration_warning_shown = false;
+
+  inline void show_calibration_warning_once() {
+    if (!calibration_warning_shown) {
+      SERIAL_ERRORLNPGM("Printer not yet calibrated. Please calibrate.");
+      set_notify_not_calibrated();
+      calibration_warning_shown = true;
+    }
+  }
+
+  inline void reset_calibration_warning_flag() {
+    calibration_warning_shown = false;
+  }
+
   inline void manage_one_led() {
     const millis_t now = millis();
     if (PENDING(now, next_one_led_tick)) return;
@@ -8950,8 +8967,7 @@ void disable_all_steppers() {
       if (ONE_BUTTON_RELEASED) return;
 
       if (NOT_YET_CALIBRATED) {
-        SERIAL_ERRORLNPGM("Printer not yet calibrated. Please calibrate.");
-        set_notify_not_calibrated();
+        show_calibration_warning_once();
         return;
       }
       if (printer_states.filament_state == FILAMENT_IN) {
@@ -8977,8 +8993,7 @@ inline void manage_filament1_auto_insertion() {
     ) {
       #if ENABLED(DELTA_EXTRA)
         if (NOT_YET_CALIBRATED) {
-          SERIAL_ERRORLNPGM("Printer not yet calibrated. Please calibrate.");
-          set_notify_not_calibrated();
+          show_calibration_warning_once();
           return;
         }
       #endif
@@ -9065,8 +9080,7 @@ inline void manage_filament2_auto_insertion() {
     ) {
       #if ENABLED(DELTA_EXTRA)
         if (NOT_YET_CALIBRATED) {
-          SERIAL_ERRORLNPGM("Printer not yet calibrated. Please calibrate.");
-          set_notify_not_calibrated();
+          show_calibration_warning_once();
           return;
         }
       #endif
