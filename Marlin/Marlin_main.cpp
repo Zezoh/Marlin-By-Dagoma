@@ -8845,9 +8845,14 @@ void disable_all_steppers() {
 }
 
 #if ENABLED(DELTA_EXTRA)
-  // Flag to track if calibration warning has been shown
+  // Calibration warning management
+  // Flag to track if the "not yet calibrated" warning has been shown
+  // This prevents spam when the printer is not calibrated and checks happen repeatedly
   static bool calibration_warning_shown = false;
 
+  // Display the calibration warning message once
+  // This function will only print the warning the first time it's called
+  // The flag is reset by reset_calibration_warning_flag() when calibration completes
   inline void show_calibration_warning_once() {
     if (!calibration_warning_shown) {
       SERIAL_ERRORLNPGM("Printer not yet calibrated. Please calibrate.");
@@ -8858,6 +8863,9 @@ void disable_all_steppers() {
     }
   }
 
+  // Reset the calibration warning flag
+  // Call this when calibration is completed (e.g., after D851 command)
+  // to allow the warning to be shown again if needed
   inline void reset_calibration_warning_flag() {
     calibration_warning_shown = false;
   }
