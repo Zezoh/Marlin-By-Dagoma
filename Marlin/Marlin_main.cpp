@@ -6424,7 +6424,7 @@ inline void gcode_M503() {
 
     //
     // Preparting pause loop
-    const millis_t now = millis();
+    millis_t now = millis();
     millis_t next_low_latency_checks = 0UL;
     millis_t auto_shutdown_heat_time = 0UL;
     millis_t long_press_timeout = 0UL;
