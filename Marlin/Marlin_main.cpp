@@ -7574,7 +7574,7 @@ inline void gcode_D851() {
   gcode_G28();
 
   printer_states.activity_state = ACTIVITY_IDLE;
-  #if ENABLED(ONE_LED)
+  #if ENABLED(DELTA_EXTRA)
     reset_calibration_warning_flag();
   #endif
 }
@@ -8844,6 +8844,25 @@ void disable_all_steppers() {
   disable_e3();
 }
 
+#if ENABLED(DELTA_EXTRA)
+  // Flag to track if calibration warning has been shown
+  static bool calibration_warning_shown = false;
+
+  inline void show_calibration_warning_once() {
+    if (!calibration_warning_shown) {
+      SERIAL_ERRORLNPGM("Printer not yet calibrated. Please calibrate.");
+      #if ENABLED(ONE_LED)
+        set_notify_not_calibrated();
+      #endif
+      calibration_warning_shown = true;
+    }
+  }
+
+  inline void reset_calibration_warning_flag() {
+    calibration_warning_shown = false;
+  }
+#endif
+
 #if ENABLED(ONE_LED)
 
   int state_blink = 0;
@@ -8861,21 +8880,6 @@ void disable_all_steppers() {
     notify_warning = true;
     notify_warning_timeout = millis() + 10000UL;
     led_refresh_rate_speed = 50UL;
-  }
-
-  // Flag to track if calibration warning has been shown
-  static bool calibration_warning_shown = false;
-
-  inline void show_calibration_warning_once() {
-    if (!calibration_warning_shown) {
-      SERIAL_ERRORLNPGM("Printer not yet calibrated. Please calibrate.");
-      set_notify_not_calibrated();
-      calibration_warning_shown = true;
-    }
-  }
-
-  inline void reset_calibration_warning_flag() {
-    calibration_warning_shown = false;
   }
 
   inline void manage_one_led() {
