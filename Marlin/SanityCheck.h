@@ -418,11 +418,11 @@
  * Endstops
  */
 #if DISABLED(USE_XMIN_PLUG) && DISABLED(USE_XMAX_PLUG)
- #error You must enable USE_XMIN_PLUG or USE_XMAX_PLUG
+  #error You must enable USE_XMIN_PLUG or USE_XMAX_PLUG
 #elif DISABLED(USE_YMIN_PLUG) && DISABLED(USE_YMAX_PLUG)
- #error You must enable USE_YMIN_PLUG or USE_YMAX_PLUG
+  #error You must enable USE_YMIN_PLUG or USE_YMAX_PLUG
 #elif DISABLED(USE_ZMIN_PLUG) && DISABLED(USE_ZMAX_PLUG)
- #error You must enable USE_ZMIN_PLUG or USE_ZMAX_PLUG
+  #error You must enable USE_ZMIN_PLUG or USE_ZMAX_PLUG
 #endif
 
 /**
