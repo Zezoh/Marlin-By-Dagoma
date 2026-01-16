@@ -40,49 +40,158 @@
 
 #include "boards.h"
 #include "macros.h"
+
+//===========================================================================
+//============================= Dagoma Custom Features ======================
+//===========================================================================
+
+// @section filament_change_scripts
+
+//===========================================================================
+//==================== Filament Change Scripts (M600) =======================
+//===========================================================================
+// G-code scripts for automatic filament insertion and extraction operations.
+// These scripts are executed when filament change operations are triggered.
+
 #define FILAMENTCHANGE_INSERTION_SCRIPT "M600 I1 U-55 X55 Y-92 W200 Z200"
 #define FILAMENTCHANGE_EXTRACTION_SCRIPT "M600 I-1 U-55 X55 Y-92 W200 Z200"
-#define FILAMENT_SUCTION_GAP 200
-#define FILAMENTCHANGE_AUTO_INSERTION_PURGE_BEFORE_EXTRACTION_LENGTH 5
-#define FILAMENTCHANGE_AUTO_INSERTION_PURGE_FEEDRATE_FACTOR 0.05
-#define FILAMENTCHANGE_AUTO_INSERTION_PURGE_LENGTH 30
-#define FILAMENTCHANGE_AUTO_INSERTION_CONFIRMATION_LENGTH 40
-#define FILAMENTCHANGE_AUTO_INSERTION_PREAMBLE_FEEDRATE_FACTOR 0.25
-#define FILAMENTCHANGE_AUTO_INSERTION_VERIFICATION_LENGTH_MM 0.5
-#define Z_MAGIC_THRESHOLD -15
-#define QUICK_PAUSE_TIMEOUT 2000
-#define SECOND_RETRACT_BEFORE_EJECTION 50
-#define SECOND_EXTRUDE_BEFORE_EJECTION 1.5
-#define FIRST_RETRACT_BEFORE_EJECTION 4
-#define FIRST_EXTRUDE_BEFORE_EJECTION 10
-#define LONG_PRESS_SUPPORT 
-#define FILAMENT_CHANGE_E_FEEDRATE 66
-#define FILAMENT_AUTO_INSERTION_VERIFICATION_LENGTH_MM 2.0
-#define FILAMENT_AUTO_INSERTION_GAP 150
-#define FILAMENTCHANGE_Z_HOP_MM 10.0
-#define FILAMENTCHANGE_DELTA_Z_DOME_SECURITY_DISTANCE 25.0
-#define FILAMENTCHANGE_TEMPERATURE 200
-#define FILAMENT_AUTO_INSERTION_FINAL_FEEDRATE_FACTOR 0.01
-#define FILAMENT_PRE_INSERTION_FEEDRATE_FACTOR 0.1
-#define FILAMENT_PRE_INSERTION_LENGTH 40
-#define EMERGENCY_STOP_Z_MOVE
-#define EMERGENCY_STOP
-#define ONE_BUTTON_INVERTING true
-#define SUMMON_PRINT_PAUSE_INVERTING true
-#define ONE_BUTTON
-#define HEATING_STOP_TIME 600000UL
-#define HEATING_STOP
-#define SUMMON_PRINT_PAUSE_SCRIPT "M600 U-55 X55 Y-92 Z60"
-#define SUMMON_PRINT_PAUSE
-#define NO_LCD_FOR_FILAMENTCHANGEABLE
-#define ONE_LED_INVERTING true
-#define ONE_LED_PIN 65
-#define ONE_LED
-#define DELTA_EXTRA
-#define Z_MIN_MAGIC
-#define MONO_FAN_MIN_TEMP 50.0
-#define MONO_FAN_MIN_PWM 180
-#define IS_MONO_FAN
+
+// @section filament_change_motion
+
+//===========================================================================
+//==================== Filament Change Motion Settings ======================
+//===========================================================================
+// Motion parameters for filament change operations including Z movement,
+// temperature, and extruder feedrates.
+
+#define FILAMENTCHANGE_TEMPERATURE 200                      // (°C) Default temperature for filament change
+#define FILAMENTCHANGE_Z_HOP_MM 10.0                        // (mm) Z lift during filament change
+#define FILAMENTCHANGE_DELTA_Z_DOME_SECURITY_DISTANCE 25.0  // (mm) Safety distance from dome on delta printers
+#define FILAMENT_CHANGE_E_FEEDRATE 66                       // (mm/s) Base extruder feedrate during filament change
+
+// @section filament_auto_insertion
+
+//===========================================================================
+//==================== Filament Auto-Insertion Settings =====================
+//===========================================================================
+// Parameters controlling automatic filament insertion behavior including
+// verification lengths, gaps, and feedrate factors.
+
+// Gap and length settings (mm)
+#define FILAMENT_SUCTION_GAP 200                                     // (mm) Gap for filament suction
+#define FILAMENT_AUTO_INSERTION_GAP 150                              // (mm) Gap during auto insertion
+#define FILAMENT_PRE_INSERTION_LENGTH 40                             // (mm) Pre-insertion extrusion length
+#define FILAMENT_AUTO_INSERTION_VERIFICATION_LENGTH_MM 2.0           // (mm) Length for insertion verification
+#define FILAMENTCHANGE_AUTO_INSERTION_VERIFICATION_LENGTH_MM 0.5     // (mm) Verification step length
+#define FILAMENTCHANGE_AUTO_INSERTION_CONFIRMATION_LENGTH 40         // (mm) Confirmation extrusion length
+
+// Purge settings
+#define FILAMENTCHANGE_AUTO_INSERTION_PURGE_LENGTH 30                // (mm) Purge extrusion length
+#define FILAMENTCHANGE_AUTO_INSERTION_PURGE_BEFORE_EXTRACTION_LENGTH 5 // (mm) Purge before extraction
+
+// Feedrate factors (multipliers for base feedrate)
+#define FILAMENT_PRE_INSERTION_FEEDRATE_FACTOR 0.1                   // Pre-insertion feedrate factor
+#define FILAMENT_AUTO_INSERTION_FINAL_FEEDRATE_FACTOR 0.01           // Final insertion feedrate factor
+#define FILAMENTCHANGE_AUTO_INSERTION_PREAMBLE_FEEDRATE_FACTOR 0.25  // Preamble feedrate factor
+#define FILAMENTCHANGE_AUTO_INSERTION_PURGE_FEEDRATE_FACTOR 0.05     // Purge feedrate factor
+
+// @section filament_ejection
+
+//===========================================================================
+//==================== Filament Ejection Settings ===========================
+//===========================================================================
+// Parameters for filament ejection sequence including retract/extrude
+// movements and timing.
+
+#define FIRST_EXTRUDE_BEFORE_EJECTION 10    // (mm) First extrusion before ejection
+#define FIRST_RETRACT_BEFORE_EJECTION 4     // (mm) First retraction before ejection
+#define SECOND_EXTRUDE_BEFORE_EJECTION 1.5  // (mm) Second extrusion before ejection
+#define SECOND_RETRACT_BEFORE_EJECTION 50   // (mm) Second retraction before ejection
+#define QUICK_PAUSE_TIMEOUT 2000            // (ms) Timeout for quick pause between ejection steps
+
+// @section z_min_magic
+
+//===========================================================================
+//==================== Z Min Magic / Probe Settings =========================
+//===========================================================================
+// Z Min Magic feature for automatic bed probing and calibration.
+
+#define Z_MIN_MAGIC                   // Enable Z Min Magic feature
+#define Z_MAGIC_THRESHOLD -15         // (mm) Threshold value for Z magic detection
+
+// @section user_interface_button
+
+//===========================================================================
+//==================== User Interface - Button Settings =====================
+//===========================================================================
+// Single button interface for printer control operations.
+
+#define ONE_BUTTON                    // Enable single button interface
+#define ONE_BUTTON_INVERTING true     // Invert button logic (true = active low)
+#define LONG_PRESS_SUPPORT            // Enable long press detection for additional functions
+
+// @section user_interface_led
+
+//===========================================================================
+//==================== User Interface - LED Settings ========================
+//===========================================================================
+// Status LED for visual feedback.
+
+#define ONE_LED                       // Enable status LED
+#define ONE_LED_PIN 65                // Pin number for status LED
+#define ONE_LED_INVERTING true        // Invert LED logic (true = active low)
+
+// @section print_pause
+
+//===========================================================================
+//==================== Print Pause Settings =================================
+//===========================================================================
+// External trigger for pausing prints (e.g., filament runout, user button).
+
+#define SUMMON_PRINT_PAUSE                                // Enable print pause feature
+#define SUMMON_PRINT_PAUSE_INVERTING true                 // Invert pause trigger logic
+#define SUMMON_PRINT_PAUSE_SCRIPT "M600 U-55 X55 Y-92 Z60" // G-code script for print pause
+
+// @section safety
+
+//===========================================================================
+//==================== Safety / Emergency Settings ==========================
+//===========================================================================
+// Emergency stop and safety features.
+
+#define EMERGENCY_STOP                // Enable emergency stop feature
+#define EMERGENCY_STOP_Z_MOVE         // Allow Z movement during emergency stop
+#define HEATING_STOP                  // Enable automatic heating stop when idle
+#define HEATING_STOP_TIME 600000UL    // (ms) Time before automatic heater shutdown (10 minutes)
+
+// @section fan_control
+
+//===========================================================================
+//==================== Fan Control Settings =================================
+//===========================================================================
+// Mono fan configuration for single fan systems.
+
+#define IS_MONO_FAN                   // Enable mono fan mode
+#define MONO_FAN_MIN_TEMP 50.0        // (°C) Minimum temperature to activate fan
+#define MONO_FAN_MIN_PWM 180          // Minimum PWM value when fan is active (0-255)
+
+// @section delta_extras
+
+//===========================================================================
+//==================== Delta Printer Extras =================================
+//===========================================================================
+// Additional features specific to delta printer configuration.
+
+#define DELTA_EXTRA                   // Enable delta-specific extra features
+
+// @section lcd_settings
+
+//===========================================================================
+//==================== LCD / Display Settings ===============================
+//===========================================================================
+// Display configuration for headless operation.
+
+#define NO_LCD_FOR_FILAMENTCHANGEABLE // Enable filament change without LCD
 
 //===========================================================================
 //============================= Getting Started =============================
