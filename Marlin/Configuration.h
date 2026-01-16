@@ -103,15 +103,8 @@
 //===========================================================================
 //============================= DELTA Printer ===============================
 //===========================================================================
-// For a Delta printer replace the configuration files with the files in the
-// example_configurations/delta directory.
-
-//===========================================================================
-//============================= SCARA Printer ===============================
-//===========================================================================
-// SCARA support has been removed from this firmware.
 // This firmware is configured for Delta printers only.
-//
+// All non-Delta printer types (Cartesian, CoreXY, SCARA, etc.) have been removed.
 
 // @section info
 
@@ -544,28 +537,8 @@ const bool Z_MIN_PROBE_ENDSTOP_INVERTING = true; // set to true to invert the lo
   #define FILAMENT_RUNOUT_SCRIPT "M600 U-55 X55 Y-92 Z60"
 #endif
 
-//===========================================================================
-//============================ Mesh Bed Leveling ============================
-//===========================================================================
-
-//#define MESH_BED_LEVELING    // Enable mesh bed leveling.
-
-#if ENABLED(MESH_BED_LEVELING)
-  #define MESH_MIN_X 10
-  #define MESH_MAX_X (X_MAX_POS - (MESH_MIN_X))
-  #define MESH_MIN_Y 10
-  #define MESH_MAX_Y (Y_MAX_POS - (MESH_MIN_Y))
-  #define MESH_NUM_X_POINTS 3  // Don't use more than 7 points per axis, implementation limited.
-  #define MESH_NUM_Y_POINTS 3
-  #define MESH_HOME_SEARCH_Z 4  // Z after Home, bed somewhere below but above 0.0.
-
-  //#define MANUAL_BED_LEVELING  // Add display menu option for bed leveling.
-
-  #if ENABLED(MANUAL_BED_LEVELING)
-    #define MBL_Z_STEP 0.025  // Step size while manually probing Z axis.
-  #endif  // MANUAL_BED_LEVELING
-
-#endif  // MESH_BED_LEVELING
+// NOTE: MESH_BED_LEVELING has been removed - it does not support Delta printers.
+// Use AUTO_BED_LEVELING_FEATURE with AUTO_BED_LEVELING_GRID for Delta bed leveling.
 
 //===========================================================================
 //============================ Bed Auto Leveling ============================
@@ -590,43 +563,24 @@ const bool Z_MIN_PROBE_ENDSTOP_INVERTING = true; // set to true to invert the lo
   //   Probe 3 arbitrary points on the bed (that aren't collinear)
   //   You specify the XY coordinates of all 3 points.
 
-  // Enable this to sample the bed in a grid (least squares solution).
-  // Note: this feature generates 10KB extra code size.
+  // Delta printers REQUIRE grid-based bed leveling (enforced by SanityCheck.h)
+  // 3-point leveling is only for Cartesian printers and has been removed from this Delta-only firmware.
   #define AUTO_BED_LEVELING_GRID
 
-  #if ENABLED(AUTO_BED_LEVELING_GRID)
+  // Set the circular probing area for Delta
+  #define DELTA_PROBEABLE_RADIUS (DELTA_PRINTABLE_RADIUS - 40.0)
+  #define LEFT_PROBE_BED_POSITION -(DELTA_PROBEABLE_RADIUS)
+  #define RIGHT_PROBE_BED_POSITION DELTA_PROBEABLE_RADIUS
+  #define FRONT_PROBE_BED_POSITION -(DELTA_PROBEABLE_RADIUS)
+  #define BACK_PROBE_BED_POSITION DELTA_PROBEABLE_RADIUS
 
-    // Set the rectangle in which to probe
-    #define DELTA_PROBEABLE_RADIUS (DELTA_PRINTABLE_RADIUS - 40.0)
-    #define LEFT_PROBE_BED_POSITION -(DELTA_PROBEABLE_RADIUS )
-    #define RIGHT_PROBE_BED_POSITION DELTA_PROBEABLE_RADIUS
-    #define FRONT_PROBE_BED_POSITION -(DELTA_PROBEABLE_RADIUS)
-    #define BACK_PROBE_BED_POSITION DELTA_PROBEABLE_RADIUS
-    // #define LEFT_PROBE_BED_POSITION -30
-    // #define RIGHT_PROBE_BED_POSITION 50
-    // #define FRONT_PROBE_BED_POSITION -50
-    // #define BACK_PROBE_BED_POSITION 50
+  #define MIN_PROBE_EDGE 10 // The Z probe minimum square sides can be no smaller than this.
 
-    #define MIN_PROBE_EDGE 10 // The Z probe minimum square sides can be no smaller than this.
-
-    // Non-linear bed leveling will be used.
-    // Compensate by interpolating between the nearest four Z probe values for each point.
-    // Useful for deltas where the print surface may appear like a bowl or dome shape.
-    // Works best with AUTO_BED_LEVELING_GRID_POINTS 5 or higher.
-    #define AUTO_BED_LEVELING_GRID_POINTS 5
-
-  #else  // !AUTO_BED_LEVELING_GRID
-
-    // Arbitrary points to probe.
-    // A simple cross-product is used to estimate the plane of the bed.
-    #define ABL_PROBE_PT_1_X -70
-    #define ABL_PROBE_PT_1_Y -60
-    #define ABL_PROBE_PT_2_X 30
-    #define ABL_PROBE_PT_2_Y 70
-    #define ABL_PROBE_PT_3_X 70
-    #define ABL_PROBE_PT_3_Y -35
-
-  #endif // AUTO_BED_LEVELING_GRID
+  // Non-linear bed leveling will be used.
+  // Compensate by interpolating between the nearest four Z probe values for each point.
+  // Useful for deltas where the print surface may appear like a bowl or dome shape.
+  // Works best with AUTO_BED_LEVELING_GRID_POINTS 5 or higher.
+  #define AUTO_BED_LEVELING_GRID_POINTS 5
 
   // Z Probe to nozzle (X,Y) offset, relative to (0, 0).
   // X and Y offsets must be integers.

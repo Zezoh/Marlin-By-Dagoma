@@ -54,9 +54,7 @@
 #include <math.h>
 #include <stdlib.h>
 
-#if ENABLED(MESH_BED_LEVELING)
-  #include "mesh_bed_leveling.h"
-#endif
+// MESH_BED_LEVELING removed - not supported for Delta
 
 #include "speed_lookuptable.h"
 
@@ -122,9 +120,7 @@ uint8_t g_uc_extruder_last_move[EXTRUDERS] = { 0 };
   static long axis_segment_time[2][3] = { {MAX_FREQ_TIME + 1, 0, 0}, {MAX_FREQ_TIME + 1, 0, 0} };
 #endif
 
-#if ENABLED(DUAL_X_CARRIAGE)
-  extern bool extruder_duplication_enabled;
-#endif
+// DUAL_X_CARRIAGE removed - Delta-only firmware
 
 //===========================================================================
 //================================ functions ================================
@@ -461,7 +457,7 @@ float junction_deviation = 0.1;
 // Add a new linear movement to the buffer. steps[X_AXIS], _y and _z is the absolute position in
 // mm. Microseconds specify how many microseconds the move should take to perform. To aid acceleration
 // calculation the caller must also provide the physical length of the line in millimeters.
-#if ENABLED(AUTO_BED_LEVELING_FEATURE) || ENABLED(MESH_BED_LEVELING)
+#if ENABLED(AUTO_BED_LEVELING_FEATURE)
   void plan_buffer_line(float x, float y, float z, const float& e, float feed_rate, const uint8_t extruder)
 #else
   void plan_buffer_line(const float& x, const float& y, const float& z, const float& e, float feed_rate, const uint8_t extruder)
@@ -474,9 +470,7 @@ float junction_deviation = 0.1;
   // Rest here until there is room in the buffer.
   while (block_buffer_tail == next_buffer_head) idle();
 
-  #if ENABLED(MESH_BED_LEVELING)
-    if (mbl.active) z += mbl.get_z(x - home_offset[X_AXIS], y - home_offset[Y_AXIS]);
-  #elif ENABLED(AUTO_BED_LEVELING_FEATURE)
+  #if ENABLED(AUTO_BED_LEVELING_FEATURE)
     apply_rotation_xyz(plan_bed_level_matrix, x, y, z);
   #endif
 
@@ -575,12 +569,6 @@ float junction_deviation = 0.1;
       switch(extruder) {
         case 0:
           enable_e0();
-          #if ENABLED(DUAL_X_CARRIAGE)
-            if (extruder_duplication_enabled) {
-              enable_e1();
-              g_uc_extruder_last_move[1] = (BLOCK_BUFFER_SIZE) * 2;
-            }
-          #endif
           g_uc_extruder_last_move[0] = (BLOCK_BUFFER_SIZE) * 2;
           #if EXTRUDERS > 1
             if (g_uc_extruder_last_move[1] == 0) disable_e1();
@@ -881,15 +869,13 @@ float junction_deviation = 0.1;
  *
  * On CORE machines stepper ABC will be translated from the given XYZ.
  */
-#if ENABLED(AUTO_BED_LEVELING_FEATURE) || ENABLED(MESH_BED_LEVELING)
+#if ENABLED(AUTO_BED_LEVELING_FEATURE)
   void plan_set_position(float x, float y, float z, const float& e)
 #else
   void plan_set_position(const float& x, const float& y, const float& z, const float& e)
-#endif // AUTO_BED_LEVELING_FEATURE || MESH_BED_LEVELING
+#endif // AUTO_BED_LEVELING_FEATURE
   {
-    #if ENABLED(MESH_BED_LEVELING)
-      if (mbl.active) z += mbl.get_z(x - home_offset[X_AXIS], y - home_offset[Y_AXIS]);
-    #elif ENABLED(AUTO_BED_LEVELING_FEATURE)
+    #if ENABLED(AUTO_BED_LEVELING_FEATURE)
       apply_rotation_xyz(plan_bed_level_matrix, x, y, z);
     #endif
 
@@ -931,11 +917,7 @@ block_t* current_block;  // A pointer to the block currently being traced
 static unsigned char out_bits = 0;
 static unsigned int cleaning_buffer_counter;
 
-#if ENABLED(Z_DUAL_ENDSTOPS)
-  static bool performing_homing = false,
-              locked_z_motor = false,
-              locked_z2_motor = false;
-#endif
+// Z_DUAL_ENDSTOPS removed - Delta-only firmware
 
 static long counter_x, counter_y, counter_z, counter_e;
 volatile static unsigned long step_events_completed;
@@ -956,12 +938,8 @@ volatile long endstops_trigsteps[3] = { 0 };
 volatile long endstops_stepsTotal, endstops_stepsDone;
 static volatile char endstop_hit_bits = 0;
 
-#if DISABLED(Z_DUAL_ENDSTOPS)
-  static byte
-#else
-  static uint16_t
-#endif
-  old_endstop_bits = 0;
+// Z_DUAL_ENDSTOPS removed - simplified endstop bits type
+static byte old_endstop_bits = 0;
 
 #if ENABLED(ABORT_ON_ENDSTOP_HIT_FEATURE_ENABLED)
   bool abort_on_endstop_hit = false;
@@ -995,61 +973,17 @@ volatile signed char count_direction[NUM_AXIS] = { 1 };
 //================================ functions ================================
 //===========================================================================
 
-#if ENABLED(DUAL_X_CARRIAGE)
-  #define X_APPLY_DIR(v,ALWAYS) \
-    if (extruder_duplication_enabled || ALWAYS) { \
-      X_DIR_WRITE(v); \
-      X2_DIR_WRITE(v); \
-    } \
-    else { \
-      if (current_block->active_extruder) X2_DIR_WRITE(v); else X_DIR_WRITE(v); \
-    }
-  #define X_APPLY_STEP(v,ALWAYS) \
-    if (extruder_duplication_enabled || ALWAYS) { \
-      X_STEP_WRITE(v); \
-      X2_STEP_WRITE(v); \
-    } \
-    else { \
-      if (current_block->active_extruder != 0) X2_STEP_WRITE(v); else X_STEP_WRITE(v); \
-    }
-#else
-  #define X_APPLY_DIR(v,Q) X_DIR_WRITE(v)
-  #define X_APPLY_STEP(v,Q) X_STEP_WRITE(v)
-#endif
+// Delta-only firmware - simplified stepper macros (DUAL_X_CARRIAGE removed)
+#define X_APPLY_DIR(v,Q) X_DIR_WRITE(v)
+#define X_APPLY_STEP(v,Q) X_STEP_WRITE(v)
 
-#if ENABLED(Y_DUAL_STEPPER_DRIVERS)
-  #define Y_APPLY_DIR(v,Q) { Y_DIR_WRITE(v); Y2_DIR_WRITE((v) != INVERT_Y2_VS_Y_DIR); }
-  #define Y_APPLY_STEP(v,Q) { Y_STEP_WRITE(v); Y2_STEP_WRITE(v); }
-#else
-  #define Y_APPLY_DIR(v,Q) Y_DIR_WRITE(v)
-  #define Y_APPLY_STEP(v,Q) Y_STEP_WRITE(v)
-#endif
+// Delta-only firmware - simplified Y stepper macros (Y_DUAL_STEPPER_DRIVERS removed)
+#define Y_APPLY_DIR(v,Q) Y_DIR_WRITE(v)
+#define Y_APPLY_STEP(v,Q) Y_STEP_WRITE(v)
 
-#if ENABLED(Z_DUAL_STEPPER_DRIVERS)
-  #define Z_APPLY_DIR(v,Q) { Z_DIR_WRITE(v); Z2_DIR_WRITE(v); }
-  #if ENABLED(Z_DUAL_ENDSTOPS)
-    #define Z_APPLY_STEP(v,Q) \
-    if (performing_homing) { \
-      if (Z_HOME_DIR > 0) {\
-        if (!(TEST(old_endstop_bits, Z_MAX) && (count_direction[Z_AXIS] > 0)) && !locked_z_motor) Z_STEP_WRITE(v); \
-        if (!(TEST(old_endstop_bits, Z2_MAX) && (count_direction[Z_AXIS] > 0)) && !locked_z2_motor) Z2_STEP_WRITE(v); \
-      } \
-      else { \
-        if (!(TEST(old_endstop_bits, Z_MIN) && (count_direction[Z_AXIS] < 0)) && !locked_z_motor) Z_STEP_WRITE(v); \
-        if (!(TEST(old_endstop_bits, Z2_MIN) && (count_direction[Z_AXIS] < 0)) && !locked_z2_motor) Z2_STEP_WRITE(v); \
-      } \
-    } \
-    else { \
-      Z_STEP_WRITE(v); \
-      Z2_STEP_WRITE(v); \
-    }
-  #else
-    #define Z_APPLY_STEP(v,Q) { Z_STEP_WRITE(v); Z2_STEP_WRITE(v); }
-  #endif
-#else
-  #define Z_APPLY_DIR(v,Q) Z_DIR_WRITE(v)
-  #define Z_APPLY_STEP(v,Q) Z_STEP_WRITE(v)
-#endif
+// Delta-only firmware - simplified Z stepper macros (Z_DUAL_STEPPER_DRIVERS removed)
+#define Z_APPLY_DIR(v,Q) Z_DIR_WRITE(v)
+#define Z_APPLY_STEP(v,Q) Z_STEP_WRITE(v)
 
 #define E_APPLY_STEP(v,Q) E_STEP_WRITE(v)
 
@@ -1189,12 +1123,8 @@ void checkHitEndstops() {
 // Check endstops - Called from ISR!
 inline void update_endstops() {
 
-  #if ENABLED(Z_DUAL_ENDSTOPS)
-    uint16_t
-  #else
-    byte
-  #endif
-      current_endstop_bits = 0;
+  // Z_DUAL_ENDSTOPS removed - simplified endstop bits type
+  byte current_endstop_bits = 0;
 
   #define _ENDSTOP_PIN(AXIS, MINMAX) AXIS ##_## MINMAX ##_PIN
   #define _ENDSTOP_INVERTING(AXIS, MINMAX) AXIS ##_## MINMAX ##_ENDSTOP_INVERTING
@@ -1220,29 +1150,18 @@ inline void update_endstops() {
       } \
     } while(0)
 
-  if (TEST(out_bits, X_AXIS))   // stepping along -X axis (regular Cartesian bot)
+  if (TEST(out_bits, X_AXIS))   // stepping along -X axis
     { // -direction
-        #if ENABLED(DUAL_X_CARRIAGE)
-          // with 2 x-carriages, endstops are only checked in the homing direction for the active extruder
-          if ((current_block->active_extruder == 0 && X_HOME_DIR == -1) || (current_block->active_extruder != 0 && X2_HOME_DIR == -1))
-        #endif
-          {
-            #if HAS_X_MIN
-              UPDATE_ENDSTOP(X, MIN);
-            #endif
-          }
-      }
-      else { // +direction
-        #if ENABLED(DUAL_X_CARRIAGE)
-          // with 2 x-carriages, endstops are only checked in the homing direction for the active extruder
-          if ((current_block->active_extruder == 0 && X_HOME_DIR == 1) || (current_block->active_extruder != 0 && X2_HOME_DIR == 1))
-        #endif
-          {
-            #if HAS_X_MAX
-              UPDATE_ENDSTOP(X, MAX);
-            #endif
-          }
-      }
+      // Delta-only firmware - DUAL_X_CARRIAGE code removed
+      #if HAS_X_MIN
+        UPDATE_ENDSTOP(X, MIN);
+      #endif
+    }
+    else { // +direction
+      #if HAS_X_MAX
+        UPDATE_ENDSTOP(X, MAX);
+      #endif
+    }
 
     if (TEST(out_bits, Y_AXIS))   // -direction
       { // -direction
@@ -1259,30 +1178,12 @@ inline void update_endstops() {
     if (TEST(out_bits, Z_AXIS))
       { // z -direction
         #if HAS_Z_MIN
-
-          #if ENABLED(Z_DUAL_ENDSTOPS)
-            SET_ENDSTOP_BIT(Z, MIN);
-            #if HAS_Z2_MIN
-              SET_ENDSTOP_BIT(Z2, MIN);
-            #else
-              COPY_BIT(current_endstop_bits, Z_MIN, Z2_MIN);
-            #endif
-
-            byte z_test = TEST_ENDSTOP(Z_MIN) | (TEST_ENDSTOP(Z2_MIN) << 1); // bit 0 for Z, bit 1 for Z2
-
-            if (z_test && current_block->steps[Z_AXIS] > 0) { // z_test = Z_MIN || Z2_MIN
-              endstops_trigsteps[Z_AXIS] = count_position[Z_AXIS];
-              SBI(endstop_hit_bits, Z_MIN);
-              if (!performing_homing || (z_test == 0x3))  //if not performing home or if both endstops were trigged during homing...
-                step_events_completed = current_block->step_event_count;
-            }
-          #else // !Z_DUAL_ENDSTOPS
-            #if ENABLED(Z_MIN_PROBE_USES_Z_MIN_ENDSTOP_PIN) && ENABLED(HAS_Z_MIN_PROBE)
-              if (z_probe_is_active) UPDATE_ENDSTOP(Z, MIN);
-            #else
-              UPDATE_ENDSTOP(Z, MIN);
-            #endif
-          #endif // !Z_DUAL_ENDSTOPS
+          // Z_DUAL_ENDSTOPS removed - Delta-only firmware
+          #if ENABLED(Z_MIN_PROBE_USES_Z_MIN_ENDSTOP_PIN) && ENABLED(HAS_Z_MIN_PROBE)
+            if (z_probe_is_active) UPDATE_ENDSTOP(Z, MIN);
+          #else
+            UPDATE_ENDSTOP(Z, MIN);
+          #endif
         #endif
 
         #if ENABLED(HAS_Z_MIN_PROBE)
@@ -1345,30 +1246,8 @@ inline void update_endstops() {
       }
       else { // z +direction
         #if HAS_Z_MAX
-
-          #if ENABLED(Z_DUAL_ENDSTOPS)
-
-            SET_ENDSTOP_BIT(Z, MAX);
-            #if HAS_Z2_MAX
-              SET_ENDSTOP_BIT(Z2, MAX);
-            #else
-              COPY_BIT(current_endstop_bits, Z_MAX, Z2_MAX);
-            #endif
-
-            byte z_test = TEST_ENDSTOP(Z_MAX) | (TEST_ENDSTOP(Z2_MAX) << 1); // bit 0 for Z, bit 1 for Z2
-
-            if (z_test && current_block->steps[Z_AXIS] > 0) {  // t_test = Z_MAX || Z2_MAX
-              endstops_trigsteps[Z_AXIS] = count_position[Z_AXIS];
-              SBI(endstop_hit_bits, Z_MIN);
-              if (!performing_homing || (z_test == 0x3))  //if not performing home or if both endstops were trigged during homing...
-                step_events_completed = current_block->step_event_count;
-            }
-
-          #else // !Z_DUAL_ENDSTOPS
-
-            UPDATE_ENDSTOP(Z, MAX);
-
-          #endif // !Z_DUAL_ENDSTOPS
+          // Z_DUAL_ENDSTOPS removed - Delta-only firmware
+          UPDATE_ENDSTOP(Z, MAX);
         #endif // Z_MAX_PIN
       }
   old_endstop_bits = current_endstop_bits;
@@ -1678,15 +1557,11 @@ void st_init() {
   #endif
   #if HAS_Y_DIR
     Y_DIR_INIT;
-    #if ENABLED(Y_DUAL_STEPPER_DRIVERS) && HAS_Y2_DIR
-      Y2_DIR_INIT;
-    #endif
+    // Y_DUAL_STEPPER_DRIVERS removed - Delta-only firmware
   #endif
   #if HAS_Z_DIR
     Z_DIR_INIT;
-    #if ENABLED(Z_DUAL_STEPPER_DRIVERS) && HAS_Z2_DIR
-      Z2_DIR_INIT;
-    #endif
+    // Z_DUAL_STEPPER_DRIVERS removed - Delta-only firmware
   #endif
   #if HAS_E0_DIR
     E0_DIR_INIT;
@@ -1714,18 +1589,12 @@ void st_init() {
   #if HAS_Y_ENABLE
     Y_ENABLE_INIT;
     if (!Y_ENABLE_ON) Y_ENABLE_WRITE(HIGH);
-    #if ENABLED(Y_DUAL_STEPPER_DRIVERS) && HAS_Y2_ENABLE
-      Y2_ENABLE_INIT;
-      if (!Y_ENABLE_ON) Y2_ENABLE_WRITE(HIGH);
-    #endif
+    // Y_DUAL_STEPPER_DRIVERS removed - Delta-only firmware
   #endif
   #if HAS_Z_ENABLE
     Z_ENABLE_INIT;
     if (!Z_ENABLE_ON) Z_ENABLE_WRITE(HIGH);
-    #if ENABLED(Z_DUAL_STEPPER_DRIVERS) && HAS_Z2_ENABLE
-      Z2_ENABLE_INIT;
-      if (!Z_ENABLE_ON) Z2_ENABLE_WRITE(HIGH);
-    #endif
+    // Z_DUAL_STEPPER_DRIVERS removed - Delta-only firmware
   #endif
   #if HAS_E0_ENABLE
     E0_ENABLE_INIT;
@@ -1838,17 +1707,11 @@ void st_init() {
     AXIS_INIT(x, X2, X);
   #endif
   #if HAS_Y_STEP
-    #if ENABLED(Y_DUAL_STEPPER_DRIVERS) && HAS_Y2_STEP
-      Y2_STEP_INIT;
-      Y2_STEP_WRITE(INVERT_Y_STEP_PIN);
-    #endif
+    // Y_DUAL_STEPPER_DRIVERS removed - Delta-only firmware
     AXIS_INIT(y, Y, Y);
   #endif
   #if HAS_Z_STEP
-    #if ENABLED(Z_DUAL_STEPPER_DRIVERS) && HAS_Z2_STEP
-      Z2_STEP_INIT;
-      Z2_STEP_WRITE(INVERT_Z_STEP_PIN);
-    #endif
+    // Z_DUAL_STEPPER_DRIVERS removed - Delta-only firmware
     AXIS_INIT(z, Z, Z);
   #endif
   #if HAS_E0_STEP
@@ -2136,11 +1999,7 @@ void microstep_readings() {
   #endif
 }
 
-#if ENABLED(Z_DUAL_ENDSTOPS)
-  void In_Homing_Process(bool state) { performing_homing = state; }
-  void Lock_z_motor(bool state) { locked_z_motor = state; }
-  void Lock_z2_motor(bool state) { locked_z2_motor = state; }
-#endif
+// Z_DUAL_ENDSTOPS removed - Delta-only firmware
 
 //===========================================================================
 //===================== Vector 3 Implementation =============================

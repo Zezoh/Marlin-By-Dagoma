@@ -34,9 +34,7 @@
 
 #include "Marlin.h"
 
-#if ENABLED(MESH_BED_LEVELING)
-  #include "mesh_bed_leveling.h"
-#endif
+// MESH_BED_LEVELING removed - not supported for Delta printers
 
 // LCD support removed - no ultralcd.h include
 #include "motion.h"
@@ -339,9 +337,6 @@ static uint8_t target_extruder;
   float hotend_offset[][HOTENDS] = {
     HOTEND_OFFSET_X,
     HOTEND_OFFSET_Y
-    #if ENABLED(DUAL_X_CARRIAGE)
-      , { 0 } // Z offsets for each extruder
-    #endif
   };
 #endif
 
@@ -1475,40 +1470,7 @@ XYZ_CONSTS_FROM_CONFIG(float, max_length,     MAX_LENGTH);
 XYZ_CONSTS_FROM_CONFIG(float, home_bump_mm,   HOME_BUMP_MM);
 XYZ_CONSTS_FROM_CONFIG(signed char, home_dir, HOME_DIR);
 
-#if ENABLED(DUAL_X_CARRIAGE)
-
-  #define DXC_FULL_CONTROL_MODE 0
-  #define DXC_AUTO_PARK_MODE    1
-  #define DXC_DUPLICATION_MODE  2
-
-  static int dual_x_carriage_mode = DEFAULT_DUAL_X_CARRIAGE_MODE;
-
-  static float x_home_pos(int extruder) {
-    if (extruder == 0)
-      return base_home_pos(X_AXIS) + home_offset[X_AXIS];
-    else
-      /**
-       * In dual carriage mode the extruder offset provides an override of the
-       * second X-carriage offset when homed - otherwise X2_HOME_POS is used.
-       * This allow soft recalibration of the second extruder offset position
-       * without firmware reflash (through the M218 command).
-       */
-      return (hotend_offset[X_AXIS][1] > 0) ? hotend_offset[X_AXIS][1] : X2_HOME_POS;
-  }
-
-  static int x_home_dir(int extruder) {
-    return (extruder == 0) ? X_HOME_DIR : X2_HOME_DIR;
-  }
-
-  static float inactive_extruder_x_pos = X2_MAX_POS; // used in mode 0 & 1
-  static bool active_extruder_parked = false; // used in mode 1 & 2
-  static float raised_parked_position[NUM_AXIS]; // used in mode 1
-  static millis_t delayed_move_time = 0; // used in mode 1
-  static float duplicate_extruder_x_offset = DEFAULT_DUPLICATION_X_OFFSET; // used in mode 2
-  static float duplicate_extruder_temp_offset = 0; // used in mode 2
-  bool extruder_duplication_enabled = false; // used in mode 2
-
-#endif //DUAL_X_CARRIAGE
+// DUAL_X_CARRIAGE feature has been removed (Delta-only firmware)
 
 /**
  * Software endstops can be used to monitor the open end of
@@ -1521,26 +1483,8 @@ XYZ_CONSTS_FROM_CONFIG(signed char, home_dir, HOME_DIR);
  */
 static void update_software_endstops(AxisEnum axis) {
   float offs = home_offset[axis] + position_shift[axis];
-  #if ENABLED(DUAL_X_CARRIAGE)
-    if (axis == X_AXIS) {
-      float dual_max_x = max(hotend_offset[X_AXIS][1], X2_MAX_POS);
-      if (active_extruder != 0) {
-        sw_endstop_min[X_AXIS] = X2_MIN_POS + offs;
-        sw_endstop_max[X_AXIS] = dual_max_x + offs;
-        return;
-      }
-      else if (dual_x_carriage_mode == DXC_DUPLICATION_MODE) {
-        sw_endstop_min[X_AXIS] = base_min_pos(X_AXIS) + offs;
-        sw_endstop_max[X_AXIS] = min(base_max_pos(X_AXIS), dual_max_x - duplicate_extruder_x_offset) + offs;
-        return;
-      }
-    }
-    else
-  #endif
-  {
-    sw_endstop_min[axis] = base_min_pos(axis) + offs;
-    sw_endstop_max[axis] = base_max_pos(axis) + offs;
-  }
+  sw_endstop_min[axis] = base_min_pos(axis) + offs;
+  sw_endstop_max[axis] = base_max_pos(axis) + offs;
 }
 
 /**
@@ -1567,40 +1511,27 @@ static void set_axis_is_at_home(AxisEnum axis) {
 
   position_shift[axis] = 0;
 
-  #if ENABLED(DUAL_X_CARRIAGE)
-    if (axis == X_AXIS && (active_extruder != 0 || dual_x_carriage_mode == DXC_DUPLICATION_MODE)) {
-      if (active_extruder != 0)
-        current_position[X_AXIS] = x_home_pos(active_extruder);
-      else
-        current_position[X_AXIS] = base_home_pos(X_AXIS) + home_offset[X_AXIS];
-      update_software_endstops(X_AXIS);
-      return;
+  current_position[axis] = base_home_pos(axis) + home_offset[axis];
+  update_software_endstops(axis);
+
+  #if ENABLED(AUTO_BED_LEVELING_FEATURE) && Z_HOME_DIR < 0
+    if (axis == Z_AXIS) {
+      current_position[Z_AXIS] -= zprobe_zoffset;
+      #if ENABLED(DEBUG_LEVELING_FEATURE)
+        if (DEBUGGING(LEVELING)) {
+          SERIAL_ECHOPAIR("> zprobe_zoffset==", zprobe_zoffset);
+          SERIAL_EOL;
+        }
+      #endif
     }
   #endif
 
-  {
-    current_position[axis] = base_home_pos(axis) + home_offset[axis];
-    update_software_endstops(axis);
-
-    #if ENABLED(AUTO_BED_LEVELING_FEATURE) && Z_HOME_DIR < 0
-      if (axis == Z_AXIS) {
-        current_position[Z_AXIS] -= zprobe_zoffset;
-        #if ENABLED(DEBUG_LEVELING_FEATURE)
-          if (DEBUGGING(LEVELING)) {
-            SERIAL_ECHOPAIR("> zprobe_zoffset==", zprobe_zoffset);
-            SERIAL_EOL;
-          }
-        #endif
-      }
-    #endif
-
-    #if ENABLED(DEBUG_LEVELING_FEATURE)
-      if (DEBUGGING(LEVELING)) {
-        SERIAL_ECHOPAIR("> home_offset[axis]==", home_offset[axis]);
-        DEBUG_POS("", current_position);
-      }
-    #endif
-  }
+  #if ENABLED(DEBUG_LEVELING_FEATURE)
+    if (DEBUGGING(LEVELING)) {
+      SERIAL_ECHOPAIR("> home_offset[axis]==", home_offset[axis]);
+      DEBUG_POS("", current_position);
+    }
+  #endif
   #if ENABLED(DEBUG_LEVELING_FEATURE)
     if (DEBUGGING(LEVELING)) {
       SERIAL_ECHOPAIR("<<< set_axis_is_at_home(", axis);
@@ -1721,46 +1652,9 @@ static void setup_for_endstop_move() {
 
     #endif // !DELTA
 
-  #else // !AUTO_BED_LEVELING_GRID
+  #endif // AUTO_BED_LEVELING_GRID
 
-    static void set_bed_level_equation_3pts(float z_at_pt_1, float z_at_pt_2, float z_at_pt_3) {
-
-      plan_bed_level_matrix.set_to_identity();
-
-      vector_3 pt1 = vector_3(ABL_PROBE_PT_1_X, ABL_PROBE_PT_1_Y, z_at_pt_1);
-      vector_3 pt2 = vector_3(ABL_PROBE_PT_2_X, ABL_PROBE_PT_2_Y, z_at_pt_2);
-      vector_3 pt3 = vector_3(ABL_PROBE_PT_3_X, ABL_PROBE_PT_3_Y, z_at_pt_3);
-      vector_3 planeNormal = vector_3::cross(pt1 - pt2, pt3 - pt2).get_normal();
-
-      if (planeNormal.z < 0) {
-        planeNormal.x = -planeNormal.x;
-        planeNormal.y = -planeNormal.y;
-        planeNormal.z = -planeNormal.z;
-      }
-
-      plan_bed_level_matrix = matrix_3x3::create_look_at(planeNormal);
-
-      vector_3 corrected_position = plan_get_position();
-
-      #if ENABLED(DEBUG_LEVELING_FEATURE)
-        if (DEBUGGING(LEVELING)) {
-          vector_3 uncorrected_position = corrected_position;
-          DEBUG_POS("set_bed_level_equation_3pts", uncorrected_position);
-        }
-      #endif
-
-      current_position[X_AXIS] = corrected_position.x;
-      current_position[Y_AXIS] = corrected_position.y;
-      current_position[Z_AXIS] = corrected_position.z;
-
-      #if ENABLED(DEBUG_LEVELING_FEATURE)
-        if (DEBUGGING(LEVELING)) DEBUG_POS("set_bed_level_equation_3pts", corrected_position);
-      #endif
-
-      sync_plan_position();
-    }
-
-  #endif // !AUTO_BED_LEVELING_GRID
+  // 3-point leveling (set_bed_level_equation_3pts) removed - Delta requires grid leveling
 
   // Check if pause is triggered during G29 (manuel bed leveling) and D851 (custom calibration)
   #if ENABLED(EMERGENCY_STOP)
@@ -2410,11 +2304,7 @@ static void homeaxis(AxisEnum axis) {
 
   if (axis == X_AXIS ? HOMEAXIS_DO(X) : axis == Y_AXIS ? HOMEAXIS_DO(Y) : axis == Z_AXIS ? HOMEAXIS_DO(Z) : 0) {
 
-    int axis_home_dir =
-      #if ENABLED(DUAL_X_CARRIAGE)
-        (axis == X_AXIS) ? x_home_dir(active_extruder) :
-      #endif
-      home_dir(axis);
+    int axis_home_dir = home_dir(axis);
 
     // Set the axis position as setup for the move
     current_position[axis] = 0;
@@ -2841,14 +2731,7 @@ inline void gcode_G28() {
     #endif
   #endif
 
-  /**
-   * For mesh bed leveling deactivate the mesh calculations, will be turned
-   * on again when homing all axis
-   */
-  #if ENABLED(MESH_BED_LEVELING)
-    uint8_t mbl_was_active = mbl.active;
-    mbl.active = false;
-  #endif
+  // MESH_BED_LEVELING removed - not supported for Delta
 
   setup_for_endstop_move();
 
@@ -2939,13 +2822,7 @@ inline void gcode_G28() {
       if (home_all_axis || (homeX && homeY)) {  // First diagonal move
 
         current_position[X_AXIS] = current_position[Y_AXIS] = 0;
-
-        #if ENABLED(DUAL_X_CARRIAGE)
-          int x_axis_home_dir = x_home_dir(active_extruder);
-          extruder_duplication_enabled = false;
-        #else
-          int x_axis_home_dir = home_dir(X_AXIS);
-        #endif
+        int x_axis_home_dir = home_dir(X_AXIS);
 
         sync_plan_position();
 
@@ -2991,21 +2868,7 @@ inline void gcode_G28() {
 
     // Home X
     if (home_all_axis || homeX) {
-      #if ENABLED(DUAL_X_CARRIAGE)
-        int tmp_extruder = active_extruder;
-        extruder_duplication_enabled = false;
-        active_extruder = !active_extruder;
-        HOMEAXIS(X);
-        inactive_extruder_x_pos = current_position[X_AXIS];
-        active_extruder = tmp_extruder;
-        HOMEAXIS(X);
-        // reset state used by the different modes
-        memcpy(raised_parked_position, current_position, sizeof(raised_parked_position));
-        delayed_move_time = 0;
-        active_extruder_parked = true;
-      #else
-        HOMEAXIS(X);
-      #endif
+      HOMEAXIS(X);
       #if ENABLED(DEBUG_LEVELING_FEATURE)
         if (DEBUGGING(LEVELING)) DEBUG_POS("> homeX", current_position);
       #endif
@@ -3139,22 +3002,7 @@ inline void gcode_G28() {
     #endif
   #endif
 
-  // For mesh leveling move back to Z=0
-  #if ENABLED(MESH_BED_LEVELING)
-    if (mbl_was_active && home_all_axis) {
-      current_position[Z_AXIS] = MESH_HOME_SEARCH_Z;
-      sync_plan_position();
-      mbl.active = 1;
-      current_position[Z_AXIS] = 0.0;
-      set_destination_to_current();
-      feedrate = homing_feedrate[Z_AXIS];
-      line_to_destination();
-      st_synchronize();
-      #if ENABLED(DEBUG_LEVELING_FEATURE)
-        if (DEBUGGING(LEVELING)) DEBUG_POS("mbl_was_active", current_position);
-      #endif
-    }
-  #endif
+  // MESH_BED_LEVELING code removed - not supported for Delta
 
   feedrate = saved_feedrate;
   feedrate_multiplier = saved_feedrate_multiplier;
@@ -3170,182 +3018,10 @@ inline void gcode_G28() {
   gcode_M114(); // Send end position to RepetierHost
 }
 
-#if ENABLED(MESH_BED_LEVELING)
+// MESH_BED_LEVELING G29 implementation removed - not supported for Delta
+// Use AUTO_BED_LEVELING_FEATURE with AUTO_BED_LEVELING_GRID instead
 
-  enum MeshLevelingState { MeshReport, MeshStart, MeshNext, MeshSet, MeshSetZOffset };
-
-  inline void _mbl_goto_xy(float x, float y) {
-    saved_feedrate = feedrate;
-    feedrate = homing_feedrate[X_AXIS];
-
-    current_position[Z_AXIS] = MESH_HOME_SEARCH_Z
-      #if MIN_Z_HEIGHT_FOR_HOMING > 0
-        + MIN_Z_HEIGHT_FOR_HOMING
-      #endif
-    ;
-    line_to_current_position();
-
-    current_position[X_AXIS] = x + home_offset[X_AXIS];
-    current_position[Y_AXIS] = y + home_offset[Y_AXIS];
-    line_to_current_position();
-
-    #if MIN_Z_HEIGHT_FOR_HOMING > 0
-      current_position[Z_AXIS] = MESH_HOME_SEARCH_Z;
-      line_to_current_position();
-    #endif
-
-    feedrate = saved_feedrate;
-    st_synchronize();
-  }
-
-  /**
-   * G29: Mesh-based Z probe, probes a grid and produces a
-   *      mesh to compensate for variable bed height
-   *
-   * Parameters With MESH_BED_LEVELING:
-   *
-   *  S0              Produce a mesh report
-   *  S1              Start probing mesh points
-   *  S2              Probe the next mesh point
-   *  S3 Xn Yn Zn.nn  Manually modify a single point
-   *  S4 Zn.nn        Set z offset. Positive away from bed, negative closer to bed.
-   *
-   * The S0 report the points as below
-   *
-   *  +----> X-axis  1-n
-   *  |
-   *  |
-   *  v Y-axis  1-n
-   *
-   */
-  inline void gcode_G29() {
-
-    static int probe_point = -1;
-    MeshLevelingState state = code_seen('S') ? (MeshLevelingState)code_value_short() : MeshReport;
-    if (state < 0 || state > 4) {
-      SERIAL_PROTOCOLLNPGM("S out of range (0-4).");
-      return;
-    }
-
-    int ix, iy;
-    float z;
-
-    switch (state) {
-      case MeshReport:
-        if (mbl.active) {
-          SERIAL_PROTOCOLPGM("Num X,Y: ");
-          SERIAL_PROTOCOL(MESH_NUM_X_POINTS);
-          SERIAL_PROTOCOLCHAR(',');
-          SERIAL_PROTOCOL(MESH_NUM_Y_POINTS);
-          SERIAL_PROTOCOLPGM("\nZ search height: ");
-          SERIAL_PROTOCOL(MESH_HOME_SEARCH_Z);
-          SERIAL_PROTOCOLPGM("\nZ offset: ");
-          SERIAL_PROTOCOL_F(mbl.z_offset, 5);
-          SERIAL_PROTOCOLLNPGM("\nMeasured points:");
-          for (int y = 0; y < MESH_NUM_Y_POINTS; y++) {
-            for (int x = 0; x < MESH_NUM_X_POINTS; x++) {
-              SERIAL_PROTOCOLPGM("  ");
-              SERIAL_PROTOCOL_F(mbl.z_values[y][x], 5);
-            }
-            SERIAL_EOL;
-          }
-        }
-        else
-          SERIAL_PROTOCOLLNPGM("Mesh bed leveling not active.");
-        break;
-
-      case MeshStart:
-        mbl.reset();
-        probe_point = 0;
-        enqueue_and_echo_commands_P(PSTR("G28\nG29 S2"));
-        break;
-
-      case MeshNext:
-        if (probe_point < 0) {
-          SERIAL_PROTOCOLLNPGM("Start mesh probing with \"G29 S1\" first.");
-          return;
-        }
-        // For each G29 S2...
-        if (probe_point == 0) {
-          // For the intial G29 S2 make Z a positive value (e.g., 4.0)
-          current_position[Z_AXIS] = MESH_HOME_SEARCH_Z;
-          sync_plan_position();
-        }
-        else {
-          // For G29 S2 after adjusting Z.
-          mbl.set_zigzag_z(probe_point - 1, current_position[Z_AXIS]);
-        }
-        // If there's another point to sample, move there with optional lift.
-        if (probe_point < (MESH_NUM_X_POINTS) * (MESH_NUM_Y_POINTS)) {
-          mbl.zigzag(probe_point, ix, iy);
-          _mbl_goto_xy(mbl.get_x(ix), mbl.get_y(iy));
-          probe_point++;
-        }
-        else {
-          // One last "return to the bed" (as originally coded) at completion
-          current_position[Z_AXIS] = MESH_HOME_SEARCH_Z
-            #if MIN_Z_HEIGHT_FOR_HOMING > 0
-              + MIN_Z_HEIGHT_FOR_HOMING
-            #endif
-          ;
-          line_to_current_position();
-          st_synchronize();
-
-          // After recording the last point, activate the mbl and home
-          SERIAL_PROTOCOLLNPGM("Mesh probing done.");
-          probe_point = -1;
-          mbl.active = true;
-          enqueue_and_echo_commands_P(PSTR("G28"));
-        }
-        break;
-
-      case MeshSet:
-        if (code_seen('X')) {
-          ix = code_value_long() - 1;
-          if (ix < 0 || ix >= MESH_NUM_X_POINTS) {
-            SERIAL_PROTOCOLPGM("X out of range (1-" STRINGIFY(MESH_NUM_X_POINTS) ").\n");
-            return;
-          }
-        }
-        else {
-          SERIAL_PROTOCOLPGM("X not entered.\n");
-          return;
-        }
-        if (code_seen('Y')) {
-          iy = code_value_long() - 1;
-          if (iy < 0 || iy >= MESH_NUM_Y_POINTS) {
-            SERIAL_PROTOCOLPGM("Y out of range (1-" STRINGIFY(MESH_NUM_Y_POINTS) ").\n");
-            return;
-          }
-        }
-        else {
-          SERIAL_PROTOCOLPGM("Y not entered.\n");
-          return;
-        }
-        if (code_seen('Z')) {
-          z = code_value();
-        }
-        else {
-          SERIAL_PROTOCOLPGM("Z not entered.\n");
-          return;
-        }
-        mbl.z_values[iy][ix] = z;
-        break;
-
-      case MeshSetZOffset:
-        if (code_seen('Z')) {
-          z = code_value();
-        }
-        else {
-          SERIAL_PROTOCOLPGM("Z not entered.\n");
-          return;
-        }
-        mbl.z_offset = z;
-
-    } // switch(state)
-  }
-
-#elif ENABLED(AUTO_BED_LEVELING_FEATURE)
+#if ENABLED(AUTO_BED_LEVELING_FEATURE)
 
   void out_of_range_error(const char* p_edge) {
     SERIAL_PROTOCOLPGM("?Probe ");
@@ -4220,38 +3896,9 @@ inline void gcode_G28() {
         } //do_topography_map
       #endif //!DELTA
 
-    #else // !AUTO_BED_LEVELING_GRID
+    #endif // AUTO_BED_LEVELING_GRID
 
-      #if ENABLED(DEBUG_LEVELING_FEATURE)
-        if (DEBUGGING(LEVELING)) {
-          SERIAL_ECHOLNPGM("> 3-point Leveling");
-        }
-      #endif
-
-      // Actions for each probe
-      ProbeAction p1, p2, p3;
-      if (deploy_probe_for_each_reading)
-        p1 = p2 = p3 = ProbeDeployAndStow;
-      else
-        p1 = ProbeDeploy, p2 = ProbeStay, p3 = ProbeStow;
-
-      // Probe at 3 arbitrary points
-      float z_at_pt_1 = probe_pt( ABL_PROBE_PT_1_X + home_offset[X_AXIS],
-                                  ABL_PROBE_PT_1_Y + home_offset[Y_AXIS],
-                                  Z_RAISE_BEFORE_PROBING + home_offset[Z_AXIS],
-                                  p1, verbose_level),
-            z_at_pt_2 = probe_pt( ABL_PROBE_PT_2_X + home_offset[X_AXIS],
-                                  ABL_PROBE_PT_2_Y + home_offset[Y_AXIS],
-                                  current_position[Z_AXIS] + Z_RAISE_BETWEEN_PROBINGS,
-                                  p2, verbose_level),
-            z_at_pt_3 = probe_pt( ABL_PROBE_PT_3_X + home_offset[X_AXIS],
-                                  ABL_PROBE_PT_3_Y + home_offset[Y_AXIS],
-                                  current_position[Z_AXIS] + Z_RAISE_BETWEEN_PROBINGS,
-                                  p3, verbose_level);
-      clean_up_after_endstop_move();
-      if (!dryrun) set_bed_level_equation_3pts(z_at_pt_1, z_at_pt_2, z_at_pt_3);
-
-    #endif // !AUTO_BED_LEVELING_GRID
+    // 3-point leveling code removed - Delta requires AUTO_BED_LEVELING_GRID
 
     #if ENABLED(DELTA)
       // Allen Key Probe for Delta
@@ -4995,10 +4642,6 @@ inline void gcode_M104() {
   if (code_seen('S')) {
     float temp = code_value();
     setTargetHotend(temp, target_extruder);
-    #if ENABLED(DUAL_X_CARRIAGE)
-      if (dual_x_carriage_mode == DXC_DUPLICATION_MODE && target_extruder == 0)
-        setTargetHotend1(temp == 0.0 ? 0.0 : temp + duplicate_extruder_temp_offset);
-    #endif
 
     /**
      * We use half EXTRUDE_MINTEMP here to allow nozzles to be put into hot
@@ -5261,10 +4904,6 @@ inline void gcode_M109() {
   if (no_wait_for_cooling || code_seen('R')) {
     float temp = code_value();
     setTargetHotend(temp, target_extruder);
-    #if ENABLED(DUAL_X_CARRIAGE)
-      if (dual_x_carriage_mode == DXC_DUPLICATION_MODE && target_extruder == 0)
-        setTargetHotend1(temp == 0.0 ? 0.0 : temp + duplicate_extruder_temp_offset);
-    #endif
 
     /**
      * We use half EXTRUDE_MINTEMP here to allow nozzles to be put into hot
@@ -5989,17 +5628,12 @@ inline void gcode_M206() {
    *   T<tool>
    *   X<xoffset>
    *   Y<yoffset>
-   *   Z<zoffset> - Available with DUAL_X_CARRIAGE
    */
   inline void gcode_M218() {
     if (get_target_extruder_from_command(218)) return;
 
     if (code_seen('X')) hotend_offset[X_AXIS][target_extruder] = code_value();
     if (code_seen('Y')) hotend_offset[Y_AXIS][target_extruder] = code_value();
-
-    #if ENABLED(DUAL_X_CARRIAGE)
-      if (code_seen('Z')) hotend_offset[Z_AXIS][target_extruder] = code_value();
-    #endif
 
     SERIAL_ECHO_START;
     SERIAL_ECHOPGM(MSG_HOTEND_OFFSET);
@@ -6008,10 +5642,6 @@ inline void gcode_M206() {
       SERIAL_ECHO(hotend_offset[X_AXIS][e]);
       SERIAL_CHAR(',');
       SERIAL_ECHO(hotend_offset[Y_AXIS][e]);
-      #if ENABLED(DUAL_X_CARRIAGE)
-        SERIAL_CHAR(',');
-        SERIAL_ECHO(hotend_offset[Z_AXIS][e]);
-      #endif
     }
     SERIAL_EOL;
   }
@@ -6373,40 +6003,7 @@ inline void gcode_M400() { st_synchronize(); }
  */
 inline void gcode_M410() { quickStop(); }
 
-
-#if ENABLED(MESH_BED_LEVELING)
-
-  /**
-   * M420: Enable/Disable Mesh Bed Leveling
-   */
-  inline void gcode_M420() { if (code_seen('S') && code_has_value()) mbl.active = !!code_value_short(); }
-
-  /**
-   * M421: Set a single Mesh Bed Leveling Z coordinate
-   */
-  inline void gcode_M421() {
-    float x = 0, y = 0, z = 0;
-    bool err = false, hasX, hasY, hasZ;
-    if ((hasX = code_seen('X'))) x = code_value();
-    if ((hasY = code_seen('Y'))) y = code_value();
-    if ((hasZ = code_seen('Z'))) z = code_value();
-
-    if (!hasX || !hasY || !hasZ) {
-      SERIAL_ERROR_START;
-      SERIAL_ERRORLNPGM(MSG_ERR_M421_REQUIRES_XYZ);
-      err = true;
-    }
-
-    if (x >= MESH_NUM_X_POINTS || y >= MESH_NUM_Y_POINTS) {
-      SERIAL_ERROR_START;
-      SERIAL_ERRORLNPGM(MSG_ERR_MESH_INDEX_OOB);
-      err = true;
-    }
-
-    if (!err) mbl.set_z(mbl.select_x_index(x), mbl.select_y_index(y), z);
-  }
-
-#endif
+// M420/M421 for MESH_BED_LEVELING removed - not supported for Delta
 
 /**
  * M428: Set home_offset based on the distance between the
@@ -7573,51 +7170,7 @@ inline void gcode_M503() {
 
 #endif // FILAMENTCHANGEENABLE
 
-#if ENABLED(DUAL_X_CARRIAGE)
-
-  /**
-   * M605: Set dual x-carriage movement mode
-   *
-   *    M605 S0: Full control mode. The slicer has full control over x-carriage movement
-   *    M605 S1: Auto-park mode. The inactive head will auto park/unpark without slicer involvement
-   *    M605 S2 [Xnnn] [Rmmm]: Duplication mode. The second extruder will duplicate the first with nnn
-   *                         millimeters x-offset and an optional differential hotend temperature of
-   *                         mmm degrees. E.g., with "M605 S2 X100 R2" the second extruder will duplicate
-   *                         the first with a spacing of 100mm in the x direction and 2 degrees hotter.
-   *
-   *    Note: the X axis should be homed after changing dual x-carriage mode.
-   */
-  inline void gcode_M605() {
-    st_synchronize();
-    if (code_seen('S')) dual_x_carriage_mode = code_value();
-    switch (dual_x_carriage_mode) {
-      case DXC_DUPLICATION_MODE:
-        if (code_seen('X')) duplicate_extruder_x_offset = max(code_value(), X2_MIN_POS - x_home_pos(0));
-        if (code_seen('R')) duplicate_extruder_temp_offset = code_value();
-        SERIAL_ECHO_START;
-        SERIAL_ECHOPGM(MSG_HOTEND_OFFSET);
-        SERIAL_CHAR(' ');
-        SERIAL_ECHO(hotend_offset[X_AXIS][0]);
-        SERIAL_CHAR(',');
-        SERIAL_ECHO(hotend_offset[Y_AXIS][0]);
-        SERIAL_CHAR(' ');
-        SERIAL_ECHO(duplicate_extruder_x_offset);
-        SERIAL_CHAR(',');
-        SERIAL_ECHOLN(hotend_offset[Y_AXIS][1]);
-        break;
-      case DXC_FULL_CONTROL_MODE:
-      case DXC_AUTO_PARK_MODE:
-        break;
-      default:
-        dual_x_carriage_mode = DEFAULT_DUAL_X_CARRIAGE_MODE;
-        break;
-    }
-    active_extruder_parked = false;
-    extruder_duplication_enabled = false;
-    delayed_move_time = 0;
-  }
-
-#endif // DUAL_X_CARRIAGE
+// M605 (DUAL_X_CARRIAGE) has been removed - Delta-only firmware
 
 /*****************************************************************************
  * DAGOMA.FR Specific
@@ -7807,90 +7360,48 @@ inline void gcode_T(uint8_t tmp_extruder) {
       if (tmp_extruder != active_extruder) {
         // Save current position to return to after applying extruder offset
         set_destination_to_current();
-        #if ENABLED(DUAL_X_CARRIAGE)
-          if (dual_x_carriage_mode == DXC_AUTO_PARK_MODE && IsRunning() &&
-              (delayed_move_time || current_position[X_AXIS] != x_home_pos(active_extruder))) {
-            // Park old head: 1) raise 2) move to park position 3) lower
-            plan_buffer_line(current_position[X_AXIS], current_position[Y_AXIS], current_position[Z_AXIS] + TOOLCHANGE_PARK_ZLIFT,
-                             current_position[E_AXIS], max_feedrate[Z_AXIS], active_extruder);
-            plan_buffer_line(x_home_pos(active_extruder), current_position[Y_AXIS], current_position[Z_AXIS] + TOOLCHANGE_PARK_ZLIFT,
-                             current_position[E_AXIS], max_feedrate[X_AXIS], active_extruder);
-            plan_buffer_line(x_home_pos(active_extruder), current_position[Y_AXIS], current_position[Z_AXIS],
-                             current_position[E_AXIS], max_feedrate[Z_AXIS], active_extruder);
-            st_synchronize();
-          }
+        // Delta-only firmware - DUAL_X_CARRIAGE code removed
+        #if ENABLED(AUTO_BED_LEVELING_FEATURE)
+          // Offset extruder, make sure to apply the bed level rotation matrix
+          vector_3 tmp_offset_vec = vector_3(hotend_offset[X_AXIS][tmp_extruder],
+                                             hotend_offset[Y_AXIS][tmp_extruder],
+                                             0),
+                   act_offset_vec = vector_3(hotend_offset[X_AXIS][active_extruder],
+                                             hotend_offset[Y_AXIS][active_extruder],
+                                             0),
+                   offset_vec = tmp_offset_vec - act_offset_vec;
 
-          // apply Y & Z extruder offset (x offset is already used in determining home pos)
-          current_position[Y_AXIS] -= hotend_offset[Y_AXIS][active_extruder] - hotend_offset[Y_AXIS][tmp_extruder];
-          current_position[Z_AXIS] -= hotend_offset[Z_AXIS][active_extruder] - hotend_offset[Z_AXIS][tmp_extruder];
-          active_extruder = tmp_extruder;
+          #if ENABLED(DEBUG_LEVELING_FEATURE)
+            if (DEBUGGING(LEVELING)) {
+              SERIAL_ECHOLNPGM(">>> gcode_T");
+              tmp_offset_vec.debug("tmp_offset_vec");
+              act_offset_vec.debug("act_offset_vec");
+              offset_vec.debug("offset_vec (BEFORE)");
+              DEBUG_POS("BEFORE rotation", current_position);
+            }
+          #endif
 
-          // This function resets the max/min values - the current position may be overwritten below.
-          set_axis_is_at_home(X_AXIS);
+          offset_vec.apply_rotation(plan_bed_level_matrix.transpose(plan_bed_level_matrix));
 
-          if (dual_x_carriage_mode == DXC_FULL_CONTROL_MODE) {
-            current_position[X_AXIS] = inactive_extruder_x_pos;
-            inactive_extruder_x_pos = destination[X_AXIS];
-          }
-          else if (dual_x_carriage_mode == DXC_DUPLICATION_MODE) {
-            active_extruder_parked = (active_extruder == 0); // this triggers the second extruder to move into the duplication position
-            if (active_extruder == 0 || active_extruder_parked)
-              current_position[X_AXIS] = inactive_extruder_x_pos;
-            else
-              current_position[X_AXIS] = destination[X_AXIS] + duplicate_extruder_x_offset;
-            inactive_extruder_x_pos = destination[X_AXIS];
-            extruder_duplication_enabled = false;
-          }
-          else {
-            // record raised toolhead position for use by unpark
-            memcpy(raised_parked_position, current_position, sizeof(raised_parked_position));
-            raised_parked_position[Z_AXIS] += TOOLCHANGE_UNPARK_ZLIFT;
-            active_extruder_parked = true;
-            delayed_move_time = 0;
-          }
-        #else // !DUAL_X_CARRIAGE
-          #if ENABLED(AUTO_BED_LEVELING_FEATURE)
-            // Offset extruder, make sure to apply the bed level rotation matrix
-            vector_3 tmp_offset_vec = vector_3(hotend_offset[X_AXIS][tmp_extruder],
-                                               hotend_offset[Y_AXIS][tmp_extruder],
-                                               0),
-                     act_offset_vec = vector_3(hotend_offset[X_AXIS][active_extruder],
-                                               hotend_offset[Y_AXIS][active_extruder],
-                                               0),
-                     offset_vec = tmp_offset_vec - act_offset_vec;
+          current_position[X_AXIS] += offset_vec.x;
+          current_position[Y_AXIS] += offset_vec.y;
+          current_position[Z_AXIS] += offset_vec.z;
 
-            #if ENABLED(DEBUG_LEVELING_FEATURE)
-              if (DEBUGGING(LEVELING)) {
-                SERIAL_ECHOLNPGM(">>> gcode_T");
-                tmp_offset_vec.debug("tmp_offset_vec");
-                act_offset_vec.debug("act_offset_vec");
-                offset_vec.debug("offset_vec (BEFORE)");
-                DEBUG_POS("BEFORE rotation", current_position);
-              }
-            #endif
+          #if ENABLED(DEBUG_LEVELING_FEATURE)
+            if (DEBUGGING(LEVELING)) {
+              offset_vec.debug("offset_vec (AFTER)");
+              DEBUG_POS("AFTER rotation", current_position);
+              SERIAL_ECHOLNPGM("<<< gcode_T");
+            }
+          #endif
 
-            offset_vec.apply_rotation(plan_bed_level_matrix.transpose(plan_bed_level_matrix));
-
-            current_position[X_AXIS] += offset_vec.x;
-            current_position[Y_AXIS] += offset_vec.y;
-            current_position[Z_AXIS] += offset_vec.z;
-
-            #if ENABLED(DEBUG_LEVELING_FEATURE)
-              if (DEBUGGING(LEVELING)) {
-                offset_vec.debug("offset_vec (AFTER)");
-                DEBUG_POS("AFTER rotation", current_position);
-                SERIAL_ECHOLNPGM("<<< gcode_T");
-              }
-            #endif
-
-          #else // !AUTO_BED_LEVELING_FEATURE
-            // Offset extruder (only by XY)
-            for (int i=X_AXIS; i<=Y_AXIS; i++)
-              current_position[i] += hotend_offset[i][tmp_extruder] - hotend_offset[i][active_extruder];
-          #endif // !AUTO_BED_LEVELING_FEATURE
-          // Set the new active extruder and position
-          active_extruder = tmp_extruder;
-        #endif // !DUAL_X_CARRIAGE
+        #else // !AUTO_BED_LEVELING_FEATURE
+          // Offset extruder (only by XY)
+          for (int i=X_AXIS; i<=Y_AXIS; i++)
+            current_position[i] += hotend_offset[i][tmp_extruder] - hotend_offset[i][active_extruder];
+        #endif // !AUTO_BED_LEVELING_FEATURE
+        // Set the new active extruder and position
+        active_extruder = tmp_extruder;
         #if ENABLED(DELTA)
           sync_plan_position_delta();
         #else
@@ -8525,7 +8036,7 @@ void process_next_command() {
         gcode_G28();
         break;
 
-      #if ENABLED(AUTO_BED_LEVELING_FEATURE) || ENABLED(MESH_BED_LEVELING)
+      #if ENABLED(AUTO_BED_LEVELING_FEATURE)
         case 29: // G29 Detailed Z probe, probes the bed at 3 or more points.
           gcode_G29();
           break;
@@ -8899,14 +8410,7 @@ void process_next_command() {
         gcode_M410();
         break;
 
-      #if ENABLED(MESH_BED_LEVELING)
-        case 420: // M420 Enable/Disable Mesh Bed Leveling
-          gcode_M420();
-          break;
-        case 421: // M421 Set a Mesh Bed Leveling Z coordinate
-          gcode_M421();
-          break;
-      #endif
+      // M420/M421 for MESH_BED_LEVELING removed - not supported for Delta
 
       case 428: // M428 Apply current_position to home_offset
         gcode_M428();
@@ -8943,11 +8447,7 @@ void process_next_command() {
           break;
       #endif // FILAMENTCHANGEENABLE
 
-      #if ENABLED(DUAL_X_CARRIAGE)
-        case 605:
-          gcode_M605();
-          break;
-      #endif // DUAL_X_CARRIAGE
+      // M605 (DUAL_X_CARRIAGE) removed - Delta-only firmware
 
       case 907: // M907 Set digital trimpot motor current using axis codes.
         gcode_M907();
@@ -9323,81 +8823,7 @@ void clamp_to_software_endstops(float target[3]) {
 
 #endif // DELTA
 
-#if ENABLED(MESH_BED_LEVELING)
-
-// This function is used to split lines on mesh borders so each segment is only part of one mesh area
-void mesh_plan_buffer_line(float x, float y, float z, const float e, float feed_rate, const uint8_t& extruder, uint8_t x_splits = 0xff, uint8_t y_splits = 0xff) {
-  if (!mbl.active) {
-    plan_buffer_line(x, y, z, e, feed_rate, extruder);
-    set_current_to_destination();
-    return;
-  }
-  int pix = mbl.select_x_index(current_position[X_AXIS] - home_offset[X_AXIS]);
-  int piy = mbl.select_y_index(current_position[Y_AXIS] - home_offset[Y_AXIS]);
-  int ix = mbl.select_x_index(x - home_offset[X_AXIS]);
-  int iy = mbl.select_y_index(y - home_offset[Y_AXIS]);
-  pix = min(pix, MESH_NUM_X_POINTS - 2);
-  piy = min(piy, MESH_NUM_Y_POINTS - 2);
-  ix = min(ix, MESH_NUM_X_POINTS - 2);
-  iy = min(iy, MESH_NUM_Y_POINTS - 2);
-  if (pix == ix && piy == iy) {
-    // Start and end on same mesh square
-    plan_buffer_line(x, y, z, e, feed_rate, extruder);
-    set_current_to_destination();
-    return;
-  }
-  float nx, ny, nz, ne, normalized_dist;
-  if (ix > pix && TEST(x_splits, ix)) {
-    nx = mbl.get_x(ix) + home_offset[X_AXIS];
-    normalized_dist = (nx - current_position[X_AXIS]) / (x - current_position[X_AXIS]);
-    ny = current_position[Y_AXIS] + (y - current_position[Y_AXIS]) * normalized_dist;
-    nz = current_position[Z_AXIS] + (z - current_position[Z_AXIS]) * normalized_dist;
-    ne = current_position[E_AXIS] + (e - current_position[E_AXIS]) * normalized_dist;
-    CBI(x_splits, ix);
-  }
-  else if (ix < pix && TEST(x_splits, pix)) {
-    nx = mbl.get_x(pix) + home_offset[X_AXIS];
-    normalized_dist = (nx - current_position[X_AXIS]) / (x - current_position[X_AXIS]);
-    ny = current_position[Y_AXIS] + (y - current_position[Y_AXIS]) * normalized_dist;
-    nz = current_position[Z_AXIS] + (z - current_position[Z_AXIS]) * normalized_dist;
-    ne = current_position[E_AXIS] + (e - current_position[E_AXIS]) * normalized_dist;
-    CBI(x_splits, pix);
-  }
-  else if (iy > piy && TEST(y_splits, iy)) {
-    ny = mbl.get_y(iy) + home_offset[Y_AXIS];
-    normalized_dist = (ny - current_position[Y_AXIS]) / (y - current_position[Y_AXIS]);
-    nx = current_position[X_AXIS] + (x - current_position[X_AXIS]) * normalized_dist;
-    nz = current_position[Z_AXIS] + (z - current_position[Z_AXIS]) * normalized_dist;
-    ne = current_position[E_AXIS] + (e - current_position[E_AXIS]) * normalized_dist;
-    CBI(y_splits, iy);
-  }
-  else if (iy < piy && TEST(y_splits, piy)) {
-    ny = mbl.get_y(piy) + home_offset[Y_AXIS];
-    normalized_dist = (ny - current_position[Y_AXIS]) / (y - current_position[Y_AXIS]);
-    nx = current_position[X_AXIS] + (x - current_position[X_AXIS]) * normalized_dist;
-    nz = current_position[Z_AXIS] + (z - current_position[Z_AXIS]) * normalized_dist;
-    ne = current_position[E_AXIS] + (e - current_position[E_AXIS]) * normalized_dist;
-    CBI(y_splits, piy);
-  }
-  else {
-    // Already split on a border
-    plan_buffer_line(x, y, z, e, feed_rate, extruder);
-    set_current_to_destination();
-    return;
-  }
-  // Do the split and look for more borders
-  destination[X_AXIS] = nx;
-  destination[Y_AXIS] = ny;
-  destination[Z_AXIS] = nz;
-  destination[E_AXIS] = ne;
-  mesh_plan_buffer_line(nx, ny, nz, ne, feed_rate, extruder, x_splits, y_splits);
-  destination[X_AXIS] = x;
-  destination[Y_AXIS] = y;
-  destination[Z_AXIS] = z;
-  destination[E_AXIS] = e;
-  mesh_plan_buffer_line(x, y, z, e, feed_rate, extruder, x_splits, y_splits);
-}
-#endif  // MESH_BED_LEVELING
+// mesh_plan_buffer_line function for MESH_BED_LEVELING removed - not supported for Delta
 
 #if ENABLED(PREVENT_DANGEROUS_EXTRUDE)
 
@@ -9465,64 +8891,9 @@ void mesh_plan_buffer_line(float x, float y, float z, const float e, float feed_
 
 #endif // DELTA
 
-#if ENABLED(DUAL_X_CARRIAGE)
+// DUAL_X_CARRIAGE prepare_move function removed - Delta-only firmware
 
-  inline bool prepare_move_dual_x_carriage() {
-    if (active_extruder_parked) {
-      if (dual_x_carriage_mode == DXC_DUPLICATION_MODE && active_extruder == 0) {
-        // move duplicate extruder into correct duplication position.
-        plan_set_position(inactive_extruder_x_pos, current_position[Y_AXIS], current_position[Z_AXIS], current_position[E_AXIS]);
-        plan_buffer_line(current_position[X_AXIS] + duplicate_extruder_x_offset,
-                         current_position[Y_AXIS], current_position[Z_AXIS], current_position[E_AXIS], max_feedrate[X_AXIS], 1);
-        sync_plan_position();
-        st_synchronize();
-        extruder_duplication_enabled = true;
-        active_extruder_parked = false;
-      }
-      else if (dual_x_carriage_mode == DXC_AUTO_PARK_MODE) { // handle unparking of head
-        if (current_position[E_AXIS] == destination[E_AXIS]) {
-          // This is a travel move (with no extrusion)
-          // Skip it, but keep track of the current position
-          // (so it can be used as the start of the next non-travel move)
-          if (delayed_move_time != 0xFFFFFFFFUL) {
-            set_current_to_destination();
-            NOLESS(raised_parked_position[Z_AXIS], destination[Z_AXIS]);
-            delayed_move_time = millis();
-            return false;
-          }
-        }
-        delayed_move_time = 0;
-        // unpark extruder: 1) raise, 2) move into starting XY position, 3) lower
-        plan_buffer_line(raised_parked_position[X_AXIS], raised_parked_position[Y_AXIS], raised_parked_position[Z_AXIS], current_position[E_AXIS], max_feedrate[Z_AXIS], active_extruder);
-        plan_buffer_line(current_position[X_AXIS], current_position[Y_AXIS], raised_parked_position[Z_AXIS], current_position[E_AXIS], min(max_feedrate[X_AXIS], max_feedrate[Y_AXIS]), active_extruder);
-        plan_buffer_line(current_position[X_AXIS], current_position[Y_AXIS], current_position[Z_AXIS], current_position[E_AXIS], max_feedrate[Z_AXIS], active_extruder);
-        active_extruder_parked = false;
-      }
-    }
-    return true;
-  }
-
-#endif // DUAL_X_CARRIAGE
-
-#if DISABLED(DELTA)
-
-  inline bool prepare_move_cartesian() {
-    // Do not use feedrate_multiplier for E or Z only moves
-    if (current_position[X_AXIS] == destination[X_AXIS] && current_position[Y_AXIS] == destination[Y_AXIS]) {
-      line_to_destination();
-    }
-    else {
-      #if ENABLED(MESH_BED_LEVELING)
-        mesh_plan_buffer_line(destination[X_AXIS], destination[Y_AXIS], destination[Z_AXIS], destination[E_AXIS], (feedrate / 60) * (feedrate_multiplier / 100.0), active_extruder);
-        return false;
-      #else
-        line_to_destination(feedrate * feedrate_multiplier / 100.0);
-      #endif
-    }
-    return true;
-  }
-
-#endif // !DELTA
+// prepare_move_cartesian removed - Delta-only firmware
 
 /**
  * Prepare a single move and get ready for the next one
@@ -9542,13 +8913,8 @@ void prepare_move() {
     if (!prepare_move_delta(destination)) return;
   #endif
 
-  #if ENABLED(DUAL_X_CARRIAGE)
-    if (!prepare_move_dual_x_carriage()) return;
-  #endif
-
-  #if DISABLED(DELTA)
-    if (!prepare_move_cartesian()) return;
-  #endif
+  // DUAL_X_CARRIAGE code removed - Delta-only firmware
+  // Cartesian prepare_move code removed - Delta-only firmware
 
   set_current_to_destination();
 }
@@ -10561,15 +9927,7 @@ void manage_inactivity(bool ignore_stepper_queue/*=false*/) {
     }
   #endif
 
-  #if ENABLED(DUAL_X_CARRIAGE)
-    // handle delayed move timeout
-    if (delayed_move_time && ELAPSED(ms, delayed_move_time + 1000UL) && IsRunning()) {
-      // travel moves have been received so enact them
-      delayed_move_time = 0xFFFFFFFFUL; // force moves to be done
-      set_destination_to_current();
-      prepare_move();
-    }
-  #endif
+  // DUAL_X_CARRIAGE delayed move handling removed - Delta-only firmware
 
   #if ENABLED(TEMP_STAT_LEDS)
     handle_status_leds();
