@@ -6208,6 +6208,43 @@ inline void gcode_M503() {
       SERIAL_ECHOPGM(" E:"); \
       SERIAL_ECHOLN(var[E_AXIS]); \
     } while(0);
+    #define SET_ACTIVE_FILAMENT_STATE(state) do { \
+      if (active_extruder == 0) printer_states.filament_state = state; \
+      else printer_states.filament2_state = state; \
+    } while (0)
+    #define RUN_FILAMENT_EJECTION() do { \
+      current_position[E_AXIS] = destination[E_AXIS]; \
+      sync_plan_position_e(); \
+      destination[E_AXIS] += FIRST_EXTRUDE_BEFORE_EJECTION; \
+      SET_FEEDRATE_FOR_FIRST_EXTRUDE_BEFORE_EJECTION; \
+      prepare_move(); \
+      st_synchronize(); \
+      destination[E_AXIS] -= SECOND_RETRACT_BEFORE_EJECTION; \
+      SET_FEEDRATE_FOR_LAST_RETRACT_BEFORE_EJECTION; \
+      prepare_move(); \
+      st_synchronize(); \
+      current_position[E_AXIS] = destination[E_AXIS]; \
+      sync_plan_position_e(); \
+      float destination_to_reach = destination[E_AXIS] + FILAMENTCHANGE_FINALRETRACT + SECOND_RETRACT_BEFORE_EJECTION; \
+      float destination_at_least_to_reach = destination[E_AXIS] - FILAMENTCHANGE_AUTO_INSERTION_CONFIRMATION_LENGTH; \
+      SET_FEEDRATE_FOR_EXTRUDER_MOVE; \
+      printer_states.in_critical_section = true; \
+      do { \
+        current_position[E_AXIS] -= FILAMENTCHANGE_AUTO_INSERTION_VERIFICATION_LENGTH_MM; \
+        destination[E_AXIS] = current_position[E_AXIS]; \
+        RUNPLAN; \
+      } while( \
+        destination[E_AXIS] > destination_to_reach \
+        && ( \
+          current_filament_present(active_extruder) || destination[E_AXIS] > destination_at_least_to_reach \
+        ) \
+      ); \
+      st_synchronize(); \
+      printer_states.in_critical_section = false; \
+      current_position[E_AXIS] = destination[E_AXIS]; \
+      sync_plan_position_e(); \
+      SET_ACTIVE_FILAMENT_STATE(FILAMENT_OUT); \
+    } while (0)
 
     SERIAL_ECHOLNPGM( "pause : In process" );
     KEEPALIVE_STATE(PAUSED_FOR_USER);
@@ -6228,14 +6265,9 @@ inline void gcode_M503() {
     for (int i = 0; i < NUM_AXIS; i++)
       previous_position[i] = destination[i] = current_position[i];
 
-    float previous_feedrate;
-    previous_feedrate = feedrate;
-
-    float previous_target_temperature;
-    previous_target_temperature = degTargetHotend(target_extruder);
-
-    int previous_fan_speed;
-    previous_fan_speed = fanSpeeds[0];
+    const float previous_feedrate = feedrate;
+    const float previous_target_temperature = degTargetHotend(target_extruder);
+    const int previous_fan_speed = fanSpeeds[0];
 
     ActivityState previous_activity_state = printer_states.activity_state;
     printer_states.activity_state = ACTIVITY_PAUSED;
@@ -6250,10 +6282,7 @@ inline void gcode_M503() {
 
     //
     // Working temp parameters determination
-    float working_filament_change_temperature = FILAMENTCHANGE_TEMPERATURE;
-    if (previous_target_temperature > FILAMENTCHANGE_TEMPERATURE) {
-      working_filament_change_temperature = previous_target_temperature;
-    }
+    float working_filament_change_temperature = max(previous_target_temperature, float(FILAMENTCHANGE_TEMPERATURE));
 
     //
     // Call parameters gathering
@@ -6304,7 +6333,7 @@ inline void gcode_M503() {
       z_heat_to += read_z;
     }
 
-    bool extract_both = code_seen('B') ? true : false; // Extract_both filaments
+    bool extract_both = code_seen('B'); // Extract_both filaments
 
     // Security: Clamp Z height
     // We need to not go higher than max height ...
@@ -6567,11 +6596,7 @@ inline void gcode_M503() {
             st_synchronize();
           }
 
-          if(active_extruder == 0) {
-            printer_states.filament_state = FILAMENT_IN;
-          } else {
-            printer_states.filament2_state = FILAMENT_IN;
-          }
+          SET_ACTIVE_FILAMENT_STATE(FILAMENT_IN);
           filament_direction = 0;
         }
         else {
@@ -6600,74 +6625,7 @@ inline void gcode_M503() {
       ) {
         SERIAL_ECHOLNPGM( "pause: filament extraction" );
 
-        current_position[E_AXIS] = destination[E_AXIS];
-        sync_plan_position_e();
-
-        // First extrude before ejection
-        destination[E_AXIS] += FIRST_EXTRUDE_BEFORE_EJECTION;
-        SET_FEEDRATE_FOR_FIRST_EXTRUDE_BEFORE_EJECTION;
-        prepare_move();
-        st_synchronize();
-/*
-        // First retract ejection
-        destination[E_AXIS] -= FIRST_RETRACT_BEFORE_EJECTION;
-        SET_FEEDRATE_FOR_MOVE_BEFORE_EJECTION;
-        prepare_move();
-        st_synchronize();
-
-        // Wait for 2 seconds
-        millis_t quick_pause_timeout = QUICK_PAUSE_TIMEOUT;
-        st_synchronize();
-        refresh_cmd_timeout();
-        quick_pause_timeout += previous_cmd_ms;  // keep track of when we started waiting
-        while (PENDING(millis(), quick_pause_timeout)) idle();
-
-        // Second extrude before ejection
-        destination[E_AXIS] += SECOND_EXTRUDE_BEFORE_EJECTION;
-        SET_FEEDRATE_FOR_MOVE_BEFORE_EJECTION;
-        prepare_move();
-        st_synchronize();
-*/
-        // Second retract before ejection
-        destination[E_AXIS] -= SECOND_RETRACT_BEFORE_EJECTION;
-        SET_FEEDRATE_FOR_LAST_RETRACT_BEFORE_EJECTION;
-        prepare_move();
-        st_synchronize();
-
-        // Ejection begins
-        current_position[E_AXIS] = destination[E_AXIS];
-        sync_plan_position_e();
-
-        float destination_to_reach;
-        destination_to_reach = destination[E_AXIS] + FILAMENTCHANGE_FINALRETRACT + SECOND_RETRACT_BEFORE_EJECTION;
-
-        float destination_at_least_to_reach;
-        destination_at_least_to_reach = destination[E_AXIS] - FILAMENTCHANGE_AUTO_INSERTION_CONFIRMATION_LENGTH;
-
-        SET_FEEDRATE_FOR_EXTRUDER_MOVE;
-
-        printer_states.in_critical_section = true;
-        do {
-          current_position[E_AXIS] -= FILAMENTCHANGE_AUTO_INSERTION_VERIFICATION_LENGTH_MM;
-          destination[E_AXIS] = current_position[E_AXIS];
-          RUNPLAN;
-        } while(
-          destination[E_AXIS] > destination_to_reach
-          && (
-            current_filament_present(active_extruder) || destination[E_AXIS] > destination_at_least_to_reach
-          )
-        );
-        st_synchronize();
-        printer_states.in_critical_section = false;
-
-        current_position[E_AXIS] = destination[E_AXIS];
-        sync_plan_position_e();
-
-        if(active_extruder == 0) {
-          printer_states.filament_state = FILAMENT_OUT;
-        } else {
-          printer_states.filament2_state = FILAMENT_OUT;
-        }
+        RUN_FILAMENT_EJECTION();
 
         if(extract_both) {
           if(active_extruder == 0) {
@@ -6676,74 +6634,7 @@ inline void gcode_M503() {
             active_extruder = 0;
           }
 
-          current_position[E_AXIS] = destination[E_AXIS];
-          sync_plan_position_e();
-
-          // First extrude before ejection
-          destination[E_AXIS] += FIRST_EXTRUDE_BEFORE_EJECTION;
-          SET_FEEDRATE_FOR_FIRST_EXTRUDE_BEFORE_EJECTION;
-          prepare_move();
-          st_synchronize();
-/*
-          // First retract ejection
-          destination[E_AXIS] -= FIRST_RETRACT_BEFORE_EJECTION;
-          SET_FEEDRATE_FOR_MOVE_BEFORE_EJECTION;
-          prepare_move();
-          st_synchronize();
-
-          // Wait for 2 seconds
-          millis_t quick_pause_timeout = QUICK_PAUSE_TIMEOUT;
-          st_synchronize();
-          refresh_cmd_timeout();
-          quick_pause_timeout += previous_cmd_ms;  // keep track of when we started waiting
-          while (PENDING(millis(), quick_pause_timeout)) idle();
-
-          // Second extrude before ejection
-          destination[E_AXIS] += SECOND_EXTRUDE_BEFORE_EJECTION;
-          SET_FEEDRATE_FOR_MOVE_BEFORE_EJECTION;
-          prepare_move();
-          st_synchronize();
-*/
-          // Second retract before ejection
-          destination[E_AXIS] -= SECOND_RETRACT_BEFORE_EJECTION;
-          SET_FEEDRATE_FOR_LAST_RETRACT_BEFORE_EJECTION;
-          prepare_move();
-          st_synchronize();
-
-          // Ejection begins
-          current_position[E_AXIS] = destination[E_AXIS];
-          sync_plan_position_e();
-
-          float destination_to_reach;
-          destination_to_reach = destination[E_AXIS] + FILAMENTCHANGE_FINALRETRACT + SECOND_RETRACT_BEFORE_EJECTION;
-
-          float destination_at_least_to_reach;
-          destination_at_least_to_reach = destination[E_AXIS] - FILAMENTCHANGE_AUTO_INSERTION_CONFIRMATION_LENGTH;
-
-          SET_FEEDRATE_FOR_EXTRUDER_MOVE;
-
-          printer_states.in_critical_section = true;
-          do {
-            current_position[E_AXIS] -= FILAMENTCHANGE_AUTO_INSERTION_VERIFICATION_LENGTH_MM;
-            destination[E_AXIS] = current_position[E_AXIS];
-            RUNPLAN;
-          } while(
-            destination[E_AXIS] > destination_to_reach
-            && (
-              current_filament_present(active_extruder) || destination[E_AXIS] > destination_at_least_to_reach
-            )
-          );
-          st_synchronize();
-          printer_states.in_critical_section = false;
-
-          current_position[E_AXIS] = destination[E_AXIS];
-          sync_plan_position_e();
-
-          if(active_extruder == 0) {
-            printer_states.filament_state = FILAMENT_OUT;
-          } else {
-            printer_states.filament2_state = FILAMENT_OUT;
-          }
+          RUN_FILAMENT_EJECTION();
         }
 
         filament_direction = 0;
@@ -6792,11 +6683,7 @@ inline void gcode_M503() {
             extrude_min_temp = 0;
           #endif
 
-          if(active_extruder == 0) {
-            printer_states.filament_state = FILAMENT_PRE_INSERTING;
-          } else {
-            printer_states.filament2_state = FILAMENT_PRE_INSERTING;
-          }
+          SET_ACTIVE_FILAMENT_STATE(FILAMENT_PRE_INSERTING);
           float previous_e_pos = current_position[E_AXIS];
           destination[E_AXIS] = current_position[E_AXIS];
           destination[E_AXIS] += FILAMENTCHANGE_AUTO_INSERTION_CONFIRMATION_LENGTH;
@@ -6809,11 +6696,7 @@ inline void gcode_M503() {
           }
           else {
             // The user removed the filament before filament change procedure launch
-            if(active_extruder == 0) {
-              printer_states.filament_state = FILAMENT_OUT;
-            } else {
-              printer_states.filament2_state = FILAMENT_OUT;
-            }
+            SET_ACTIVE_FILAMENT_STATE(FILAMENT_OUT);
           }
           // Restore things
           current_position[E_AXIS] = destination[E_AXIS] = previous_e_pos;
@@ -7036,6 +6919,8 @@ inline void gcode_M503() {
       if (active_extruder_before_filament_change != active_extruder) active_extruder = active_extruder_before_filament_change;
     #endif
   }
+#undef RUN_FILAMENT_EJECTION
+#undef SET_ACTIVE_FILAMENT_STATE
 
 #endif // FILAMENTCHANGEENABLE
 
