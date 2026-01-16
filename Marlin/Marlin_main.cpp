@@ -9469,8 +9469,8 @@ void manage_inactivity(bool ignore_stepper_queue/*=false*/) {
         max_temp = max(max_temp, degHotend(cur_extruder));
 
       #if ENABLED(IS_MONO_FAN)
-        short fs = (max_temp < MONO_FAN_MIN_TEMP) ? 0 : fanSpeeds[0];
-        if (fs) NOLESS(fs, MONO_FAN_MIN_PWM);
+        short fs = (max_temp < MONO_FAN_MIN_TEMP) ? 0 : MONO_FAN_MIN_PWM;
+        if (fs && fanSpeeds[0] > fs) fs = fanSpeeds[0];
         fanSpeeds[0] = fs;
       #endif
 
