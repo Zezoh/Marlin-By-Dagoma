@@ -53,6 +53,7 @@
 // G-code scripts for automatic filament insertion and extraction operations.
 // These scripts are executed when filament change operations are triggered.
 
+#define NO_LCD_FOR_FILAMENTCHANGEABLE                                    // Enable filament change without LCD
 #define FILAMENTCHANGE_INSERTION_SCRIPT "M600 I1 U-55 X55 Y-92 W200 Z200"
 #define FILAMENTCHANGE_EXTRACTION_SCRIPT "M600 I-1 U-55 X55 Y-92 W200 Z200"
 
@@ -183,15 +184,6 @@
 // Additional features specific to delta printer configuration.
 
 #define DELTA_EXTRA                   // Enable delta-specific extra features
-
-// @section lcd_settings
-
-//===========================================================================
-//==================== LCD / Display Settings ===============================
-//===========================================================================
-// Display configuration for headless operation.
-
-#define NO_LCD_FOR_FILAMENTCHANGEABLE // Enable filament change without LCD
 
 //===========================================================================
 //============================= Getting Started =============================
