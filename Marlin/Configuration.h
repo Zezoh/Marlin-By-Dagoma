@@ -103,15 +103,8 @@
 //===========================================================================
 //============================= DELTA Printer ===============================
 //===========================================================================
-// For a Delta printer replace the configuration files with the files in the
-// example_configurations/delta directory.
-
-//===========================================================================
-//============================= SCARA Printer ===============================
-//===========================================================================
-// SCARA support has been removed from this firmware.
 // This firmware is configured for Delta printers only.
-//
+// All non-Delta printer types (Cartesian, CoreXY, SCARA, etc.) have been removed.
 
 // @section info
 

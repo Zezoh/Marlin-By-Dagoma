@@ -74,10 +74,16 @@
 #endif
 
 /**
- * Dual Stepper Drivers
+ * This firmware is Delta-only. Non-Delta features are not supported.
  */
-#if ENABLED(Z_DUAL_STEPPER_DRIVERS) && ENABLED(Y_DUAL_STEPPER_DRIVERS)
-  #error You cannot have dual stepper drivers for both Y and Z.
+#if ENABLED(Z_DUAL_STEPPER_DRIVERS)
+  #error Z_DUAL_STEPPER_DRIVERS is not supported in this Delta-only firmware.
+#endif
+#if ENABLED(Y_DUAL_STEPPER_DRIVERS)
+  #error Y_DUAL_STEPPER_DRIVERS is not supported in this Delta-only firmware.
+#endif
+#if ENABLED(DUAL_X_CARRIAGE)
+  #error DUAL_X_CARRIAGE is not supported in this Delta-only firmware.
 #endif
 
 /**
@@ -117,14 +123,6 @@
 
   #if ENABLED(HEATERS_PARALLEL)
     #error EXTRUDERS must be 1 with HEATERS_PARALLEL.
-  #endif
-
-  #if ENABLED(Y_DUAL_STEPPER_DRIVERS)
-    #error EXTRUDERS must be 1 with Y_DUAL_STEPPER_DRIVERS.
-  #endif
-
-  #if ENABLED(Z_DUAL_STEPPER_DRIVERS)
-    #error EXTRUDERS must be 1 with Z_DUAL_STEPPER_DRIVERS.
   #endif
 
 #endif // EXTRUDERS > 1
@@ -327,21 +325,6 @@
 #endif
 
 /**
- * Dual X Carriage requirements
- */
-#if ENABLED(DUAL_X_CARRIAGE)
-  #if EXTRUDERS == 1 \
-      || !HAS_X2_ENABLE || !HAS_X2_STEP || !HAS_X2_DIR \
-      || !defined(X2_HOME_POS) || !defined(X2_MIN_POS) || !defined(X2_MAX_POS) \
-      || !HAS_X_MAX
-    #error Missing or invalid definitions for DUAL_X_CARRIAGE mode.
-  #endif
-  #if X_HOME_DIR != -1 || X2_HOME_DIR != 1
-    #error Please use canonical x-carriage assignment.
-  #endif
-#endif // DUAL_X_CARRIAGE
-
-/**
  * Make sure auto fan pins don't conflict with the fan pin
  */
 #if HAS_AUTO_FAN
@@ -434,14 +417,12 @@
 /**
  * Endstops
  */
-#if DISABLED(USE_XMIN_PLUG) && DISABLED(USE_XMAX_PLUG) && !(ENABLED(Z_DUAL_ENDSTOPS) && Z2_USE_ENDSTOP >= _XMAX_ && Z2_USE_ENDSTOP <= _XMIN_)
+#if DISABLED(USE_XMIN_PLUG) && DISABLED(USE_XMAX_PLUG)
  #error You must enable USE_XMIN_PLUG or USE_XMAX_PLUG
-#elif DISABLED(USE_YMIN_PLUG) && DISABLED(USE_YMAX_PLUG) && !(ENABLED(Z_DUAL_ENDSTOPS) && Z2_USE_ENDSTOP >= _YMAX_ && Z2_USE_ENDSTOP <= _YMIN_)
+#elif DISABLED(USE_YMIN_PLUG) && DISABLED(USE_YMAX_PLUG)
  #error You must enable USE_YMIN_PLUG or USE_YMAX_PLUG
-#elif DISABLED(USE_ZMIN_PLUG) && DISABLED(USE_ZMAX_PLUG) && !(ENABLED(Z_DUAL_ENDSTOPS) && Z2_USE_ENDSTOP >= _ZMAX_ && Z2_USE_ENDSTOP <= _ZMIN_)
+#elif DISABLED(USE_ZMIN_PLUG) && DISABLED(USE_ZMAX_PLUG)
  #error You must enable USE_ZMIN_PLUG or USE_ZMAX_PLUG
-#elif ENABLED(Z_DUAL_ENDSTOPS) && !Z2_USE_ENDSTOP
- #error You must set Z2_USE_ENDSTOP with Z_DUAL_ENDSTOPS
 #endif
 
 /**
@@ -481,8 +462,6 @@
   #error FILAMENT_SENSOR is deprecated. Use FILAMENT_WIDTH_SENSOR instead.
 #elif defined(DISABLE_MAX_ENDSTOPS) || defined(DISABLE_MIN_ENDSTOPS)
   #error DISABLE_MAX_ENDSTOPS and DISABLE_MIN_ENDSTOPS deprecated. Use individual USE_*_PLUG options instead.
-#elif ENABLED(Z_DUAL_ENDSTOPS) && !defined(Z2_USE_ENDSTOP)
-  #error Z_DUAL_ENDSTOPS settings are simplified. Just set Z2_USE_ENDSTOP to the endstop you want to repurpose for Z2
 #endif
 
 #endif //SANITYCHECK_H
