@@ -201,8 +201,8 @@
  *
  * "D" Codes (DAGOMA.FR Specific)
  *
- * D130 - Set active extruder for dual extruder (EXTRUDERS > 1)
- * D131 - Set active extruder for dual extruder (EXTRUDERS > 1)
+ * D130 - Enable filament runout sensors, optionally E<index> for specific sensor (EXTRUDERS > 1)
+ * D131 - Disable filament runout sensors, optionally E<index> for specific sensor (EXTRUDERS > 1)
  * D410 - Delta calibration abort (DELTA_EXTRA)
  * D700 - Wifi: Set SSID to use (WIFI_PRINT)
  * D701 - Wifi: Set Password to use and connect (WIFI_PRINT)
@@ -9891,7 +9891,7 @@ void manage_inactivity(bool ignore_stepper_queue/*=false*/) {
 }
 
 void kill(const char* lcd_msg) {
-  UNUSED(lcd_msg);
+  UNUSED(lcd_msg); // LCD support not available in Delta-only firmware
 
   #if ENABLED( DELTA_EXTRA )
     #if ENABLED( SDSUPPORT )
