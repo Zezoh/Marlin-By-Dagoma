@@ -227,11 +227,8 @@
   /**
    * Temp Sensor defines
    */
-  #if TEMP_SENSOR_0 == -3
-    #define HEATER_0_USES_MAX6675
-    #define MAX6675_IS_MAX31855
-  #elif TEMP_SENSOR_0 == -2
-    #define HEATER_0_USES_MAX6675
+  #if TEMP_SENSOR_0 <= -2
+    #error MAX6675 / MAX31855 Thermocouples not supported for TEMP_SENSOR_0
   #elif TEMP_SENSOR_0 == -1
     #define HEATER_0_USES_AD595
   #elif TEMP_SENSOR_0 == 0
@@ -392,7 +389,7 @@
 
   #define HAS_MOTOR_CURRENT_PWM (PIN_EXISTS(MOTOR_CURRENT_PWM_XY) || PIN_EXISTS(MOTOR_CURRENT_PWM_Z) || PIN_EXISTS(MOTOR_CURRENT_PWM_E))
 
-  #define HAS_TEMP_HOTEND (HAS_TEMP_0 || ENABLED(HEATER_0_USES_MAX6675))
+  #define HAS_TEMP_HOTEND (HAS_TEMP_0)
 
   /**
    * Helper Macros for heaters and extruder fan
