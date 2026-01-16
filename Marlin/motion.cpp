@@ -54,9 +54,7 @@
 #include <math.h>
 #include <stdlib.h>
 
-#if ENABLED(MESH_BED_LEVELING)
-  #include "mesh_bed_leveling.h"
-#endif
+// MESH_BED_LEVELING removed - not supported for Delta
 
 #include "speed_lookuptable.h"
 
@@ -459,7 +457,7 @@ float junction_deviation = 0.1;
 // Add a new linear movement to the buffer. steps[X_AXIS], _y and _z is the absolute position in
 // mm. Microseconds specify how many microseconds the move should take to perform. To aid acceleration
 // calculation the caller must also provide the physical length of the line in millimeters.
-#if ENABLED(AUTO_BED_LEVELING_FEATURE) || ENABLED(MESH_BED_LEVELING)
+#if ENABLED(AUTO_BED_LEVELING_FEATURE)
   void plan_buffer_line(float x, float y, float z, const float& e, float feed_rate, const uint8_t extruder)
 #else
   void plan_buffer_line(const float& x, const float& y, const float& z, const float& e, float feed_rate, const uint8_t extruder)
@@ -472,9 +470,7 @@ float junction_deviation = 0.1;
   // Rest here until there is room in the buffer.
   while (block_buffer_tail == next_buffer_head) idle();
 
-  #if ENABLED(MESH_BED_LEVELING)
-    if (mbl.active) z += mbl.get_z(x - home_offset[X_AXIS], y - home_offset[Y_AXIS]);
-  #elif ENABLED(AUTO_BED_LEVELING_FEATURE)
+  #if ENABLED(AUTO_BED_LEVELING_FEATURE)
     apply_rotation_xyz(plan_bed_level_matrix, x, y, z);
   #endif
 
@@ -873,15 +869,13 @@ float junction_deviation = 0.1;
  *
  * On CORE machines stepper ABC will be translated from the given XYZ.
  */
-#if ENABLED(AUTO_BED_LEVELING_FEATURE) || ENABLED(MESH_BED_LEVELING)
+#if ENABLED(AUTO_BED_LEVELING_FEATURE)
   void plan_set_position(float x, float y, float z, const float& e)
 #else
   void plan_set_position(const float& x, const float& y, const float& z, const float& e)
-#endif // AUTO_BED_LEVELING_FEATURE || MESH_BED_LEVELING
+#endif // AUTO_BED_LEVELING_FEATURE
   {
-    #if ENABLED(MESH_BED_LEVELING)
-      if (mbl.active) z += mbl.get_z(x - home_offset[X_AXIS], y - home_offset[Y_AXIS]);
-    #elif ENABLED(AUTO_BED_LEVELING_FEATURE)
+    #if ENABLED(AUTO_BED_LEVELING_FEATURE)
       apply_rotation_xyz(plan_bed_level_matrix, x, y, z);
     #endif
 

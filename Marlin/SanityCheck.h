@@ -166,20 +166,13 @@
 #endif
 
 /**
- * Mesh Bed Leveling
+ * Mesh Bed Leveling - Not supported for Delta printers
  */
 #if ENABLED(MESH_BED_LEVELING)
-  #if ENABLED(DELTA)
-    #error MESH_BED_LEVELING does not yet support DELTA printers.
-  #endif
-  #if ENABLED(AUTO_BED_LEVELING_FEATURE)
-    #error Select AUTO_BED_LEVELING_FEATURE or MESH_BED_LEVELING, not both.
-  #endif
-  #if MESH_NUM_X_POINTS > 7 || MESH_NUM_Y_POINTS > 7
-    #error MESH_NUM_X_POINTS and MESH_NUM_Y_POINTS need to be less than 8.
-  #endif
-#elif ENABLED(MANUAL_BED_LEVELING)
-  #error MESH_BED_LEVELING is required for MANUAL_BED_LEVELING.
+  #error MESH_BED_LEVELING is not supported in this Delta-only firmware. Use AUTO_BED_LEVELING_FEATURE with AUTO_BED_LEVELING_GRID instead.
+#endif
+#if ENABLED(MANUAL_BED_LEVELING)
+  #error MANUAL_BED_LEVELING is not supported in this Delta-only firmware.
 #endif
 
 /**

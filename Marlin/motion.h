@@ -325,22 +325,15 @@ extern volatile unsigned char block_buffer_head;
 extern volatile unsigned char block_buffer_tail;
 FORCE_INLINE uint8_t movesplanned() { return BLOCK_MOD(block_buffer_head - block_buffer_tail + BLOCK_BUFFER_SIZE); }
 
-#if ENABLED(AUTO_BED_LEVELING_FEATURE) || ENABLED(MESH_BED_LEVELING)
-
-  #if ENABLED(AUTO_BED_LEVELING_FEATURE)
-    extern matrix_3x3 plan_bed_level_matrix;
-    vector_3 plan_get_position();
-  #endif
-
+#if ENABLED(AUTO_BED_LEVELING_FEATURE)
+  extern matrix_3x3 plan_bed_level_matrix;
+  vector_3 plan_get_position();
   void plan_buffer_line(float x, float y, float z, const float& e, float feed_rate, const uint8_t extruder);
   void plan_set_position(float x, float y, float z, const float& e);
-
 #else
-
   void plan_buffer_line(const float& x, const float& y, const float& z, const float& e, float feed_rate, const uint8_t extruder);
   void plan_set_position(const float& x, const float& y, const float& z, const float& e);
-
-#endif // AUTO_BED_LEVELING_FEATURE || MESH_BED_LEVELING
+#endif // AUTO_BED_LEVELING_FEATURE
 
 void plan_set_e_position(const float& e);
 
