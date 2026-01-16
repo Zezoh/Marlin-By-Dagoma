@@ -21,7 +21,6 @@
  */
 
 /**
- *
  * About Marlin
  *
  * This firmware is a mashup between Sprinter and grbl.
@@ -32,16 +31,31 @@
  *  - http://reprap.org/pipermail/reprap-dev/2011-May/003323.html
  */
 
+//===========================================================================
+//============================= INCLUDES ====================================
+//===========================================================================
+
+// Core includes
 #include "Marlin.h"
 
+// Motion and control
 #include "motion.h"
+
+// Temperature management
 #include "temperature.h"
+
+// SD Card support
 #include "cardreader.h"
+
+// Configuration storage
 #include "configuration_store.h"
+
+// Language and pins
 #include "language.h"
 #include "pins_arduino.h"
 #include "math.h"
 
+// Conditional includes
 #if ENABLED(USE_WATCHDOG)
   #include "watchdog.h"
 #endif
@@ -58,6 +72,10 @@
 #if ENABLED(USE_SECOND_SERIAL)
   #include "HardwareSerial.h"
 #endif
+
+//===========================================================================
+//======================== G-CODE DOCUMENTATION =============================
+//===========================================================================
 
 /**
  * Look here for descriptions of G-codes:
@@ -200,32 +218,69 @@
  *
  */
 
+//===========================================================================
+//==================== FORWARD DECLARATIONS =================================
+//===========================================================================
+
 #if ENABLED(M100_FREE_MEMORY_WATCHER)
   void gcode_M100();
 #endif
 
+//===========================================================================
+//==================== GLOBAL VARIABLES & STATE =============================
+//===========================================================================
+
+//-------------------------------------------------------------------------
+// SD Card State
+//-------------------------------------------------------------------------
 #if ENABLED(SDSUPPORT)
   CardReader card;
 #endif
 
+//-------------------------------------------------------------------------
+// Machine State
+//-------------------------------------------------------------------------
 bool Running = true;
-
 uint8_t marlin_debug_flags = DEBUG_NONE;
 
+//-------------------------------------------------------------------------
+// Motion State
+//-------------------------------------------------------------------------
 static float feedrate = 1500.0, saved_feedrate;
 float current_position[NUM_AXIS] = { 0.0 };
 static float destination[NUM_AXIS] = { 0.0 };
 bool axis_known_position[3] = { false };
 bool axis_homed[3] = { false };
 
-static long gcode_N, gcode_LastN, Stopped_gcode_LastN = 0;
+// Position offsets (G92 resets these)
+float position_shift[3] = { 0 };
 
+// Home offset (M206, M428, or menu item)
+float home_offset[3] = { 0 };
+
+// Software Endstops
+float sw_endstop_min[3] = { X_MIN_POS, Y_MIN_POS, Z_MIN_POS };
+float sw_endstop_max[3] = { X_MAX_POS, Y_MAX_POS, Z_MAX_POS };
+
+// Relative Mode (G91/G90)
+static bool relative_mode = false;
+
+//-------------------------------------------------------------------------
+// GCode Parser State
+//-------------------------------------------------------------------------
+static long gcode_N, gcode_LastN, Stopped_gcode_LastN = 0;
 static char* current_command, *current_command_args;
 static int cmd_queue_index_r = 0;
 static int cmd_queue_index_w = 0;
 static int commands_in_queue = 0;
 static char command_queue[BUFSIZE][MAX_CMD_SIZE];
+static char* seen_pointer;
+const char* queued_commands_P = NULL;
+static int serial_count = 0;
 
+//-------------------------------------------------------------------------
+// Feedrate & Multipliers
+//-------------------------------------------------------------------------
 const float homing_feedrate[] = HOMING_FEEDRATE;
 bool axis_relative_modes[] = AXIS_RELATIVE_MODES;
 int feedrate_multiplier = 100; //100->1 200->2
@@ -235,47 +290,36 @@ bool volumetric_enabled = false;
 float filament_size[EXTRUDERS] = ARRAY_BY_EXTRUDERS1(DEFAULT_NOMINAL_FILAMENT_DIA);
 float volumetric_multiplier[EXTRUDERS] = ARRAY_BY_EXTRUDERS1(1.0);
 
-// The distance that XYZ has been offset by G92. Reset by G28.
-float position_shift[3] = { 0 };
-
-// This offset is added to the configured home position.
-// Set by M206, M428, or menu item. Saved to EEPROM.
-float home_offset[3] = { 0 };
-
-// Software Endstops. Default to configured limits.
-float sw_endstop_min[3] = { X_MIN_POS, Y_MIN_POS, Z_MIN_POS };
-float sw_endstop_max[3] = { X_MAX_POS, Y_MAX_POS, Z_MAX_POS };
-
+//-------------------------------------------------------------------------
+// Fan State
+//-------------------------------------------------------------------------
 #if FAN_COUNT > 0
   int fanSpeeds[FAN_COUNT] = { 0 };
 #endif
 
-// The active extruder (tool). Set with T<extruder> command.
+//-------------------------------------------------------------------------
+// Extruder State
+//-------------------------------------------------------------------------
 uint8_t active_extruder = 0;
-
-// Relative Mode. Enable with G91, disable with G90.
-static bool relative_mode = false;
-
 static bool enable_filrunout1 = true;
 static bool enable_filrunout2 = true;
 
-bool cancel_heatup = false;
-
+//-------------------------------------------------------------------------
+// Error Messages & Constants
+//-------------------------------------------------------------------------
 const char errormagic[] PROGMEM = "Error:";
 const char echomagic[] PROGMEM = "echo:";
 const char axis_codes[NUM_AXIS] = {'X', 'Y', 'Z', 'E'};
+const int sensitive_pins[] = SENSITIVE_PINS;
 
-static int serial_count = 0;
+//-------------------------------------------------------------------------
+// Temperature & Heatup State
+//-------------------------------------------------------------------------
+bool cancel_heatup = false;
 
-// GCode parameter pointer used by code_seen(), code_value(), etc.
-static char* seen_pointer;
-
-// Next Immediate GCode Command pointer. NULL if none.
-const char* queued_commands_P = NULL;
-
-const int sensitive_pins[] = SENSITIVE_PINS; ///< Sensitive pin list for M42
-
-// Inactivity shutdown
+//-------------------------------------------------------------------------
+// Inactivity & Timing
+//-------------------------------------------------------------------------
 millis_t previous_cmd_ms = 0;
 static millis_t max_inactive_time = 0;
 static millis_t stepper_inactive_time = (DEFAULT_STEPPER_DEACTIVE_TIME) * 1000UL;
@@ -289,22 +333,30 @@ Stopwatch print_job_timer = Stopwatch();
 
 static uint8_t target_extruder;
 
+//-------------------------------------------------------------------------
+// Auto Bed Leveling State
+//-------------------------------------------------------------------------
 #if ENABLED(AUTO_BED_LEVELING_FEATURE)
   int xy_travel_speed = XY_TRAVEL_SPEED;
   float zprobe_zoffset = Z_PROBE_OFFSET_FROM_EXTRUDER;
 #endif
 
+//-------------------------------------------------------------------------
+// Endstop State
+//-------------------------------------------------------------------------
 #if ENABLED(Z_DUAL_ENDSTOPS) && DISABLED(DELTA)
   float z_endstop_adj = 0;
 #endif
 
-// Extruder offsets
+//-------------------------------------------------------------------------
+// Hotend Offsets
+//-------------------------------------------------------------------------
 #if HOTENDS > 1
   #ifndef HOTEND_OFFSET_X
-    #define HOTEND_OFFSET_X { 0 } // X offsets for each extruder
+    #define HOTEND_OFFSET_X { 0 }
   #endif
   #ifndef HOTEND_OFFSET_Y
-    #define HOTEND_OFFSET_Y { 0 } // Y offsets for each extruder
+    #define HOTEND_OFFSET_Y { 0 }
   #endif
   float hotend_offset[][HOTENDS] = {
     HOTEND_OFFSET_X,
@@ -312,12 +364,13 @@ static uint8_t target_extruder;
   };
 #endif
 
+//-------------------------------------------------------------------------
+// Firmware Retraction State
+//-------------------------------------------------------------------------
 #if ENABLED(FWRETRACT)
-
   bool autoretract_enabled = false;
   bool retracted[EXTRUDERS] = { false };
   bool retracted_swap[EXTRUDERS] = { false };
-
   float retract_length = RETRACT_LENGTH;
   float retract_length_swap = RETRACT_LENGTH_SWAP;
   float retract_feedrate = RETRACT_FEEDRATE;
@@ -325,9 +378,11 @@ static uint8_t target_extruder;
   float retract_recover_length = RETRACT_RECOVER_LENGTH;
   float retract_recover_length_swap = RETRACT_RECOVER_LENGTH_SWAP;
   float retract_recover_feedrate = RETRACT_RECOVER_FEEDRATE;
-
 #endif // FWRETRACT
 
+//-------------------------------------------------------------------------
+// Delta Kinematics State
+//-------------------------------------------------------------------------
 #if ENABLED(DELTA)
 
   #define TOWER_1 X_AXIS
@@ -340,7 +395,7 @@ static uint8_t target_extruder;
   #define SIN_30 COS_60
   #define COS_30 SIN_60
   float endstop_adj[3] = { 0 };
-  // these are the default values, can be overriden with M665
+  // Default values, can be overriden with M665
   float delta_radius = DELTA_RADIUS;
   float delta_tower1_x = -SIN_60 * (delta_radius + DELTA_RADIUS_TRIM_TOWER_1); // front left tower
   float delta_tower1_y = -COS_60 * (delta_radius + DELTA_RADIUS_TRIM_TOWER_1);
@@ -372,23 +427,26 @@ static uint8_t target_extruder;
   static bool home_all_axis = true;
 #endif
 
-
-
+//-------------------------------------------------------------------------
+// Filament Width Sensor State
+//-------------------------------------------------------------------------
 #if ENABLED(FILAMENT_WIDTH_SENSOR)
-  //Variables for Filament Sensor input
-  float filament_width_nominal = DEFAULT_NOMINAL_FILAMENT_DIA;  //Set nominal filament width, can be changed with M404
-  bool filament_sensor = false;  //M405 turns on filament_sensor control, M406 turns it off
-  float filament_width_meas = DEFAULT_MEASURED_FILAMENT_DIA; //Stores the measured filament diameter
-  int8_t measurement_delay[MAX_MEASUREMENT_DELAY + 1]; //ring buffer to delay measurement  store extruder factor after subtracting 100
-  int filwidth_delay_index1 = 0;  //index into ring buffer
-  int filwidth_delay_index2 = -1;  //index into ring buffer - set to -1 on startup to indicate ring buffer needs to be initialized
-  int meas_delay_cm = MEASUREMENT_DELAY_CM;  //distance delay setting
+  float filament_width_nominal = DEFAULT_NOMINAL_FILAMENT_DIA;
+  bool filament_sensor = false;
+  float filament_width_meas = DEFAULT_MEASURED_FILAMENT_DIA;
+  int8_t measurement_delay[MAX_MEASUREMENT_DELAY + 1];
+  int filwidth_delay_index1 = 0;
+  int filwidth_delay_index2 = -1;
+  int meas_delay_cm = MEASUREMENT_DELAY_CM;
 #endif
 
+//-------------------------------------------------------------------------
+// Filament Runout Sensor State
+//-------------------------------------------------------------------------
 #if ENABLED(FILAMENT_RUNOUT_SENSOR) || ENABLED(FILAMENT2_RUNOUT_SENSOR)
   static bool filament_ran_out = false;
-  const millis_t FRS_DEBOUNCE_DELAY = 250UL; // filament runout sensor delay
-  static millis_t frs_debounce_time = 0UL; // filament runout sensor debouncing count
+  const millis_t FRS_DEBOUNCE_DELAY = 250UL;
+  static millis_t frs_debounce_time = 0UL;
 #endif
 
 #if ENABLED(FILAMENT_RUNOUT_SENSOR)
@@ -421,6 +479,9 @@ inline bool current_filament_present(uint8_t e) {
   return (e == 0) ? FILAMENT_PRESENT : FILAMENT2_PRESENT;
 }
 
+//-------------------------------------------------------------------------
+// Print Pause State
+//-------------------------------------------------------------------------
 #if ENABLED(SUMMON_PRINT_PAUSE)
   static bool print_pause_summoned = false;
 #endif
@@ -777,6 +838,10 @@ void suicide() {
       )
 #endif
 
+//===========================================================================
+//====================== INITIALIZATION ROUTINES ============================
+//===========================================================================
+
 /**
  * Marlin entry-point: Set up before the program loop
  *  - Set up the kill pin, filament runout, power hold
@@ -1011,6 +1076,10 @@ void setup() {
   }
 
 #endif // END WIFI_PRINT
+
+//===========================================================================
+//========================== MAIN PROGRAM LOOP ==============================
+//===========================================================================
 
 /**
  * The main Marlin program loop
@@ -2557,6 +2626,10 @@ void unknown_command_error() {
 
 #endif //HOST_KEEPALIVE_FEATURE
 
+//===========================================================================
+//========================== G-CODE HANDLERS ================================
+//===========================================================================
+
 /**
  * G0, G1: Coordinated movement of X Y Z E axes
  */
@@ -4045,6 +4118,10 @@ inline void gcode_G92() {
     sync_plan_position_e();
   }
 }
+
+//===========================================================================
+//========================== M-CODE HANDLERS ================================
+//===========================================================================
 
 /**
  * M17: Enable power on all stepper motors
@@ -7036,9 +7113,11 @@ inline void gcode_M503() {
 
 #endif // FILAMENTCHANGEENABLE
 
-/*****************************************************************************
- * DAGOMA.FR Specific
- *****************************************************************************/
+//===========================================================================
+//========================== D-CODE HANDLERS ================================
+//===========================================================================
+// DAGOMA.FR Specific Commands
+
 #if EXTRUDERS > 1
 /**
  * D130: Enable filrunout sensors
@@ -7189,6 +7268,10 @@ inline void gcode_M999() {
   Running = true;
   FlushSerialRequestResend();
 }
+
+//===========================================================================
+//========================== T-CODE HANDLERS ================================
+//===========================================================================
 
 /**
  * T0-T3: Switch tool, usually switching extruders
@@ -7809,6 +7892,10 @@ inline void gcode_D600();
 #endif
 
 #endif // DELTA_EXTRA End
+
+//===========================================================================
+//====================== COMMAND PROCESSING =================================
+//===========================================================================
 
 /**
  * Process a single command and dispatch it to its handler
@@ -9373,6 +9460,10 @@ inline void manage_printer_states() {
     }
   }
 }
+
+//===========================================================================
+//====================== SYSTEM MANAGEMENT ==================================
+//===========================================================================
 
 /**
  * Standard idle routine keeps the machine alive
