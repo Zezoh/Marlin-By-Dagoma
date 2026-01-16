@@ -324,7 +324,7 @@ millis_t previous_cmd_ms = 0;
 static millis_t max_inactive_time = 0;
 static millis_t stepper_inactive_time = (DEFAULT_STEPPER_DEACTIVE_TIME) * 1000UL;
 
-#if ENABLED(IS_MONO_FAN) || ENABLED(PRINTER_HEAD_EASY)
+#if ENABLED(IS_MONO_FAN)
 static millis_t next_fan_auto_regulation_check = 0;
 #endif
 
@@ -969,11 +969,6 @@ void setup() {
   #elif ENABLED(ONE_BUTTON)
     SET_INPUT(ONE_BUTTON_PIN);
     WRITE(ONE_BUTTON_PIN, HIGH);
-  #endif
-
-  #if ENABLED(PRINTER_HEAD_EASY)
-    SET_OUTPUT(PRINTER_HEAD_EASY_CONSTANT_FAN_PIN);
-    WRITE(PRINTER_HEAD_EASY_CONSTANT_FAN_PIN, LOW);
   #endif
 
   #if ENABLED(FILAMENTCHANGEENABLE)
@@ -6123,61 +6118,54 @@ inline void gcode_M503() {
     millis_t long_press_timeout = 0UL;
 
     void manage_long_press_filament_expulsion() {
-      if ( !printer_states.pause_asked ) {
-        if (ONE_BUTTON_PRESSED) {
-          millis_t now = millis();
-          if (long_press_timeout == 0UL) {
-            long_press_timeout = now + LONG_PRESS_TIMEOUT;
-          }
-          if (ELAPSED(now, long_press_timeout)) {
-            SERIAL_ECHOLNPGM("Pause : Asked by long press");
-            printer_states.pause_asked = true;
-            printer_states.print_asked = false;
+      if (printer_states.pause_asked) return;
 
-            if (!printer_states.homed) {
-              #if DISABLED(DELTA)
-              char tmp[16]; // tmp will be freed exiting this scope.
-              memset(tmp, '\0', sizeof(tmp));
-              strcpy(tmp, "X Y\0");
-              current_command_args = tmp;
-              #endif
-              gcode_G28();
-            }
+      if (ONE_BUTTON_RELEASED) {
+        long_press_timeout = 0UL;
+        return;
+      }
 
-            #if EXTRUDERS > 1
-              if(FILAMENT_PRESENT) {
-                if(FILAMENT2_PRESENT) {
-                  enqueue_and_echo_commands_P(PSTR(FILAMENTSCHANGE_EXTRACTION_SCRIPT));
-                } else {
-                  enqueue_and_echo_commands_P(PSTR(FILAMENTCHANGE_EXTRACTION_SCRIPT));
-                }
-              } else {
-                if(FILAMENT2_PRESENT) {
-                  enqueue_and_echo_commands_P(PSTR(FILAMENT2CHANGE_EXTRACTION_SCRIPT));
-                }
-                else {
-                  printer_states.pause_asked = false;
-                  #if DISABLED(DELTA_EXTRA) && ENABLED(SDSUPPORT)
-                    enqueue_and_echo_commands_P(PSTR(SD_FINISHED_RELEASECOMMAND));
-                  #endif
-                }
-              }
-            #else
-              if(FILAMENT_PRESENT) {
-                enqueue_and_echo_commands_P(PSTR(FILAMENTCHANGE_EXTRACTION_SCRIPT));
-              } else {
-                printer_states.pause_asked = false;
-                #if DISABLED(DELTA_EXTRA) && ENABLED(SDSUPPORT)
-                  enqueue_and_echo_commands_P(PSTR(SD_FINISHED_RELEASECOMMAND));
-                #endif
-              }
-            #endif
-          }
+      const millis_t now = millis();
+      if (long_press_timeout == 0UL) long_press_timeout = now + LONG_PRESS_TIMEOUT;
+      if (!ELAPSED(now, long_press_timeout)) return;
+
+      SERIAL_ECHOLNPGM("Pause : Asked by long press");
+      printer_states.pause_asked = true;
+      printer_states.print_asked = false;
+
+      if (!printer_states.homed) {
+        #if DISABLED(DELTA)
+        char tmp[16]; // tmp will be freed exiting this scope.
+        memset(tmp, '\0', sizeof(tmp));
+        strcpy(tmp, "X Y\0");
+        current_command_args = tmp;
+        #endif
+        gcode_G28();
+      }
+
+      #if EXTRUDERS > 1
+        if (FILAMENT_PRESENT) {
+          enqueue_and_echo_commands_P(PSTR(FILAMENT2_PRESENT ? FILAMENTSCHANGE_EXTRACTION_SCRIPT : FILAMENTCHANGE_EXTRACTION_SCRIPT));
+        }
+        else if (FILAMENT2_PRESENT) {
+          enqueue_and_echo_commands_P(PSTR(FILAMENT2CHANGE_EXTRACTION_SCRIPT));
         }
         else {
-          long_press_timeout = 0UL;
+          printer_states.pause_asked = false;
+          #if DISABLED(DELTA_EXTRA) && ENABLED(SDSUPPORT)
+            enqueue_and_echo_commands_P(PSTR(SD_FINISHED_RELEASECOMMAND));
+          #endif
         }
-      }
+      #else
+        if (FILAMENT_PRESENT) {
+          enqueue_and_echo_commands_P(PSTR(FILAMENTCHANGE_EXTRACTION_SCRIPT));
+        } else {
+          printer_states.pause_asked = false;
+          #if DISABLED(DELTA_EXTRA) && ENABLED(SDSUPPORT)
+            enqueue_and_echo_commands_P(PSTR(SD_FINISHED_RELEASECOMMAND));
+          #endif
+        }
+      #endif
     }
   #endif
 
@@ -6436,7 +6424,7 @@ inline void gcode_M503() {
 
     //
     // Preparting pause loop
-    millis_t now = millis();
+    const millis_t now = millis();
     millis_t next_low_latency_checks = 0UL;
     millis_t auto_shutdown_heat_time = 0UL;
     millis_t long_press_timeout = 0UL;
@@ -8998,56 +8986,36 @@ void disable_all_steppers() {
   }
 
   inline void manage_one_led() {
-    millis_t now = millis();
-    if ( PENDING( now, next_one_led_tick ) ) return;
+    const millis_t now = millis();
+    if (PENDING(now, next_one_led_tick)) return;
 
-    state_blink = ( state_blink + 1 ) % 10;
+    state_blink = (state_blink + 1) % 10;
     next_one_led_tick = now + led_refresh_rate_speed;
 
-    if ( printer_states.activity_state == ACTIVITY_STARTUP_CALIBRATION ) {
-      switch( state_blink ) {
-        case 0:
-          one_led_on();
-          break;
-        default:
-          one_led_off();
+    if (printer_states.activity_state == ACTIVITY_STARTUP_CALIBRATION) {
+      state_blink == 0 ? one_led_on() : one_led_off();
+      return;
+    }
+    #if ENABLED(ONE_BUTTON)
+      if (printer_states.print_asked) {
+        one_led_on();
+        return;
       }
-    }
-    #if ENABLED( ONE_BUTTON )
-    else if ( printer_states.print_asked ) {
-      one_led_on();
-    }
     #endif
-    else if ( notify_warning ) {
-      state_blink % 2 ? one_led_on() : one_led_off();
-      if ( ELAPSED(now, notify_warning_timeout) ) {
+    if (notify_warning) {
+      (state_blink % 2) ? one_led_on() : one_led_off();
+      if (ELAPSED(now, notify_warning_timeout)) {
         notify_warning = false;
         led_refresh_rate_speed = 150UL;
       }
+      return;
     }
-    else if (
-         printer_states.activity_state == ACTIVITY_PAUSED
-      || printer_states.pause_asked
-    ) {
-      switch( state_blink ) {
-        case 0:
-        case 2:
-          one_led_on();
-          break;
-        default:
-          one_led_off();
-      }
+    if (printer_states.activity_state == ACTIVITY_PAUSED || printer_states.pause_asked) {
+      (state_blink == 0 || state_blink == 2) ? one_led_on() : one_led_off();
+      return;
     }
-    else {
-      if (
-        printer_states.activity_state == ACTIVITY_PRINTING
-      ) {
-        one_led_on();
-      }
-      else {
-        one_led_off();
-      }
-    }
+
+    printer_states.activity_state == ACTIVITY_PRINTING ? one_led_on() : one_led_off();
   }
 #endif
 
@@ -9055,10 +9023,7 @@ void disable_all_steppers() {
 
   inline void manage_pause_summoner() {
     // PAUSE PUSHED
-    if (
-      !printer_states.pause_asked
-      && ONE_BUTTON_PRESSED
-    ) {
+    if (!printer_states.pause_asked && ONE_BUTTON_PRESSED) {
       SERIAL_ECHOLNPGM("Pause : Summoned by user bouton press");
       printer_states.pause_asked = true;
       enqueue_and_echo_commands_P(PSTR(SUMMON_PRINT_PAUSE_SCRIPT));
@@ -9073,52 +9038,52 @@ void disable_all_steppers() {
   inline void manage_one_button_start_print() {
     if (printer_states.pause_asked) return;
     // De-Bounce button press
-    millis_t now = millis();
+    const millis_t now = millis();
     if (PENDING(now, next_one_button_check)) return;
     next_one_button_check = now + 100UL;
 
     if (printer_states.print_asked) {
       // The user has released the button
-      if (ONE_BUTTON_RELEASED) {
-        if (has_to_print_timeout == 0) {
-          SERIAL_ECHOLNPGM("one button: Start pending: Checking sd card content");
-          has_to_print_timeout = now + 2500UL;
+      if (ONE_BUTTON_PRESSED) return;
 
-          #if ENABLED(ONE_LED)
-            one_led_on();
-          #endif
+      if (has_to_print_timeout == 0) {
+        SERIAL_ECHOLNPGM("one button: Start pending: Checking sd card content");
+        has_to_print_timeout = now + 2500UL;
 
-          card.autostart_index = 0;
-          card.cardOK = false;
-          card.checkautostart( true );
-        }
-        if (ELAPSED(now, has_to_print_timeout)) {
-          // sd.checkautostart did not found some interesting file on sd card
-          SERIAL_ECHOLNPGM("one button: Start aborted: No suitable file on sd card");
-          #if ENABLED(ONE_LED)
-            set_notify_warning();
-          #endif
-          printer_states.print_asked = false;
-          has_to_print_timeout = 0;
-        }
+        #if ENABLED(ONE_LED)
+          one_led_on();
+        #endif
+
+        card.autostart_index = 0;
+        card.cardOK = false;
+        card.checkautostart( true );
+      }
+      if (ELAPSED(now, has_to_print_timeout)) {
+        // sd.checkautostart did not found some interesting file on sd card
+        SERIAL_ECHOLNPGM("one button: Start aborted: No suitable file on sd card");
+        #if ENABLED(ONE_LED)
+          set_notify_warning();
+        #endif
+        printer_states.print_asked = false;
+        has_to_print_timeout = 0;
       }
     }
     else { //!printer_states.print_asked
-      if (ONE_BUTTON_PRESSED) {
-        if (NOT_YET_CALIBRATED) {
-          SERIAL_ERRORLNPGM("Printer not yet calibrated. Please calibrate.");
-          set_notify_not_calibrated();
-          return;
-        }
-        if (printer_states.filament_state == FILAMENT_IN) {
-          SERIAL_ECHOLNPGM("one button: Start asked");
-          printer_states.print_asked = true;
-          has_to_print_timeout = 0;
-        }
-        else {
-          SERIAL_ECHOLNPGM("one button: Start aborted: No filament");
-          set_notify_warning();
-        }
+      if (ONE_BUTTON_RELEASED) return;
+
+      if (NOT_YET_CALIBRATED) {
+        SERIAL_ERRORLNPGM("Printer not yet calibrated. Please calibrate.");
+        set_notify_not_calibrated();
+        return;
+      }
+      if (printer_states.filament_state == FILAMENT_IN) {
+        SERIAL_ECHOLNPGM("one button: Start asked");
+        printer_states.print_asked = true;
+        has_to_print_timeout = 0;
+      }
+      else {
+        SERIAL_ECHOLNPGM("one button: Start aborted: No filament");
+        set_notify_warning();
       }
     }
   }
@@ -9619,32 +9584,16 @@ void manage_inactivity(bool ignore_stepper_queue/*=false*/) {
     }
   #endif
 
-  #if ENABLED(IS_MONO_FAN) || ENABLED(PRINTER_HEAD_EASY)
+  #if ENABLED(IS_MONO_FAN)
     if ( ELAPSED(ms, next_fan_auto_regulation_check) ) {
       float max_temp = 0.0;
       for (int8_t cur_extruder = 0; cur_extruder < HOTENDS; ++cur_extruder)
         max_temp = max(max_temp, degHotend(cur_extruder));
 
       #if ENABLED(IS_MONO_FAN)
-        short fs = 0;
-        if ( max_temp < MONO_FAN_MIN_TEMP ) {
-          fs = 0;
-        }
-        else {
-          fs = fanSpeeds[0];
-          NOLESS(fs, MONO_FAN_MIN_PWM);
-        }
-
+        short fs = (max_temp < MONO_FAN_MIN_TEMP) ? 0 : fanSpeeds[0];
+        if (fs) NOLESS(fs, MONO_FAN_MIN_PWM);
         fanSpeeds[0] = fs;
-      #endif
-
-      #if ENABLED(PRINTER_HEAD_EASY)
-        if ( max_temp < PRINTER_HEAD_EASY_CONSTANT_FAN_MIN_TEMP ) {
-          analogWrite(PRINTER_HEAD_EASY_CONSTANT_FAN_PIN, 0);
-        }
-        else {
-          analogWrite(PRINTER_HEAD_EASY_CONSTANT_FAN_PIN, 255);
-        }
       #endif
 
       next_fan_auto_regulation_check = ms + 2500UL;
