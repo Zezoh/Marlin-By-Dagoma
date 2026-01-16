@@ -115,6 +115,8 @@
 //==================== Z Min Magic / Probe Settings =========================
 //===========================================================================
 // Z Min Magic feature for automatic bed probing and calibration.
+// Note: When Z_MIN_MAGIC is enabled with LONG_PRESS_SUPPORT, the firmware
+// uses long press detection instead of the tap-tap interface for user input.
 
 #define Z_MIN_MAGIC                   // Enable Z Min Magic feature
 #define Z_MAGIC_THRESHOLD -15         // (mm) Threshold value for Z magic detection
@@ -125,9 +127,14 @@
 //==================== User Interface - Button Settings =====================
 //===========================================================================
 // Single button interface for printer control operations.
+// Note: ONE_BUTTON shares the same pin as SUMMON_PRINT_PAUSE (pin 3).
+// The button is used for both manual control and print pause triggering.
 
 #define ONE_BUTTON                    // Enable single button interface
 #define ONE_BUTTON_INVERTING true     // Invert button logic (true = active low)
+
+// Long press support provides additional button functionality.
+// When enabled with Z_MIN_MAGIC, uses long press instead of tap-tap detection.
 #define LONG_PRESS_SUPPORT            // Enable long press detection for additional functions
 
 // @section user_interface_led
@@ -135,7 +142,7 @@
 //===========================================================================
 //==================== User Interface - LED Settings ========================
 //===========================================================================
-// Status LED for visual feedback.
+// Status LED for visual feedback during printer operations.
 
 #define ONE_LED                       // Enable status LED
 #define ONE_LED_PIN 65                // Pin number for status LED
@@ -147,6 +154,7 @@
 //==================== Print Pause Settings =================================
 //===========================================================================
 // External trigger for pausing prints (e.g., filament runout, user button).
+// Note: Uses the same pin as ONE_BUTTON (SUMMON_PRINT_PAUSE_PIN = 3).
 
 #define SUMMON_PRINT_PAUSE                                // Enable print pause feature
 #define SUMMON_PRINT_PAUSE_INVERTING true                 // Invert pause trigger logic
@@ -169,10 +177,16 @@
 //===========================================================================
 //==================== Fan Control Settings =================================
 //===========================================================================
-// Mono fan configuration for single fan systems.
+// Mono fan configuration for single fan systems where the part cooling fan
+// and hotend fan share the same fan unit.
+//
+// When IS_MONO_FAN is enabled:
+// - Fan activates when hotend temperature exceeds MONO_FAN_MIN_TEMP
+// - Fan speed never drops below MONO_FAN_MIN_PWM when active
+// - Provides cooling whenever hotend is above threshold (heating, idle, or printing)
 
-#define IS_MONO_FAN                   // Enable mono fan mode
-#define MONO_FAN_MIN_TEMP 50.0        // (°C) Minimum temperature to activate fan
+#define IS_MONO_FAN                   // Enable mono fan mode (single shared fan)
+#define MONO_FAN_MIN_TEMP 50.0        // (°C) Minimum hotend temperature to activate fan
 #define MONO_FAN_MIN_PWM 180          // Minimum PWM value when fan is active (0-255)
 
 // @section delta_extras
