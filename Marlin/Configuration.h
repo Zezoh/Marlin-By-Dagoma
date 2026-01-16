@@ -53,7 +53,6 @@
 // G-code scripts for automatic filament insertion and extraction operations.
 // These scripts are executed when filament change operations are triggered.
 
-#define NO_LCD_FOR_FILAMENTCHANGEABLE                                    // Enable filament change without LCD
 #define FILAMENTCHANGE_INSERTION_SCRIPT "M600 I1 U-55 X55 Y-92 W200 Z200"
 #define FILAMENTCHANGE_EXTRACTION_SCRIPT "M600 I-1 U-55 X55 Y-92 W200 Z200"
 
