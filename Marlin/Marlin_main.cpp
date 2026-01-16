@@ -138,10 +138,6 @@
  * M119 - Output Endstop status to serial port
  * M120 - Enable endstop detection
  * M121 - Disable endstop detection
- * M126 - Solenoid Air Valve Open (BARICUDA, HAS_HEATER_1)
- * M127 - Solenoid Air Valve Closed (BARICUDA, HAS_HEATER_1)
- * M128 - EtoP Open (BARICUDA, HAS_HEATER_2)
- * M129 - EtoP Closed (BARICUDA, HAS_HEATER_2)
  * M140 - Set bed target temp
  * M150 - Set BlinkM Color Output R: Red<0-255> U: Green<0-255> B: Blue<0-255> (BLINKM)
  * M190 - Wait for bed temp: Sxxx waits when heating, Rxxx waits when heating and cooling (HAS_TEMP_BED)
@@ -314,11 +310,6 @@ static uint8_t target_extruder;
     HOTEND_OFFSET_X,
     HOTEND_OFFSET_Y
   };
-#endif
-
-#if ENABLED(BARICUDA)
-  int baricuda_valve_pressure = 0;
-  int baricuda_e_to_p_pressure = 0;
 #endif
 
 #if ENABLED(FWRETRACT)
@@ -5064,32 +5055,6 @@ inline void gcode_M112() { kill(PSTR(MSG_KILLED)); }
 
 #endif
 
-#if ENABLED(BARICUDA)
-
-  #if HAS_HEATER_1
-    /**
-     * M126: Heater 1 valve open
-     */
-    inline void gcode_M126() { baricuda_valve_pressure = code_seen('S') ? constrain(code_value(), 0, 255) : 255; }
-    /**
-     * M127: Heater 1 valve close
-     */
-    inline void gcode_M127() { baricuda_valve_pressure = 0; }
-  #endif
-
-  #if HAS_HEATER_2
-    /**
-     * M128: Heater 2 valve open
-     */
-    inline void gcode_M128() { baricuda_e_to_p_pressure = code_seen('S') ? constrain(code_value(), 0, 255) : 255; }
-    /**
-     * M129: Heater 2 valve close
-     */
-    inline void gcode_M129() { baricuda_e_to_p_pressure = 0; }
-  #endif
-
-#endif //BARICUDA
-
 /**
  * M140: Set bed temperature
  */
@@ -8095,28 +8060,6 @@ void process_next_command() {
           gcode_M107();
           break;
       #endif // FAN_COUNT > 0
-
-      #if ENABLED(BARICUDA)
-        // PWM for HEATER_1_PIN
-        #if HAS_HEATER_1
-          case 126: // M126: valve open
-            gcode_M126();
-            break;
-          case 127: // M127: valve closed
-            gcode_M127();
-            break;
-        #endif // HAS_HEATER_1
-
-        // PWM for HEATER_2_PIN
-        #if HAS_HEATER_2
-          case 128: // M128: valve open
-            gcode_M128();
-            break;
-          case 129: // M129: valve closed
-            gcode_M129();
-            break;
-        #endif // HAS_HEATER_2
-      #endif // BARICUDA
 
       #if HAS_POWER_SWITCH
 
