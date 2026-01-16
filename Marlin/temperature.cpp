@@ -41,10 +41,10 @@
 */
 
 #include "Marlin.h"
-#include "ultralcd.h"
+// LCD support removed - no ultralcd.h include
 #include "temperature.h"
 #include "language.h"
-#include "Sd2PinMap.h"
+#include "sd_card_hardware.h"
 
 #if ENABLED(USE_WATCHDOG)
   #include "watchdog.h"
@@ -117,7 +117,6 @@ unsigned char soft_pwm_bed;
 static volatile bool temp_meas_ready = false;
 
 #if ENABLED(PIDTEMP)
-  //static cannot be external:
   static float temp_iState[HOTENDS] = { 0 };
   static float temp_dState[HOTENDS] = { 0 };
   static float pTerm[HOTENDS];
@@ -129,20 +128,17 @@ static volatile bool temp_meas_ready = false;
     static long lpq[LPQ_MAX_LEN];
     static int lpq_ptr = 0;
   #endif
-  //int output;
   static float pid_error[HOTENDS];
   static float temp_iState_min[HOTENDS];
   static float temp_iState_max[HOTENDS];
   static bool pid_reset[HOTENDS];
 #endif //PIDTEMP
 #if ENABLED(PIDTEMPBED)
-  //static cannot be external:
   static float temp_iState_bed = { 0 };
   static float temp_dState_bed = { 0 };
   static float pTerm_bed;
   static float iTerm_bed;
   static float dTerm_bed;
-  //int output;
   static float pid_error_bed;
   static float temp_iState_min_bed;
   static float temp_iState_max_bed;
@@ -460,7 +456,7 @@ static void updateTemperaturesFromRawValues();
         }
         return;
       }
-      lcd_update();
+      // LCD support removed - lcd_update();
     }
   }
 
@@ -1716,7 +1712,7 @@ ISR(TIMER0_COMPB_vect) {
       #if HAS_TEMP_0
         START_ADC(TEMP_0_PIN);
       #endif
-      lcd_buttons_update();
+      // LCD support removed - lcd_buttons_update();
       temp_state = MeasureTemp_0;
       break;
     case MeasureTemp_0:
@@ -1730,7 +1726,7 @@ ISR(TIMER0_COMPB_vect) {
       #if HAS_TEMP_BED
         START_ADC(TEMP_BED_PIN);
       #endif
-      lcd_buttons_update();
+      // LCD support removed - lcd_buttons_update();
       temp_state = MeasureTemp_BED;
       #if ENABLED( Z_MIN_MAGIC )
         START_ADC(15);
@@ -1750,7 +1746,7 @@ ISR(TIMER0_COMPB_vect) {
       #if HAS_TEMP_1
         START_ADC(TEMP_1_PIN);
       #endif
-      lcd_buttons_update();
+      // LCD support removed - lcd_buttons_update();
       temp_state = MeasureTemp_1;
       // #if ENABLED( Z_MIN_MAGIC )
       //   START_ADC(15);
@@ -1770,7 +1766,7 @@ ISR(TIMER0_COMPB_vect) {
       #if HAS_TEMP_2
         START_ADC(TEMP_2_PIN);
       #endif
-      lcd_buttons_update();
+      // LCD support removed - lcd_buttons_update();
       temp_state = MeasureTemp_2;
       #if ENABLED( Z_MIN_MAGIC )
         START_ADC(15);
@@ -1790,7 +1786,7 @@ ISR(TIMER0_COMPB_vect) {
       #if HAS_TEMP_3
         START_ADC(TEMP_3_PIN);
       #endif
-      lcd_buttons_update();
+      // LCD support removed - lcd_buttons_update();
       temp_state = MeasureTemp_3;
       // #if ENABLED( Z_MIN_MAGIC )
       //   START_ADC(15);
@@ -1810,7 +1806,7 @@ ISR(TIMER0_COMPB_vect) {
       #if ENABLED(FILAMENT_WIDTH_SENSOR)
         START_ADC(FILWIDTH_PIN);
       #endif
-      lcd_buttons_update();
+      // LCD support removed - lcd_buttons_update();
       temp_state = Measure_FILWIDTH;
       #if ENABLED( Z_MIN_MAGIC )
         START_ADC(15);
