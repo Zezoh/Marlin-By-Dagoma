@@ -428,19 +428,6 @@ static uint8_t target_extruder;
 #endif
 
 //-------------------------------------------------------------------------
-// Filament Width Sensor State
-//-------------------------------------------------------------------------
-#if ENABLED(FILAMENT_WIDTH_SENSOR)
-  float filament_width_nominal = DEFAULT_NOMINAL_FILAMENT_DIA;
-  bool filament_sensor = false;
-  float filament_width_meas = DEFAULT_MEASURED_FILAMENT_DIA;
-  int8_t measurement_delay[MAX_MEASUREMENT_DELAY + 1];
-  int filwidth_delay_index1 = 0;
-  int filwidth_delay_index2 = -1;
-  int meas_delay_cm = MEASUREMENT_DELAY_CM;
-#endif
-
-//-------------------------------------------------------------------------
 // Filament Runout Sensor State
 //-------------------------------------------------------------------------
 #if ENABLED(FILAMENT_RUNOUT_SENSOR) || ENABLED(FILAMENT2_RUNOUT_SENSOR)
@@ -5927,55 +5914,6 @@ inline void gcode_M400() { st_synchronize(); }
 
 #endif // AUTO_BED_LEVELING_FEATURE && (HAS_SERVO_ENDSTOPS || Z_PROBE_ALLEN_KEY) && !Z_PROBE_SLED
 
-#if ENABLED(FILAMENT_WIDTH_SENSOR)
-
-  /**
-   * M404: Display or set the nominal filament width (3mm, 1.75mm ) W<3.0>
-   */
-  inline void gcode_M404() {
-    if (code_seen('W')) {
-      filament_width_nominal = code_value();
-    }
-    else {
-      SERIAL_PROTOCOLPGM("Filament dia (nominal mm):");
-      SERIAL_PROTOCOLLN(filament_width_nominal);
-    }
-  }
-
-  /**
-   * M405: Turn on filament sensor for control
-   */
-  inline void gcode_M405() {
-    if (code_seen('D')) meas_delay_cm = code_value();
-    NOMORE(meas_delay_cm, MAX_MEASUREMENT_DELAY);
-
-    if (filwidth_delay_index2 == -1) { // Initialize the ring buffer if not done since startup
-      int temp_ratio = widthFil_to_size_ratio();
-
-      for (uint8_t i = 0; i < COUNT(measurement_delay); ++i)
-        measurement_delay[i] = temp_ratio - 100;  // Subtract 100 to scale within a signed byte
-
-      filwidth_delay_index1 = filwidth_delay_index2 = 0;
-    }
-
-    filament_sensor = true;
-  }
-
-  /**
-   * M406: Turn off filament sensor for control
-   */
-  inline void gcode_M406() { filament_sensor = false; }
-
-  /**
-   * M407: Get measured filament diameter on serial output
-   */
-  inline void gcode_M407() {
-    SERIAL_PROTOCOLPGM("Filament dia (measured mm):");
-    SERIAL_PROTOCOLLN(filament_width_meas);
-  }
-
-#endif // FILAMENT_WIDTH_SENSOR
-
 /**
  * M410: Quickstop - Abort all planned moves
  *
@@ -8304,21 +8242,6 @@ void process_next_command() {
           gcode_M402();
           break;
       #endif // AUTO_BED_LEVELING_FEATURE && (HAS_SERVO_ENDSTOPS || Z_PROBE_ALLEN_KEY) && !Z_PROBE_SLED
-
-      #if ENABLED(FILAMENT_WIDTH_SENSOR)
-        case 404:  //M404 Enter the nominal filament width (3mm, 1.75mm ) N<3.0> or display nominal filament width
-          gcode_M404();
-          break;
-        case 405:  //M405 Turn on filament sensor for control
-          gcode_M405();
-          break;
-        case 406:  //M406 Turn off filament sensor for control
-          gcode_M406();
-          break;
-        case 407:   //M407 Display measured filament diameter
-          gcode_M407();
-          break;
-      #endif // ENABLED(FILAMENT_WIDTH_SENSOR)
 
       case 410: // M410 quickstop - Abort all the planned moves.
         gcode_M410();
