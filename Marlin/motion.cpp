@@ -60,18 +60,6 @@
 
 #include "speed_lookuptable.h"
 
-#if HAS_DIGIPOTSS || ENABLED(HAVE_TMCDRIVER) || ENABLED(HAVE_L6470DRIVER)
-  #include <SPI.h>
-#endif
-
-#if ENABLED(HAVE_TMCDRIVER)
-  #include <TMC26XStepper.h>
-#endif
-
-#if ENABLED(HAVE_L6470DRIVER)
-  #include <L6470.h>
-#endif
-
 millis_t minsegmenttime;
 float max_feedrate[NUM_AXIS]; // Max speeds in mm per minute
 float axis_steps_per_unit[NUM_AXIS];
@@ -1161,12 +1149,7 @@ void endstops_hit_on_purpose() { endstop_hit_bits = 0; }
 
 void checkHitEndstops() {
   if (endstop_hit_bits) {
-    #if ENABLED(ULTRA_LCD)
-      char chrX = ' ', chrY = ' ', chrZ = ' ', chrP = ' ';
-      #define _SET_STOP_CHAR(A,C) (chr## A = C)
-    #else
-      #define _SET_STOP_CHAR(A,C) ;
-    #endif
+    #define _SET_STOP_CHAR(A,C) ;
 
     #define _ENDSTOP_HIT_ECHO(A,C) do{ \
       SERIAL_ECHOPAIR(" " STRINGIFY(A) ":", endstops_trigsteps[A ##_AXIS] / axis_steps_per_unit[A ##_AXIS]); \
@@ -1187,12 +1170,6 @@ void checkHitEndstops() {
       if (TEST(endstop_hit_bits, Z_MIN_PROBE)) _ENDSTOP_HIT_ECHO(P, 'P');
     #endif
     SERIAL_EOL;
-
-    #if ENABLED(ULTRA_LCD)
-      char msg[3 * strlen(MSG_LCD_ENDSTOPS) + 8 + 1]; // Room for a UTF 8 string
-      sprintf_P(msg, PSTR(MSG_LCD_ENDSTOPS " %c %c %c %c"), chrX, chrY, chrZ, chrP);
-      lcd_setstatus(msg);
-    #endif
 
     endstops_hit_on_purpose();
 
@@ -1693,12 +1670,6 @@ void st_init() {
   digipot_init();
   microstep_init();
 
-  #if ENABLED(HAVE_TMCDRIVER)
-    tmc_init();
-  #endif
-  #if ENABLED(HAVE_L6470DRIVER)
-    L6470_init();
-  #endif
   #if HAS_X_DIR
     X_DIR_INIT;
   #endif
@@ -2054,25 +2025,7 @@ void quickStop() {
 
 #endif //BABYSTEPPING
 
-#if HAS_DIGIPOTSS
-  void digitalPotWrite(int address, int value) {
-    digitalWrite(DIGIPOTSS_PIN, LOW);
-    SPI.transfer(address);
-    SPI.transfer(value);
-    digitalWrite(DIGIPOTSS_PIN, HIGH);
-  }
-#endif
-
 void digipot_init() {
-  #if HAS_DIGIPOTSS
-    const uint8_t digipot_motor_current[] = DIGIPOT_MOTOR_CURRENT;
-
-    SPI.begin();
-    pinMode(DIGIPOTSS_PIN, OUTPUT);
-    for (int i = 0; i < COUNT(digipot_motor_current); i++) {
-      digipot_current(i, digipot_motor_current[i]);
-    }
-  #endif
   #if HAS_MOTOR_CURRENT_PWM
     #if PIN_EXISTS(MOTOR_CURRENT_PWM_XY)
       pinMode(MOTOR_CURRENT_PWM_XY_PIN, OUTPUT);
@@ -2091,10 +2044,7 @@ void digipot_init() {
 }
 
 void digipot_current(uint8_t driver, int current) {
-  #if HAS_DIGIPOTSS
-    const uint8_t digipot_ch[] = DIGIPOT_CHANNELS;
-    digitalPotWrite(digipot_ch[driver], current);
-  #elif HAS_MOTOR_CURRENT_PWM
+  #if HAS_MOTOR_CURRENT_PWM
     #define _WRITE_CURRENT_PWM(P) analogWrite(P, 255L * current / (MOTOR_CURRENT_PWM_RANGE))
     switch (driver) {
       #if PIN_EXISTS(MOTOR_CURRENT_PWM_XY)
@@ -2190,200 +2140,6 @@ void microstep_readings() {
   void In_Homing_Process(bool state) { performing_homing = state; }
   void Lock_z_motor(bool state) { locked_z_motor = state; }
   void Lock_z2_motor(bool state) { locked_z2_motor = state; }
-#endif
-
-//===========================================================================
-//===================== Vector 3 Implementation =============================
-//===========================================================================
-
-
-//===========================================================================
-//============== Stepper Indirection Implementation =========================
-//===========================================================================
-
-// Stepper objects of TMC steppers used
-#if ENABLED(X_IS_TMC)
-  TMC26XStepper stepperX(200, X_ENABLE_PIN, X_STEP_PIN, X_DIR_PIN, X_MAX_CURRENT, X_SENSE_RESISTOR);
-#endif
-#if ENABLED(X2_IS_TMC)
-  TMC26XStepper stepperX2(200, X2_ENABLE_PIN, X2_STEP_PIN, X2_DIR_PIN, X2_MAX_CURRENT, X2_SENSE_RESISTOR);
-#endif
-#if ENABLED(Y_IS_TMC)
-  TMC26XStepper stepperY(200, Y_ENABLE_PIN, Y_STEP_PIN, Y_DIR_PIN, Y_MAX_CURRENT, Y_SENSE_RESISTOR);
-#endif
-#if ENABLED(Y2_IS_TMC)
-  TMC26XStepper stepperY2(200, Y2_ENABLE_PIN, Y2_STEP_PIN, Y2_DIR_PIN, Y2_MAX_CURRENT, Y2_SENSE_RESISTOR);
-#endif
-#if ENABLED(Z_IS_TMC)
-  TMC26XStepper stepperZ(200, Z_ENABLE_PIN, Z_STEP_PIN, Z_DIR_PIN, Z_MAX_CURRENT, Z_SENSE_RESISTOR);
-#endif
-#if ENABLED(Z2_IS_TMC)
-  TMC26XStepper stepperZ2(200, Z2_ENABLE_PIN, Z2_STEP_PIN, Z2_DIR_PIN, Z2_MAX_CURRENT, Z2_SENSE_RESISTOR);
-#endif
-#if ENABLED(E0_IS_TMC)
-  TMC26XStepper stepperE0(200, E0_ENABLE_PIN, E0_STEP_PIN, E0_DIR_PIN, E0_MAX_CURRENT, E0_SENSE_RESISTOR);
-#endif
-#if ENABLED(E1_IS_TMC)
-  TMC26XStepper stepperE1(200, E1_ENABLE_PIN, E1_STEP_PIN, E1_DIR_PIN, E1_MAX_CURRENT, E1_SENSE_RESISTOR);
-#endif
-#if ENABLED(E2_IS_TMC)
-  TMC26XStepper stepperE2(200, E2_ENABLE_PIN, E2_STEP_PIN, E2_DIR_PIN, E2_MAX_CURRENT, E2_SENSE_RESISTOR);
-#endif
-#if ENABLED(E3_IS_TMC)
-  TMC26XStepper stepperE3(200, E3_ENABLE_PIN, E3_STEP_PIN, E3_DIR_PIN, E3_MAX_CURRENT, E3_SENSE_RESISTOR);
-#endif
-
-#if ENABLED(HAVE_TMCDRIVER)
-void tmc_init() {
-  #if ENABLED(X_IS_TMC)
-    stepperX.setMicrosteps(X_MICROSTEPS);
-    stepperX.start();
-  #endif
-  #if ENABLED(X2_IS_TMC)
-    stepperX2.setMicrosteps(X2_MICROSTEPS);
-    stepperX2.start();
-  #endif
-  #if ENABLED(Y_IS_TMC)
-    stepperY.setMicrosteps(Y_MICROSTEPS);
-    stepperY.start();
-  #endif
-  #if ENABLED(Y2_IS_TMC)
-    stepperY2.setMicrosteps(Y2_MICROSTEPS);
-    stepperY2.start();
-  #endif
-  #if ENABLED(Z_IS_TMC)
-    stepperZ.setMicrosteps(Z_MICROSTEPS);
-    stepperZ.start();
-  #endif
-  #if ENABLED(Z2_IS_TMC)
-    stepperZ2.setMicrosteps(Z2_MICROSTEPS);
-    stepperZ2.start();
-  #endif
-  #if ENABLED(E0_IS_TMC)
-    stepperE0.setMicrosteps(E0_MICROSTEPS);
-    stepperE0.start();
-  #endif
-  #if ENABLED(E1_IS_TMC)
-    stepperE1.setMicrosteps(E1_MICROSTEPS);
-    stepperE1.start();
-  #endif
-  #if ENABLED(E2_IS_TMC)
-    stepperE2.setMicrosteps(E2_MICROSTEPS);
-    stepperE2.start();
-  #endif
-  #if ENABLED(E3_IS_TMC)
-    stepperE3.setMicrosteps(E3_MICROSTEPS);
-    stepperE3.start();
-  #endif
-}
-#endif
-
-#if ENABLED(X_IS_L6470)
-  L6470 stepperX(X_ENABLE_PIN);
-#endif
-#if ENABLED(X2_IS_L6470)
-  L6470 stepperX2(X2_ENABLE_PIN);
-#endif
-#if ENABLED(Y_IS_L6470)
-  L6470 stepperY(Y_ENABLE_PIN);
-#endif
-#if ENABLED(Y2_IS_L6470)
-  L6470 stepperY2(Y2_ENABLE_PIN);
-#endif
-#if ENABLED(Z_IS_L6470)
-  L6470 stepperZ(Z_ENABLE_PIN);
-#endif
-#if ENABLED(Z2_IS_L6470)
-  L6470 stepperZ2(Z2_ENABLE_PIN);
-#endif
-#if ENABLED(E0_IS_L6470)
-  L6470 stepperE0(E0_ENABLE_PIN);
-#endif
-#if ENABLED(E1_IS_L6470)
-  L6470 stepperE1(E1_ENABLE_PIN);
-#endif
-#if ENABLED(E2_IS_L6470)
-  L6470 stepperE2(E2_ENABLE_PIN);
-#endif
-#if ENABLED(E3_IS_L6470)
-  L6470 stepperE3(E3_ENABLE_PIN);
-#endif
-
-
-// init routine
-#if ENABLED(HAVE_L6470DRIVER)
-void L6470_init() {
-  #if ENABLED(X_IS_L6470)
-    stepperX.init(X_K_VAL);
-    stepperX.softFree();
-    stepperX.setMicroSteps(X_MICROSTEPS);
-    stepperX.setOverCurrent(X_OVERCURRENT); //set overcurrent protection
-    stepperX.setStallCurrent(X_STALLCURRENT);
-  #endif
-  #if ENABLED(X2_IS_L6470)
-    stepperX2.init(X2_K_VAL);
-    stepperX2.softFree();
-    stepperX2.setMicroSteps(X2_MICROSTEPS);
-    stepperX2.setOverCurrent(X2_OVERCURRENT); //set overcurrent protection
-    stepperX2.setStallCurrent(X2_STALLCURRENT);
-  #endif
-  #if ENABLED(Y_IS_L6470)
-    stepperY.init(Y_K_VAL);
-    stepperY.softFree();
-    stepperY.setMicroSteps(Y_MICROSTEPS);
-    stepperY.setOverCurrent(Y_OVERCURRENT); //set overcurrent protection
-    stepperY.setStallCurrent(Y_STALLCURRENT);
-  #endif
-  #if ENABLED(Y2_IS_L6470)
-    stepperY2.init(Y2_K_VAL);
-    stepperY2.softFree();
-    stepperY2.setMicroSteps(Y2_MICROSTEPS);
-    stepperY2.setOverCurrent(Y2_OVERCURRENT); //set overcurrent protection
-    stepperY2.setStallCurrent(Y2_STALLCURRENT);
-  #endif
-  #if ENABLED(Z_IS_L6470)
-    stepperZ.init(Z_K_VAL);
-    stepperZ.softFree();
-    stepperZ.setMicroSteps(Z_MICROSTEPS);
-    stepperZ.setOverCurrent(Z_OVERCURRENT); //set overcurrent protection
-    stepperZ.setStallCurrent(Z_STALLCURRENT);
-  #endif
-  #if ENABLED(Z2_IS_L6470)
-    stepperZ2.init(Z2_K_VAL);
-    stepperZ2.softFree();
-    stepperZ2.setMicroSteps(Z2_MICROSTEPS);
-    stepperZ2.setOverCurrent(Z2_OVERCURRENT); //set overcurrent protection
-    stepperZ2.setStallCurrent(Z2_STALLCURRENT);
-  #endif
-  #if ENABLED(E0_IS_L6470)
-    stepperE0.init(E0_K_VAL);
-    stepperE0.softFree();
-    stepperE0.setMicroSteps(E0_MICROSTEPS);
-    stepperE0.setOverCurrent(E0_OVERCURRENT); //set overcurrent protection
-    stepperE0.setStallCurrent(E0_STALLCURRENT);
-  #endif
-  #if ENABLED(E1_IS_L6470)
-    stepperE1.init(E1_K_VAL);
-    stepperE1.softFree();
-    stepperE1.setMicroSteps(E1_MICROSTEPS);
-    stepperE1.setOverCurrent(E1_OVERCURRENT); //set overcurrent protection
-    stepperE1.setStallCurrent(E1_STALLCURRENT);
-  #endif
-  #if ENABLED(E2_IS_L6470)
-    stepperE2.init(E2_K_VAL);
-    stepperE2.softFree();
-    stepperE2.setMicroSteps(E2_MICROSTEPS);
-    stepperE2.setOverCurrent(E2_OVERCURRENT); //set overcurrent protection
-    stepperE2.setStallCurrent(E2_STALLCURRENT);
-  #endif
-  #if ENABLED(E3_IS_L6470)
-    stepperE3.init(E3_K_VAL);
-    stepperE3.softFree();
-    stepperE3.setMicroSteps(E3_MICROSTEPS);
-    stepperE3.setOverCurrent(E3_OVERCURRENT); //set overcurrent protection
-    stepperE3.setStallCurrent(E3_STALLCURRENT);
-  #endif
-}
 #endif
 
 //===========================================================================

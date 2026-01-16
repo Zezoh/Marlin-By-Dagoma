@@ -173,8 +173,6 @@
     analogInputToDigitalPin(TEMP_BED_PIN) \
   }
 
-#define HAS_DIGIPOTSS (PIN_EXISTS(DIGIPOTSS))
-
 #undef X_MAX_PIN
 #define X_MAX_PIN 2
 #undef X_MIN_PIN

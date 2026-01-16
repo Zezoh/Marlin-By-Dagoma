@@ -79,7 +79,7 @@
  * Z_DUAL_ENDSTOPS:
  *  283  M666 Z    z_endstop_adj (float)
  *
- * ULTIPANEL:
+ * Preheat settings (preserved for EEPROM compatibility):
  *  287  M145 S0 H plaPreheatHotendTemp (int)
  *  289  M145 S0 B plaPreheatHPBTemp (int)
  *  291  M145 S0 F plaPreheatFanSpeed (int)
@@ -96,9 +96,6 @@
  *
  * PIDTEMPBED:
  *  365  M304 PID  bedKp, bedKi, bedKd (float x3)
- *
- * DOGLCD:
- *  377  M250 C    lcd_contrast (int)
  *
  * FWRETRACT:
  *  391  M209 S    autoretract_enabled (bool)
@@ -240,10 +237,9 @@ void Config_StoreSettings()
     EEPROM_WRITE_VAR(i, dummy);
 #endif
 
-#if DISABLED(ULTIPANEL)
+  // LCD support removed - use default preheat values for EEPROM storage
   int plaPreheatHotendTemp = PLA_PREHEAT_HOTEND_TEMP, plaPreheatHPBTemp = PLA_PREHEAT_HPB_TEMP, plaPreheatFanSpeed = PLA_PREHEAT_FAN_SPEED,
       absPreheatHotendTemp = ABS_PREHEAT_HOTEND_TEMP, absPreheatHPBTemp = ABS_PREHEAT_HPB_TEMP, absPreheatFanSpeed = ABS_PREHEAT_FAN_SPEED;
-#endif // !ULTIPANEL
 
   EEPROM_WRITE_VAR(i, plaPreheatHotendTemp);
   EEPROM_WRITE_VAR(i, plaPreheatHPBTemp);
@@ -293,9 +289,8 @@ void Config_StoreSettings()
   EEPROM_WRITE_VAR(i, bedKi);
   EEPROM_WRITE_VAR(i, bedKd);
 
-#if DISABLED(HAS_LCD_CONTRAST)
+  // LCD contrast - LCD support removed, write dummy value for EEPROM layout compatibility
   const int lcd_contrast = 32;
-#endif
   EEPROM_WRITE_VAR(i, lcd_contrast);
 
   // Dummy write for removed SCARA axis_scaling (3 floats to maintain EEPROM layout compatibility)
@@ -435,10 +430,9 @@ void Config_RetrieveSettings()
       EEPROM_READ_VAR(i, dummy);
 #endif
 
-#if DISABLED(ULTIPANEL)
+    // LCD support removed - read preheat values from EEPROM but don't use them
     int plaPreheatHotendTemp, plaPreheatHPBTemp, plaPreheatFanSpeed,
         absPreheatHotendTemp, absPreheatHPBTemp, absPreheatFanSpeed;
-#endif
 
     EEPROM_READ_VAR(i, plaPreheatHotendTemp);
     EEPROM_READ_VAR(i, plaPreheatHPBTemp);
@@ -498,9 +492,8 @@ void Config_RetrieveSettings()
         EEPROM_READ_VAR(i, dummy); // bedKi, bedKd
     }
 
-#if DISABLED(HAS_LCD_CONTRAST)
+    // LCD contrast - LCD support removed, read dummy value for EEPROM layout compatibility
     int lcd_contrast;
-#endif
     EEPROM_READ_VAR(i, lcd_contrast);
 
   // Dummy read for removed SCARA axis_scaling (3 floats to maintain EEPROM layout compatibility)
@@ -608,18 +601,7 @@ void Config_ResetDefault(bool resetZMagicThreshold)
   z_endstop_adj = 0;
 #endif
 
-#if ENABLED(ULTIPANEL)
-  plaPreheatHotendTemp = PLA_PREHEAT_HOTEND_TEMP;
-  plaPreheatHPBTemp = PLA_PREHEAT_HPB_TEMP;
-  plaPreheatFanSpeed = PLA_PREHEAT_FAN_SPEED;
-  absPreheatHotendTemp = ABS_PREHEAT_HOTEND_TEMP;
-  absPreheatHPBTemp = ABS_PREHEAT_HPB_TEMP;
-  absPreheatFanSpeed = ABS_PREHEAT_FAN_SPEED;
-#endif
-
-#if ENABLED(HAS_LCD_CONTRAST)
-  lcd_contrast = DEFAULT_LCD_CONTRAST;
-#endif
+  // LCD support removed - preheat settings not needed
 
 #if ENABLED(PIDTEMP)
 #if ENABLED(PID_PARAMS_PER_HOTEND)
@@ -825,23 +807,7 @@ void Config_PrintSettings(bool forReplay)
   SERIAL_EOL;
 #endif // DELTA
 
-#if ENABLED(ULTIPANEL)
-  CONFIG_ECHO_START;
-  if (!forReplay)
-  {
-    SERIAL_ECHOLNPGM("Material heatup parameters:");
-    CONFIG_ECHO_START;
-  }
-  SERIAL_ECHOPAIR("  M145 S0 H", plaPreheatHotendTemp);
-  SERIAL_ECHOPAIR(" B", plaPreheatHPBTemp);
-  SERIAL_ECHOPAIR(" F", plaPreheatFanSpeed);
-  SERIAL_EOL;
-  CONFIG_ECHO_START;
-  SERIAL_ECHOPAIR("  M145 S1 H", absPreheatHotendTemp);
-  SERIAL_ECHOPAIR(" B", absPreheatHPBTemp);
-  SERIAL_ECHOPAIR(" F", absPreheatFanSpeed);
-  SERIAL_EOL;
-#endif // ULTIPANEL
+  // LCD support removed - M145 material heatup reporting removed
 
 #if HAS_PID_HEATING
 
@@ -895,16 +861,7 @@ void Config_PrintSettings(bool forReplay)
 
 #endif // PIDTEMP || PIDTEMPBED
 
-#if ENABLED(HAS_LCD_CONTRAST)
-  CONFIG_ECHO_START;
-  if (!forReplay)
-  {
-    SERIAL_ECHOLNPGM("LCD Contrast:");
-    CONFIG_ECHO_START;
-  }
-  SERIAL_ECHOPAIR("  M250 C", lcd_contrast);
-  SERIAL_EOL;
-#endif
+  // LCD contrast reporting removed - LCD support not present in this firmware
 
 #if ENABLED(FWRETRACT)
 

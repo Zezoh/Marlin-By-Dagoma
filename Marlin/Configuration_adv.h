@@ -294,25 +294,10 @@
 #define DEFAULT_MINIMUMFEEDRATE       0.0     // minimum feedrate
 #define DEFAULT_MINTRAVELFEEDRATE     0.0
 
-// @section lcd
-
-#if ENABLED(ULTIPANEL)
-  #define MANUAL_FEEDRATE {50*60, 50*60, 4*60, 60} // Feedrates for manual moves along X, Y, Z, E from panel
-  #define ULTIPANEL_FEEDMULTIPLY  // Comment to disable setting feedrate multiplier via encoder
-#endif
-
 // @section extras
 
 // minimum time in microseconds that a movement needs to take if the buffer is emptied.
 #define DEFAULT_MINSEGMENTTIME        20000
-
-// If defined the movements slow down when the look ahead buffer is only half full
-//#define SLOWDOWN
-
-// Frequency limit
-// See nophead's blog for more info
-// Not working O
-//#define XY_FREQUENCY_LIMIT  15
 
 // Minimum planner junction speed. Sets the default minimum speed the planner plans for at the end
 // of the buffer and all stops. This should not be much greater than zero and should only be changed
@@ -322,96 +307,30 @@
 // Microstep setting (Only functional when stepper driver microstep pins are connected to MCU.
 #define MICROSTEP_MODES {16,16,16,16,16} // [1,2,4,8,16]
 
-// Motor Current setting (Only functional when motor driver current ref pins are connected to a digital trimpot on supported boards)
-#define DIGIPOT_MOTOR_CURRENT {135,135,135,135,135} // Values 0-255 (RAMBO 135 = ~0.75A, 185 = ~1A)
-
-// Motor Current controlled via PWM (Overridable on supported boards with PWM-driven motor driver current)
-//#define PWM_MOTOR_CURRENT {1300, 1300, 1250} // Values in milliamps
-
-// uncomment to enable an I2C based DIGIPOT like on the Azteeg X3 Pro
-//#define DIGIPOT_I2C
-// Number of channels available for I2C digipot, For Azteeg X3 Pro we have 8
-#define DIGIPOT_I2C_NUM_CHANNELS 8
-// actual motor currents in Amps, need as many here as DIGIPOT_I2C_NUM_CHANNELS
-#define DIGIPOT_I2C_MOTOR_CURRENTS {1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0}
-
 //===========================================================================
 //=============================Additional Features===========================
 //===========================================================================
 
-#define ENCODER_RATE_MULTIPLIER         // If defined, certain menu edit operations automatically multiply the steps when the encoder is moved quickly
-#define ENCODER_10X_STEPS_PER_SEC 75    // If the encoder steps per sec exceeds this value, multiply steps moved x10 to quickly advance the value
-#define ENCODER_100X_STEPS_PER_SEC 160  // If the encoder steps per sec exceeds this value, multiply steps moved x100 to really quickly advance the value
-
-//#define CHDK 4        //Pin for triggering CHDK to take a picture see how to use it here http://captain-slow.dk/2014/03/09/3d-printing-timelapses/
 #define CHDK_DELAY 50 //How long in ms the pin should stay HIGH before going LOW again
 
-// @section lcd
+// @section sdcard
 
 #if ENABLED(SDSUPPORT)
 
-  // Some RAMPS and other boards don't detect when an SD card is inserted. You can work
-  // around this by connecting a push button or single throw switch to the pin defined
-  // as SD_DETECT_PIN in your board's pins definitions.
-  // This setting should be disabled unless you are using a push button, pulling the pin to ground.
-  // Note: This is always disabled for ULTIPANEL (except ELB_FULL_GRAPHIC_CONTROLLER).
+  // SD card detect pin - disable unless using push button
   #define SD_DETECT_INVERTED
 
   #define SD_FINISHED_STEPPERRELEASE false  //if sd support and the file is finished: disable steppers?
   #define SD_FINISHED_RELEASECOMMAND "M84 X Y Z E" // You might want to keep the z enabled so your bed stays in place.
 
-  #define SDCARD_RATHERRECENTFIRST  //reverse file order of sd card menu display. Its sorted practically after the file system block order.
-  // if a file is deleted, it frees a block. hence, the order is not purely chronological. To still have auto0.g accessible, there is again the option to do that.
-  // using:
-  //#define MENU_ADDAUTOSTART
-
-  // Show a progress bar on HD44780 LCDs for SD printing
-  //#define LCD_PROGRESS_BAR
-
-  #if ENABLED(LCD_PROGRESS_BAR)
-    // Amount of time (ms) to show the bar
-    #define PROGRESS_BAR_BAR_TIME 2000
-    // Amount of time (ms) to show the status message
-    #define PROGRESS_BAR_MSG_TIME 3000
-    // Amount of time (ms) to retain the status message (0=forever)
-    #define PROGRESS_MSG_EXPIRE   0
-    // Enable this to show messages for MSG_TIME then hide them
-    //#define PROGRESS_MSG_ONCE
-  #endif
-
-  // This allows hosts to request long names for files and folders with M33
-  //#define LONG_FILENAME_HOST_SUPPORT
-
-  // This option allows you to abort SD printing when any endstop is triggered.
-  // This feature must be enabled with "M540 S1" or from the LCD menu.
-  // To have any effect, endstops must be enabled during SD printing.
-  // With ENDSTOPS_ONLY_FOR_HOMING you must send "M120" to enable endstops.
-  //#define ABORT_ON_ENDSTOP_HIT_FEATURE_ENABLED
+  #define SDCARD_RATHERRECENTFIRST  //reverse file order of sd card menu display
 
 #endif // SDSUPPORT
-
-// for dogm lcd displays you can choose some additional fonts:
-#if ENABLED(DOGLCD)
-  // save 3120 bytes of PROGMEM by commenting out #define USE_BIG_EDIT_FONT
-  // we don't have a big font for Cyrillic, Kana
-  //#define USE_BIG_EDIT_FONT
-
-  // If you have spare 2300Byte of progmem and want to use a
-  // smaller font on the Info-screen uncomment the next line.
-  //#define USE_SMALL_INFOFONT
-#endif // DOGLCD
 
 // @section more
 
 // The hardware watchdog should reset the microcontroller disabling all outputs, in case the firmware gets stuck and doesn't do temperature regulation.
 #define USE_WATCHDOG
-
-#if ENABLED(USE_WATCHDOG)
-  // If you have a watchdog reboot in an ArduinoMega2560 then the device will hang forever, as a watchdog reset will leave the watchdog on.
-  // The "WATCHDOG_RESET_MANUAL" goes around this by not using the hardware reset.
-  //  However, THIS FEATURE IS UNSAFE!, as it will only work if interrupts are disabled. And the code could hang in an interrupt routine with interrupts disabled.
-  //#define WATCHDOG_RESET_MANUAL
-#endif
 
 // @section lcd
 
@@ -504,8 +423,9 @@
   #define RETRACT_RECOVER_FEEDRATE 8     //default feedrate for recovering from retraction (mm/s)
 #endif
 
-// Add support for experimental filament exchange support M600; requires display
-#if ENABLED(ULTIPANEL) || ENABLED(NO_LCD_FOR_FILAMENTCHANGEABLE)
+// Add support for experimental filament exchange support M600
+// LCD support removed - using NO_LCD_FOR_FILAMENTCHANGEABLE for headless operation
+#if ENABLED(NO_LCD_FOR_FILAMENTCHANGEABLE)
   #define FILAMENTCHANGEENABLE
   #if ENABLED(FILAMENTCHANGEENABLE)
     #define FILAMENTCHANGE_XPOS 0
@@ -518,172 +438,6 @@
     #define AUTO_FILAMENT_CHANGE_FEEDRATE 300   //Extrusion feedrate (mm/min) on automatic extrusion loop
   #endif
 #endif
-
-/******************************************************************************\
- * enable this section if you have TMC26X motor drivers.
- * you need to import the TMC26XStepper library into the Arduino IDE for this
- ******************************************************************************/
-
-// @section tmc
-
-//#define HAVE_TMCDRIVER
-#if ENABLED(HAVE_TMCDRIVER)
-
-  //#define X_IS_TMC
-  #define X_MAX_CURRENT 1000  //in mA
-  #define X_SENSE_RESISTOR 91 //in mOhms
-  #define X_MICROSTEPS 16     //number of microsteps
-
-  //#define X2_IS_TMC
-  #define X2_MAX_CURRENT 1000  //in mA
-  #define X2_SENSE_RESISTOR 91 //in mOhms
-  #define X2_MICROSTEPS 16     //number of microsteps
-
-  //#define Y_IS_TMC
-  #define Y_MAX_CURRENT 1000  //in mA
-  #define Y_SENSE_RESISTOR 91 //in mOhms
-  #define Y_MICROSTEPS 16     //number of microsteps
-
-  //#define Y2_IS_TMC
-  #define Y2_MAX_CURRENT 1000  //in mA
-  #define Y2_SENSE_RESISTOR 91 //in mOhms
-  #define Y2_MICROSTEPS 16     //number of microsteps
-
-  //#define Z_IS_TMC
-  #define Z_MAX_CURRENT 1000  //in mA
-  #define Z_SENSE_RESISTOR 91 //in mOhms
-  #define Z_MICROSTEPS 16     //number of microsteps
-
-  //#define Z2_IS_TMC
-  #define Z2_MAX_CURRENT 1000  //in mA
-  #define Z2_SENSE_RESISTOR 91 //in mOhms
-  #define Z2_MICROSTEPS 16     //number of microsteps
-
-  //#define E0_IS_TMC
-  #define E0_MAX_CURRENT 1000  //in mA
-  #define E0_SENSE_RESISTOR 91 //in mOhms
-  #define E0_MICROSTEPS 16     //number of microsteps
-
-  //#define E1_IS_TMC
-  #define E1_MAX_CURRENT 1000  //in mA
-  #define E1_SENSE_RESISTOR 91 //in mOhms
-  #define E1_MICROSTEPS 16     //number of microsteps
-
-  //#define E2_IS_TMC
-  #define E2_MAX_CURRENT 1000  //in mA
-  #define E2_SENSE_RESISTOR 91 //in mOhms
-  #define E2_MICROSTEPS 16     //number of microsteps
-
-  //#define E3_IS_TMC
-  #define E3_MAX_CURRENT 1000  //in mA
-  #define E3_SENSE_RESISTOR 91 //in mOhms
-  #define E3_MICROSTEPS 16     //number of microsteps
-
-#endif
-
-/******************************************************************************\
- * enable this section if you have L6470  motor drivers.
- * you need to import the L6470 library into the Arduino IDE for this
- ******************************************************************************/
-
-// @section l6470
-
-//#define HAVE_L6470DRIVER
-#if ENABLED(HAVE_L6470DRIVER)
-
-  //#define X_IS_L6470
-  #define X_MICROSTEPS 16     //number of microsteps
-  #define X_K_VAL 50          // 0 - 255, Higher values, are higher power. Be careful not to go too high
-  #define X_OVERCURRENT 2000  //maxc current in mA. If the current goes over this value, the driver will switch off
-  #define X_STALLCURRENT 1500 //current in mA where the driver will detect a stall
-
-  //#define X2_IS_L6470
-  #define X2_MICROSTEPS 16     //number of microsteps
-  #define X2_K_VAL 50          // 0 - 255, Higher values, are higher power. Be careful not to go too high
-  #define X2_OVERCURRENT 2000  //maxc current in mA. If the current goes over this value, the driver will switch off
-  #define X2_STALLCURRENT 1500 //current in mA where the driver will detect a stall
-
-  //#define Y_IS_L6470
-  #define Y_MICROSTEPS 16     //number of microsteps
-  #define Y_K_VAL 50          // 0 - 255, Higher values, are higher power. Be careful not to go too high
-  #define Y_OVERCURRENT 2000  //maxc current in mA. If the current goes over this value, the driver will switch off
-  #define Y_STALLCURRENT 1500 //current in mA where the driver will detect a stall
-
-  //#define Y2_IS_L6470
-  #define Y2_MICROSTEPS 16     //number of microsteps
-  #define Y2_K_VAL 50          // 0 - 255, Higher values, are higher power. Be careful not to go too high
-  #define Y2_OVERCURRENT 2000  //maxc current in mA. If the current goes over this value, the driver will switch off
-  #define Y2_STALLCURRENT 1500 //current in mA where the driver will detect a stall
-
-  //#define Z_IS_L6470
-  #define Z_MICROSTEPS 16     //number of microsteps
-  #define Z_K_VAL 50          // 0 - 255, Higher values, are higher power. Be careful not to go too high
-  #define Z_OVERCURRENT 2000  //maxc current in mA. If the current goes over this value, the driver will switch off
-  #define Z_STALLCURRENT 1500 //current in mA where the driver will detect a stall
-
-  //#define Z2_IS_L6470
-  #define Z2_MICROSTEPS 16     //number of microsteps
-  #define Z2_K_VAL 50          // 0 - 255, Higher values, are higher power. Be careful not to go too high
-  #define Z2_OVERCURRENT 2000  //maxc current in mA. If the current goes over this value, the driver will switch off
-  #define Z2_STALLCURRENT 1500 //current in mA where the driver will detect a stall
-
-  //#define E0_IS_L6470
-  #define E0_MICROSTEPS 16     //number of microsteps
-  #define E0_K_VAL 50          // 0 - 255, Higher values, are higher power. Be careful not to go too high
-  #define E0_OVERCURRENT 2000  //maxc current in mA. If the current goes over this value, the driver will switch off
-  #define E0_STALLCURRENT 1500 //current in mA where the driver will detect a stall
-
-  //#define E1_IS_L6470
-  #define E1_MICROSTEPS 16     //number of microsteps
-  #define E1_K_VAL 50          // 0 - 255, Higher values, are higher power. Be careful not to go too high
-  #define E1_OVERCURRENT 2000  //maxc current in mA. If the current goes over this value, the driver will switch off
-  #define E1_STALLCURRENT 1500 //current in mA where the driver will detect a stall
-
-  //#define E2_IS_L6470
-  #define E2_MICROSTEPS 16     //number of microsteps
-  #define E2_K_VAL 50          // 0 - 255, Higher values, are higher power. Be careful not to go too high
-  #define E2_OVERCURRENT 2000  //maxc current in mA. If the current goes over this value, the driver will switch off
-  #define E2_STALLCURRENT 1500 //current in mA where the driver will detect a stall
-
-  //#define E3_IS_L6470
-  #define E3_MICROSTEPS 16     //number of microsteps
-  #define E3_K_VAL 50          // 0 - 255, Higher values, are higher power. Be careful not to go too high
-  #define E3_OVERCURRENT 2000  //maxc current in mA. If the current goes over this value, the driver will switch off
-  #define E3_STALLCURRENT 1500 //current in mA where the driver will detect a stall
-
-#endif
-
-/**
- * TWI/I2C BUS
- *
- * This feature is an EXPERIMENTAL feature so it shall not be used on production
- * machines. Enabling this will allow you to send and receive I2C data from slave
- * devices on the bus.
- *
- * ; Example #1
- * ; This macro send the string "Marlin" to the slave device with address 0x63
- * ; It uses multiple M155 commands with one B<base 10> arg
- * M155 A63  ; Target slave address
- * M155 B77  ; M
- * M155 B97  ; a
- * M155 B114 ; r
- * M155 B108 ; l
- * M155 B105 ; i
- * M155 B110 ; n
- * M155 S1   ; Send the current buffer
- *
- * ; Example #2
- * ; Request 6 bytes from slave device with address 0x63
- * M156 A63 B5
- *
- * ; Example #3
- * ; Example serial output of a M156 request
- * echo:i2c-reply: from:63 bytes:5 data:hello
- */
-
-// @section i2cbus
-
-//#define EXPERIMENTAL_I2CBUS
 
 #include "Conditionals.h"
 #include "SanityCheck.h"

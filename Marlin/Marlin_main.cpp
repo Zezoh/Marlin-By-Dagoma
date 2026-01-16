@@ -46,7 +46,6 @@
 #include "language.h"
 #include "pins_arduino.h"
 #include "math.h"
-#include "buzzer.h"
 
 #if ENABLED(USE_WATCHDOG)
   #include "watchdog.h"
@@ -57,20 +56,8 @@
   #include "Wire.h"
 #endif
 
-#if HAS_SERVOS
-  #include "servo.h"
-#endif
-
-#if HAS_DIGIPOTSS
-  #include <SPI.h>
-#endif
-
 #if ENABLED(DAC_STEPPER_CURRENT)
   #include "stepper_dac.h"
-#endif
-
-#if ENABLED(EXPERIMENTAL_I2CBUS)
-  #include "twibus.h"
 #endif
 
 #if ENABLED(USE_SECOND_SERIAL)
@@ -183,8 +170,6 @@
  * M226 - Wait until the specified pin reaches the state required: P<pin number> S<pin state>
  * M240 - Trigger a camera to take a photograph
  * M250 - Set LCD contrast C<contrast value> (value 0..63)
- * M280 - Set servo position absolute. P: servo index, S: angle or microseconds
- * M300 - Play beep sound S<frequency Hz> P<duration ms>
  * M301 - Set PID parameters P I and D
  * M302 - Allow cold extrudes, or set the minimum extrude S<temperature>.
  * M303 - PID relay autotune S<temperature> sets the target temperature. (default target temperature = 150C)
@@ -251,10 +236,6 @@
 
 #if ENABLED(SDSUPPORT)
   CardReader card;
-#endif
-
-#if ENABLED(EXPERIMENTAL_I2CBUS)
-  TWIBus i2c;
 #endif
 
 bool Running = true;
@@ -364,11 +345,6 @@ static uint8_t target_extruder;
   };
 #endif
 
-#if HAS_SERVO_ENDSTOPS
-  const int servo_endstop_id[] = SERVO_ENDSTOP_IDS;
-  const int servo_endstop_angle[][2] = SERVO_ENDSTOP_ANGLES;
-#endif
-
 #if ENABLED(BARICUDA)
   int baricuda_valve_pressure = 0;
   int baricuda_e_to_p_pressure = 0;
@@ -389,16 +365,6 @@ static uint8_t target_extruder;
   float retract_recover_feedrate = RETRACT_RECOVER_FEEDRATE;
 
 #endif // FWRETRACT
-
-#if ENABLED(ULTIPANEL) && HAS_POWER_SWITCH
-  bool powersupply =
-    #if ENABLED(PS_DEFAULT_OFF)
-      false
-    #else
-      true
-    #endif
-  ;
-#endif
 
 #if ENABLED(DELTA)
 
@@ -427,7 +393,6 @@ static uint8_t target_extruder;
   float delta_diagonal_rod_2_tower_1 = sq(delta_diagonal_rod + delta_diagonal_rod_trim_tower_1);
   float delta_diagonal_rod_2_tower_2 = sq(delta_diagonal_rod + delta_diagonal_rod_trim_tower_2);
   float delta_diagonal_rod_2_tower_3 = sq(delta_diagonal_rod + delta_diagonal_rod_trim_tower_3);
-  //float delta_diagonal_rod_2 = sq(delta_diagonal_rod);
   float delta_segments_per_second = DELTA_SEGMENTS_PER_SECOND;
   #if ENABLED(AUTO_BED_LEVELING_FEATURE)
     int delta_grid_spacing[2] = { 0, 0 };
@@ -497,18 +462,8 @@ inline bool current_filament_present(uint8_t e) {
 #if ENABLED(SUMMON_PRINT_PAUSE)
   static bool print_pause_summoned = false;
 #endif
-// LCD support removed
-//#if ENABLED(U8GLIB_SSD1306) && ENABLED(INTELLIGENT_LCD_REFRESH_RATE)
-//  static float last_intelligent_z_lcd_update = 0;
-//  static float last_intelligent_F_lcd_update = 0;
-//  static bool last_intelligent_F_authorized_lcd_update = false;
-//#endif
 
 static bool send_ok[BUFSIZE];
-
-#if HAS_SERVOS
-  Servo servo[NUM_SERVOS];
-#endif
 
 #ifdef CHDK
   millis_t chdkHigh = 0;
@@ -820,47 +775,6 @@ void suicide() {
   #endif
 }
 
-void servo_init() {
-  #if NUM_SERVOS >= 1 && HAS_SERVO_0
-    servo[0].attach(SERVO0_PIN);
-    servo[0].detach(); // Just set up the pin. We don't have a position yet. Don't move to a random position.
-  #endif
-  #if NUM_SERVOS >= 2 && HAS_SERVO_1
-    servo[1].attach(SERVO1_PIN);
-    servo[1].detach();
-  #endif
-  #if NUM_SERVOS >= 3 && HAS_SERVO_2
-    servo[2].attach(SERVO2_PIN);
-    servo[2].detach();
-  #endif
-  #if NUM_SERVOS >= 4 && HAS_SERVO_3
-    servo[3].attach(SERVO3_PIN);
-    servo[3].detach();
-  #endif
-
-   #if HAS_SERVO_ENDSTOPS
-
-    z_probe_is_active = false;
-
-    /**
-     * Set position of all defined Servo Endstops
-     *
-     * ** UNSAFE! - NEEDS UPDATE! **
-     *
-     * The servo might be deployed and positioned too low to stow
-     * when starting up the machine or rebooting the board.
-     * There's no way to know where the nozzle is positioned until
-     * homing has been done - no homing with z-probe without init!
-     *
-     */
-    for (int i = 0; i < 3; i++)
-      if (servo_endstop_id[i] >= 0)
-        servo[servo_endstop_id[i]].move(servo_endstop_angle[i][1]);
-
-  #endif // HAS_SERVO_ENDSTOPS
-
-}
-
 /**
  * Stepper Reset (RigidBoard, et.al.)
  */
@@ -993,7 +907,6 @@ void setup() {
 
   st_init();    // Initialize stepper, this enables interrupts!
   setup_photpin();
-  servo_init();
 
   #if HAS_CONTROLLERFAN
     SET_OUTPUT(CONTROLLERFAN_PIN); //Set pin used for driver cooling fan
@@ -1151,21 +1064,6 @@ void setup() {
  */
 void loop() {
   #if ENABLED(SDSUPPORT)
-    #if ENABLED(ULTIPANEL)
-      if (abort_sd_printing) {
-        abort_sd_printing = false;
-        card.sdprinting = false;
-        card.closefile();
-        clear_command_queue();
-        quickStop();
-        print_job_timer.stop();
-        disable_all_heaters();
-        #if FAN_COUNT > 0
-          for (uint8_t i = 0; i < FAN_COUNT; i++) fanSpeeds[i] = 0;
-        #endif
-        cancel_heatup = true;
-      }
-    #endif
   #endif // SDSUPPORT
 
   #if ENABLED( WIFI_PRINT )
@@ -1219,7 +1117,6 @@ void gcode_line_error(const char* err, bool doFlush = true) {
   SERIAL_ERROR_START;
   serialprintPGM(err);
   SERIAL_ERRORLN(gcode_LastN);
-  //Serial.println(gcode_N);
   if (doFlush) FlushSerialRequestResend();
   serial_count = 0;
 }
@@ -2734,7 +2631,6 @@ static void homeaxis(AxisEnum axis) {
         #else
           sync_plan_position();
         #endif
-        //prepare_move();
       }
 
       feedrate = retract_recover_feedrate * 60;
@@ -4561,68 +4457,10 @@ inline void gcode_G92() {
   }
 }
 
-#if ENABLED(ULTIPANEL)
-
-  /**
-   * M0: // M0 - Unconditional stop - Wait for user button press on LCD
-   * M1: // M1 - Conditional stop - Wait for user button press on LCD
-   */
-  inline void gcode_M0_M1() {
-    char* args = current_command_args;
-
-    uint8_t test_value = 12;
-    SERIAL_ECHOPAIR("TEST", test_value);
-
-    millis_t codenum = 0;
-    bool hasP = false, hasS = false;
-    if (code_seen('P')) {
-      codenum = code_value_short(); // milliseconds to wait
-      hasP = codenum > 0;
-    }
-    if (code_seen('S')) {
-      codenum = code_value() * 1000UL; // seconds to wait
-      hasS = codenum > 0;
-    }
-
-    // LCD support removed
-    // if (!hasP && !hasS && *args != '\0')
-    //   lcd_setstatus(args, true);
-    // else {
-    //   LCD_MESSAGEPGM(MSG_USERWAIT);
-    //   #if ENABLED(LCD_PROGRESS_BAR) && PROGRESS_MSG_EXPIRE > 0
-    //     dontExpireStatus();
-    //   #endif
-    // }
-
-    // lcd_ignore_click();
-    st_synchronize();
-    refresh_cmd_timeout();
-    if (codenum > 0) {
-      codenum += previous_cmd_ms;  // wait until this time for a click
-      KEEPALIVE_STATE(PAUSED_FOR_USER);
-      while (PENDING(millis(), codenum) /* && !lcd_clicked() */) idle();
-      KEEPALIVE_STATE(IN_HANDLER);
-      // lcd_ignore_click(false);
-    }
-    // else {
-    //   if (!lcd_detected()) return;
-    //   KEEPALIVE_STATE(PAUSED_FOR_USER);
-    //   while (!lcd_clicked()) idle();
-    //   KEEPALIVE_STATE(IN_HANDLER);
-    // }
-    // if (IS_SD_PRINTING)
-    //   LCD_MESSAGEPGM(MSG_RESUMING);
-    // else
-    //   LCD_MESSAGEPGM(WELCOME_MSG);
-  }
-
-#endif // ULTIPANEL
-
 /**
  * M17: Enable power on all stepper motors
  */
 inline void gcode_M17() {
-  // LCD_MESSAGEPGM(MSG_NO_MOVE); // LCD support removed
   enable_all_steppers();
 }
 
@@ -5681,62 +5519,6 @@ inline void gcode_M140() {
   if (code_seen('S')) setTargetBed(code_value());
 }
 
-#if ENABLED(ULTIPANEL)
-
-  /**
-   * M145: Set the heatup state for a material in the LCD menu
-   *   S<material> (0=PLA, 1=ABS)
-   *   H<hotend temp>
-   *   B<bed temp>
-   *   F<fan speed>
-   */
-  inline void gcode_M145() {
-    int8_t material = code_seen('S') ? code_value_short() : 0;
-    if (material < 0 || material > 1) {
-      SERIAL_ERROR_START;
-      SERIAL_ERRORLNPGM(MSG_ERR_MATERIAL_INDEX);
-    }
-    else {
-      int v;
-      switch (material) {
-        case 0:
-          if (code_seen('H')) {
-            v = code_value_short();
-            plaPreheatHotendTemp = constrain(v, EXTRUDE_MINTEMP, HEATER_0_MAXTEMP - 15);
-          }
-          if (code_seen('F')) {
-            v = code_value_short();
-            plaPreheatFanSpeed = constrain(v, 0, 255);
-          }
-          #if TEMP_SENSOR_BED != 0
-            if (code_seen('B')) {
-              v = code_value_short();
-              plaPreheatHPBTemp = constrain(v, BED_MINTEMP, BED_MAXTEMP - 15);
-            }
-          #endif
-          break;
-        case 1:
-          if (code_seen('H')) {
-            v = code_value_short();
-            absPreheatHotendTemp = constrain(v, EXTRUDE_MINTEMP, HEATER_0_MAXTEMP - 15);
-          }
-          if (code_seen('F')) {
-            v = code_value_short();
-            absPreheatFanSpeed = constrain(v, 0, 255);
-          }
-          #if TEMP_SENSOR_BED != 0
-            if (code_seen('B')) {
-              v = code_value_short();
-              absPreheatHPBTemp = constrain(v, BED_MINTEMP, BED_MAXTEMP - 15);
-            }
-          #endif
-          break;
-      }
-    }
-  }
-
-#endif
-
 #if HAS_POWER_SWITCH
 
   /**
@@ -5752,12 +5534,6 @@ inline void gcode_M140() {
      */
     #if HAS_SUICIDE
       OUT_WRITE(SUICIDE_PIN, HIGH);
-    #endif
-
-    #if ENABLED(ULTIPANEL)
-      powersupply = true;
-      // LCD_MESSAGEPGM(WELCOME_MSG); // LCD support removed
-      // lcd_update(); // LCD support removed
     #endif
   }
 
@@ -5784,13 +5560,6 @@ inline void gcode_M81() {
     suicide();
   #elif HAS_POWER_SWITCH
     OUT_WRITE(PS_ON_PIN, PS_ON_ASLEEP);
-  #endif
-  #if ENABLED(ULTIPANEL)
-    #if HAS_POWER_SWITCH
-      powersupply = false;
-    #endif
-    // LCD_MESSAGEPGM(MACHINE_NAME " " MSG_OFF "."); // LCD support removed
-    // lcd_update(); // LCD support removed
   #endif
 }
 
@@ -5975,57 +5744,6 @@ inline void gcode_M121() { enable_endstops_globally(false); }
 
 #endif // BLINKM
 
-#if ENABLED(EXPERIMENTAL_I2CBUS)
-
-  /**
-   * M155: Send data to a I2C slave device
-   *
-   * This is a PoC, the formating and arguments for the GCODE will
-   * change to be more compatible, the current proposal is:
-   *
-   *  M155 A<slave device address base 10> ; Sets the I2C slave address the data will be sent to
-   *
-   *  M155 B<byte-1 value in base 10>
-   *  M155 B<byte-2 value in base 10>
-   *  M155 B<byte-3 value in base 10>
-   *
-   *  M155 S1 ; Send the buffered data and reset the buffer
-   *  M155 R1 ; Reset the buffer without sending data
-   *
-   */
-  inline void gcode_M155() {
-    // Set the target address
-    if (code_seen('A'))
-      i2c.address((uint8_t) code_value_short());
-
-    // Add a new byte to the buffer
-    else if (code_seen('B'))
-      i2c.addbyte((int) code_value_short());
-
-    // Flush the buffer to the bus
-    else if (code_seen('S')) i2c.send();
-
-    // Reset and rewind the buffer
-    else if (code_seen('R')) i2c.reset();
-  }
-
-  /**
-   * M156: Request X bytes from I2C slave device
-   *
-   * Usage: M156 A<slave device address base 10> B<number of bytes>
-   */
-  inline void gcode_M156() {
-    uint8_t addr = code_seen('A') ? code_value_short() : 0;
-    int bytes    = code_seen('B') ? code_value_short() : 0;
-
-    if (addr && bytes) {
-      i2c.address(addr);
-      i2c.reqbytes(bytes);
-    }
-  }
-
-#endif //EXPERIMENTAL_I2CBUS
-
 /**
  * M200: Set filament diameter and set E axis units to cubic millimeters
  *
@@ -6068,14 +5786,6 @@ inline void gcode_M201() {
   // steps per sq second need to be updated to agree with the units per sq second (as they are what is used in the planner)
   reset_acceleration_rates();
 }
-
-#if 0 // Not used for Sprinter/grbl gen6
-  inline void gcode_M202() {
-    for (int8_t i = 0; i < NUM_AXIS; i++) {
-      if (code_seen(axis_codes[i])) axis_travel_steps_per_sqr_second[i] = code_value() * axis_steps_per_unit[i];
-    }
-  }
-#endif
 
 
 /**
@@ -6372,50 +6082,6 @@ inline void gcode_M226() {
   } // code_seen('P')
 }
 
-#if HAS_SERVOS
-
-  /**
-   * M280: Get or set servo position. P<index> S<angle>
-   */
-  inline void gcode_M280() {
-    int servo_index = code_seen('P') ? code_value_short() : -1;
-    int servo_position = 0;
-    if (code_seen('S')) {
-      servo_position = code_value_short();
-      if (servo_index >= 0 && servo_index < NUM_SERVOS)
-        servo[servo_index].move(servo_position);
-      else {
-        SERIAL_ERROR_START;
-        SERIAL_ERROR("Servo ");
-        SERIAL_ERROR(servo_index);
-        SERIAL_ERRORLN(" out of range");
-      }
-    }
-    else if (servo_index >= 0) {
-      SERIAL_ECHO_START;
-      SERIAL_ECHO(" Servo ");
-      SERIAL_ECHO(servo_index);
-      SERIAL_ECHO(": ");
-      SERIAL_ECHOLN(servo[servo_index].read());
-    }
-  }
-
-#endif // HAS_SERVOS
-
-#if HAS_BUZZER
-
-  /**
-   * M300: Play beep sound S<frequency Hz> P<duration ms>
-   */
-  inline void gcode_M300() {
-    uint16_t beepS = code_seen('S') ? code_value_short() : 110;
-    uint32_t beepP = code_seen('P') ? code_value_long() : 1000;
-    if (beepP > 5000) beepP = 5000; // limit to 5 seconds
-    buzz(beepP, beepS);
-  }
-
-#endif // HAS_BUZZER
-
 #if ENABLED(PIDTEMP)
 
   /**
@@ -6527,21 +6193,6 @@ inline void gcode_M226() {
   }
 
 #endif // CHDK || PHOTOGRAPH_PIN
-
-// LCD support removed
-//#if ENABLED(HAS_LCD_CONTRAST)
-//
-//  /**
-//   * M250: Read and optionally set the LCD contrast
-//   */
-//  inline void gcode_M250() {
-//    if (code_seen('C')) lcd_setcontrast(code_value_short() & 0x3F);
-//    SERIAL_PROTOCOLPGM("lcd contrast value: ");
-//    SERIAL_PROTOCOL(lcd_contrast);
-//    SERIAL_EOL;
-//  }
-//
-//#endif // HAS_LCD_CONTRAST
 
 #if ENABLED(PREVENT_DANGEROUS_EXTRUDE)
 
@@ -6697,11 +6348,6 @@ inline void gcode_M400() { st_synchronize(); }
     }
 
     filament_sensor = true;
-
-    //SERIAL_PROTOCOLPGM("Filament dia (measured mm):");
-    //SERIAL_PROTOCOL(filament_width_meas);
-    //SERIAL_PROTOCOLPGM("Extrusion ratio(%):");
-    //SERIAL_PROTOCOL(extruder_multiplier[active_extruder]);
   }
 
   /**
@@ -6785,10 +6431,6 @@ inline void gcode_M428() {
       else {
         SERIAL_ERROR_START;
         SERIAL_ERRORLNPGM(MSG_ERR_M428_TOO_FAR);
-        // LCD_ALERTMESSAGEPGM("Err: Too far!"); // LCD support removed
-        #if HAS_BUZZER
-          buzz(200, 40);
-        #endif
         err = true;
         break;
       }
@@ -6797,11 +6439,6 @@ inline void gcode_M428() {
 
   if (!err) {
     sync_plan_position();
-    // LCD_MESSAGEPGM(MSG_HOME_OFFSETS_APPLIED); // LCD support removed
-    #if HAS_BUZZER
-      buzz(200, 659);
-      buzz(200, 698);
-    #endif
   }
 }
 
@@ -6952,26 +6589,15 @@ inline void gcode_M503() {
              Removing filament presence test here.
              @See: M600 FILAMENT_NEED_TO_BE_EXPULSED */
 
-          /*if (FILAMENT_PRESENT) {*/
-            SERIAL_ECHOLNPGM("Pause : Asked by tap tap");
+          SERIAL_ECHOLNPGM("Pause : Asked by tap tap");
 
-            //enqueue_and_echo_commands_P(PSTR("G28\nM104 S180\nG0 F150 X0 Y0 Z100\nM109 S180\nD600\nM106 S255\nM104 S0\nG28"));
+          printer_states.pause_asked = true;
 
-            printer_states.pause_asked = true;
-
-            if (!printer_states.homed) {
-              gcode_G28();
-            }
-
-            enqueue_and_echo_commands_P(PSTR(FILAMENTCHANGE_EXTRACTION_SCRIPT));
-            //enqueue_and_echo_commands_P(PSTR("G28\nM104 S180\nG0 F150 X0 Y0 Z100\nM109 S180\nD600\nM106 S255\nM104 S0\nG28"));
-          /*
+          if (!printer_states.homed) {
+            gcode_G28();
           }
-          else {
-            // Avoid filament expulsion if filament not present
-            set_notify_warning();
-          }
-          */
+
+          enqueue_and_echo_commands_P(PSTR(FILAMENTCHANGE_EXTRACTION_SCRIPT));
         }
       }
     }
@@ -7405,16 +7031,13 @@ inline void gcode_M503() {
         do {
           current_position[E_AXIS] += FILAMENTCHANGE_AUTO_INSERTION_VERIFICATION_LENGTH_MM;
           destination[E_AXIS] = current_position[E_AXIS];
-          //destination[E_AXIS] += FILAMENTCHANGE_AUTO_INSERTION_VERIFICATION_LENGTH_MM;
-          //prepare_move();
           RUNPLAN;
         } while( destination[E_AXIS] < destination_to_reach && current_filament_present(active_extruder));
         st_synchronize();
         printer_states.in_critical_section = false;
 
         // Purge part
-        //if(previous_activity_state != ACTIVITY_IDLE || active_extruder == 0) {
-          // But, can we continue to slowly purge ?
+        // But, can we continue to slowly purge ?
         if (current_filament_present(active_extruder)) {
           SET_FEEDRATE_FOR_PURGE;
           destination_to_reach = destination[E_AXIS] + 2.5*FILAMENTCHANGE_AUTO_INSERTION_PURGE_LENGTH;
@@ -7660,16 +7283,8 @@ inline void gcode_M503() {
              in case we have go to far away from detector
              Removing filament presence test here.
              @See: M600 FILAMENT_NEED_TO_BE_EXPULSED */
-          /* if (printer_states.filament_state == FILAMENT_IN) { */
-            filament_direction = FILAMENT_NEED_TO_BE_EXPULSED;
-            RESCHEDULE_HOTEND_AUTO_SHUTDOWN;
-          /*
-          }
-          else {
-            set_notify_warning();
-          }
-          */
-
+          filament_direction = FILAMENT_NEED_TO_BE_EXPULSED;
+          RESCHEDULE_HOTEND_AUTO_SHUTDOWN;
         }
       #endif
 
@@ -8084,12 +7699,6 @@ inline void gcode_D720() {
  * M907: Set digital trimpot motor current using axis codes X, Y, Z, E, B, S
  */
 inline void gcode_M907() {
-  #if HAS_DIGIPOTSS
-    for (int i = 0; i < NUM_AXIS; i++)
-      if (code_seen(axis_codes[i])) digipot_current(i, code_value());
-    if (code_seen('B')) digipot_current(4, code_value());
-    if (code_seen('S')) for (int i = 0; i <= 4; i++) digipot_current(i, code_value());
-  #endif
   #if PIN_EXISTS(MOTOR_CURRENT_PWM_XY)
     if (code_seen('X')) digipot_current(0, code_value());
   #endif
@@ -8098,12 +7707,6 @@ inline void gcode_M907() {
   #endif
   #if PIN_EXISTS(MOTOR_CURRENT_PWM_E)
     if (code_seen('E')) digipot_current(2, code_value());
-  #endif
-  #if ENABLED(DIGIPOT_I2C)
-    // this one uses actual amps in floating point
-    for (int i = 0; i < NUM_AXIS; i++) if (code_seen(axis_codes[i])) digipot_i2c_set_current(i, code_value());
-    // for each additional extruder (named B,C,D,E..., channels 4,5,6,7...)
-    for (int i = NUM_AXIS; i < DIGIPOT_I2C_NUM_CHANNELS; i++) if (code_seen('B' + i - (NUM_AXIS))) digipot_i2c_set_current(i, code_value());
   #endif
   #if ENABLED(DAC_STEPPER_CURRENT)
     if (code_seen('S')) {
@@ -8114,35 +7717,23 @@ inline void gcode_M907() {
   #endif
 }
 
-#if HAS_DIGIPOTSS || ENABLED(DAC_STEPPER_CURRENT)
+#if ENABLED(DAC_STEPPER_CURRENT)
 
   /**
    * M908: Control digital trimpot directly (M908 P<pin> S<current>)
    */
   inline void gcode_M908() {
-    #if HAS_DIGIPOTSS
-      digitalPotWrite(
-        code_seen('P') ? code_value() : 0,
-        code_seen('S') ? code_value() : 0
-      );
-    #endif
-    #ifdef DAC_STEPPER_CURRENT
-      dac_current_raw(
-        code_seen('P') ? code_value_long() : -1,
-        code_seen('S') ? code_value_short() : 0
-      );
-    #endif
+    dac_current_raw(
+      code_seen('P') ? code_value_long() : -1,
+      code_seen('S') ? code_value_short() : 0
+    );
   }
 
-  #if ENABLED(DAC_STEPPER_CURRENT) // As with Printrbot RevF
+  inline void gcode_M909() { dac_print_values(); }
 
-    inline void gcode_M909() { dac_print_values(); }
+  inline void gcode_M910() { dac_commit_eeprom(); }
 
-    inline void gcode_M910() { dac_commit_eeprom(); }
-
-  #endif
-
-#endif // HAS_DIGIPOTSS || DAC_STEPPER_CURRENT
+#endif // DAC_STEPPER_CURRENT
 
 #if HAS_MICROSTEPS
 
@@ -8973,13 +8564,6 @@ void process_next_command() {
     break;
 
     case 'M': switch (codenum) {
-      #if ENABLED(ULTIPANEL)
-        case 0: // M0 - Unconditional stop - Wait for user button press on LCD
-        case 1: // M1 - Conditional stop - Wait for user button press on LCD
-          gcode_M0_M1();
-          break;
-      #endif // ULTIPANEL
-
       case 17:
         gcode_M17();
         break;
@@ -9174,14 +8758,6 @@ void process_next_command() {
         gcode_M119();
         break;
 
-      #if ENABLED(ULTIPANEL)
-
-        case 145: // M145: Set material heatup parameters
-          gcode_M145();
-          break;
-
-      #endif
-
       #if ENABLED(BLINKM)
 
         case 150: // M150
@@ -9189,18 +8765,6 @@ void process_next_command() {
           break;
 
       #endif //BLINKM
-
-      #if ENABLED(EXPERIMENTAL_I2CBUS)
-
-        case 155:
-          gcode_M155();
-          break;
-
-        case 156:
-          gcode_M156();
-          break;
-
-      #endif //EXPERIMENTAL_I2CBUS
 
       case 200: // M200 D<millimeters> set filament diameter and set E axis units to cubic millimeters (use S0 to set back to millimeters).
         gcode_M200();
@@ -9267,18 +8831,6 @@ void process_next_command() {
       case 226: // M226 P<pin number> S<pin state>- Wait until the specified pin reaches the state required
         gcode_M226();
         break;
-
-      #if HAS_SERVOS
-        case 280: // M280 - set servo position absolute. P: servo index, S: angle or microseconds
-          gcode_M280();
-          break;
-      #endif // HAS_SERVOS
-
-      #if HAS_BUZZER
-        case 300: // M300 - Play beep tone
-          gcode_M300();
-          break;
-      #endif // HAS_BUZZER
 
       #if ENABLED(PIDTEMP)
         case 301: // M301
@@ -9401,25 +8953,21 @@ void process_next_command() {
         gcode_M907();
         break;
 
-      #if HAS_DIGIPOTSS || ENABLED(DAC_STEPPER_CURRENT)
+      #if ENABLED(DAC_STEPPER_CURRENT)
 
         case 908: // M908 Control digital trimpot directly.
           gcode_M908();
           break;
 
-        #if ENABLED(DAC_STEPPER_CURRENT) // As with Printrbot RevF
+        case 909: // M909 Print digipot/DAC current value
+          gcode_M909();
+          break;
 
-          case 909: // M909 Print digipot/DAC current value
-            gcode_M909();
-            break;
+        case 910: // M910 Commit digipot/DAC value to external EEPROM
+          gcode_M910();
+          break;
 
-          case 910: // M910 Commit digipot/DAC value to external EEPROM
-            gcode_M910();
-            break;
-
-        #endif
-
-      #endif // HAS_DIGIPOTSS || DAC_STEPPER_CURRENT
+      #endif // DAC_STEPPER_CURRENT
 
       #if HAS_MICROSTEPS
 
