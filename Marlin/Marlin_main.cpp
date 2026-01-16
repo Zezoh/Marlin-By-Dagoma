@@ -34,14 +34,6 @@
 
 #include "Marlin.h"
 
-/**
- * Delta-only firmware notes:
- * - MESH_BED_LEVELING features removed (not supported for Delta printers)
- * - DUAL_X_CARRIAGE features removed
- * - LCD/ULTRA_LCD support removed
- * - Non-Delta movement code removed
- */
-
 #include "motion.h"
 #include "temperature.h"
 #include "cardreader.h"
@@ -143,7 +135,6 @@
  * M113 - Get or set the timeout interval for Host Keepalive "busy" messages (HOST_KEEPALIVE_FEATURE)
  * M114 - Output current position to serial port
  * M115 - Report capabilities string
- * M117 - Display a message on the controller screen
  * M119 - Output Endstop status to serial port
  * M120 - Enable endstop detection
  * M121 - Disable endstop detection
@@ -882,8 +873,6 @@ void setup() {
   // loads data from EEPROM if available else uses defaults (and resets step acceleration rate)
   Config_RetrieveSettings();
 
-  // lcd_init(); // LCD support removed
-
   tp_init();    // Initialize temperature loop
   plan_init();  // Initialize planner;
 
@@ -1170,8 +1159,6 @@ inline void get_serial_commands() {
 
       #if ENABLED( WIFI_PRINT )
         if ( strncmp( command, "REDY:", 4 ) == 0 ) {
-          // Do stuff with that ?
-          // lcd_setstatus( command + 5 ); // LCD support removed
           continue;
         }
       #endif // END WIFI_PRINT
@@ -1246,7 +1233,6 @@ inline void get_serial_commands() {
             case 2:
             case 3:
               SERIAL_ERRORLNPGM(MSG_ERR_STOPPED);
-              // LCD_MESSAGEPGM(MSG_STOPPED); // LCD support removed
               break;
           }
         }
@@ -1349,7 +1335,6 @@ inline void get_serial_commands() {
           sprintf_P(time, PSTR("%i " MSG_END_HOUR " %i " MSG_END_MINUTE), hours, minutes);
           SERIAL_ECHO_START;
           SERIAL_ECHOLN(time);
-          // lcd_setstatus(time, true); // LCD support removed
           card.printingHasFinished();
           #if DISABLED(ONE_BUTTON)
           card.checkautostart(true);
@@ -1465,8 +1450,6 @@ XYZ_CONSTS_FROM_CONFIG(float, base_home_pos,  HOME_POS);
 XYZ_CONSTS_FROM_CONFIG(float, max_length,     MAX_LENGTH);
 XYZ_CONSTS_FROM_CONFIG(float, home_bump_mm,   HOME_BUMP_MM);
 XYZ_CONSTS_FROM_CONFIG(signed char, home_dir, HOME_DIR);
-
-// DUAL_X_CARRIAGE feature has been removed (Delta-only firmware)
 
 /**
  * Software endstops can be used to monitor the open end of
@@ -1935,7 +1918,6 @@ static void setup_for_endstop_move() {
           if (IsRunning()) {
             SERIAL_ERROR_START;
             SERIAL_ERRORLNPGM("Z-Probe failed to engage!");
-            // LCD_ALERTMESSAGEPGM("Err: ZPROBE"); // LCD support removed
           }
           stop();
         }
@@ -2041,7 +2023,6 @@ static void setup_for_endstop_move() {
           if (IsRunning()) {
             SERIAL_ERROR_START;
             SERIAL_ERRORLNPGM("Z-Probe failed to retract!");
-            // LCD_ALERTMESSAGEPGM("Err: ZPROBE"); // LCD support removed
           }
           stop();
         }
@@ -2223,7 +2204,6 @@ static void setup_for_endstop_move() {
 
 #if ENABLED(Z_PROBE_SLED) || ENABLED(Z_SAFE_HOMING) || ENABLED(AUTO_BED_LEVELING_FEATURE)
   static void axis_unhomed_error() {
-    // LCD_MESSAGEPGM(MSG_YX_UNHOMED); // LCD support removed
     SERIAL_ECHO_START;
     SERIAL_ECHOLNPGM(MSG_YX_UNHOMED);
   }
@@ -2667,8 +2647,6 @@ inline void gcode_G4() {
   refresh_cmd_timeout();
   codenum += previous_cmd_ms;  // keep track of when we started waiting
 
-  // if (!lcd_hasstatus()) LCD_MESSAGEPGM(MSG_DWELL); // LCD support removed
-
   while (PENDING(millis(), codenum)) idle();
 }
 
@@ -2950,7 +2928,6 @@ inline void gcode_G28() {
                 HOMEAXIS(Z);
               }
               else {
-                // LCD_MESSAGEPGM(MSG_ZPROBE_OUT); // LCD support removed
                 SERIAL_ECHO_START;
                 SERIAL_ECHOLNPGM(MSG_ZPROBE_OUT);
               }
@@ -4195,7 +4172,6 @@ inline void gcode_M31() {
   sprintf_P(time, PSTR("%i min, %i sec"), min, sec);
   SERIAL_ECHO_START;
   SERIAL_ECHOLN(time);
-  // lcd_setstatus(time); // LCD support removed
   autotempShutdown();
 }
 
@@ -4635,7 +4611,6 @@ inline void gcode_M104() {
      */
     if (temp <= (EXTRUDE_MINTEMP)/2) {
       print_job_timer.stop();
-      // LCD_MESSAGEPGM(WELCOME_MSG); // LCD support removed
     }
     /**
      * We do not check if the timer is already running because this check will
@@ -4643,8 +4618,6 @@ inline void gcode_M104() {
      * will not restart.
      */
     else print_job_timer.start();
-
-    // if (temp > degHotend(target_extruder)) LCD_MESSAGEPGM(MSG_HEATING); // LCD support removed
   }
 }
 
@@ -4897,7 +4870,6 @@ inline void gcode_M109() {
      */
     if (temp <= (EXTRUDE_MINTEMP)/2) {
       print_job_timer.stop();
-      // LCD_MESSAGEPGM(WELCOME_MSG); // LCD support removed
     }
     /**
      * We do not check if the timer is already running because this check will
@@ -4905,8 +4877,6 @@ inline void gcode_M109() {
      * will not restart.
      */
     else print_job_timer.start();
-
-    // if (temp > degHotend(target_extruder)) LCD_MESSAGEPGM(MSG_HEATING); // LCD support removed
   }
 
   #if ENABLED(AUTOTEMP)
@@ -4959,8 +4929,6 @@ inline void gcode_M109() {
     x_progress, y_progress, z_progress,
     x_from, x_to, y_from, y_to, z_from, z_to
   );
-
-  // LCD_MESSAGEPGM(MSG_HEATING_COMPLETE); // LCD support removed
 }
 
 #if HAS_TEMP_BED
@@ -4972,7 +4940,6 @@ inline void gcode_M109() {
   inline void gcode_M190() {
     if (DEBUGGING(DRYRUN)) return;
 
-    // LCD_MESSAGEPGM(MSG_BED_HEATING); // LCD support removed
     bool no_wait_for_cooling = code_seen('S');
     if (no_wait_for_cooling || code_seen('R')) setTargetBed(code_value());
 
@@ -5032,7 +4999,6 @@ inline void gcode_M109() {
       #endif //TEMP_BED_RESIDENCY_TIME > 0
 
     } while (!cancel_heatup && TEMP_BED_CONDITIONS);
-    // LCD_MESSAGEPGM(MSG_BED_DONE); // LCD support removed
   }
 
 #endif // HAS_TEMP_BED
@@ -5301,7 +5267,6 @@ inline void gcode_M115() {
  * M117: Set LCD Status Message
  */
 inline void gcode_M117() {
-  // lcd_setstatus(current_command_args); // LCD support removed
 }
 
 /**
@@ -6289,10 +6254,6 @@ inline void gcode_M503() {
 
     SERIAL_ECHOLNPGM( "pause : In process" );
     KEEPALIVE_STATE(PAUSED_FOR_USER);
-    // LCD support removed
-    //#if ENABLED(ULTRA_LCD) && DISABLED(NO_LCD_FOR_FILAMENTCHANGEABLE)
-    //  LCD_MESSAGEPGM(MSG_FILAMENTCHANGE);
-    //#endif
 
     #if EXTRUDERS > 1
       uint8_t active_extruder_before_filament_change = active_extruder;
@@ -6591,10 +6552,6 @@ inline void gcode_M503() {
         && printer_states.hotend_state == HOTEND_HOT
       ) {
         SERIAL_ECHOLNPGM( "pause: filament insertion" );
-        // LCD support removed
-        //#if ENABLED(ULTRA_LCD) && DISABLED(NO_LCD_FOR_FILAMENTCHANGEABLE)
-        //  LCD_MESSAGEPGM(MSG_FILAMENTINSERTION);
-        //#endif
         // FILAMENTCHANGE_FINALRETRACT is a negative length
         // So following extruder move delta is 'inverted' in meaning
         //
@@ -6685,10 +6642,6 @@ inline void gcode_M503() {
         && printer_states.hotend_state == HOTEND_HOT
       ) {
         SERIAL_ECHOLNPGM( "pause: filament extraction" );
-        // LCD support removed
-        //#if ENABLED(ULTRA_LCD) && DISABLED(NO_LCD_FOR_FILAMENTCHANGEABLE)
-        //  LCD_MESSAGEPGM(MSG_FILAMENTEJECTION);
-        //#endif
 
         current_position[E_AXIS] = destination[E_AXIS];
         sync_plan_position_e();
@@ -6710,7 +6663,6 @@ inline void gcode_M503() {
         st_synchronize();
         refresh_cmd_timeout();
         quick_pause_timeout += previous_cmd_ms;  // keep track of when we started waiting
-        // if (!lcd_hasstatus()) LCD_MESSAGEPGM(MSG_DWELL); // LCD support removed
         while (PENDING(millis(), quick_pause_timeout)) idle();
 
         // Second extrude before ejection
@@ -6787,7 +6739,6 @@ inline void gcode_M503() {
           st_synchronize();
           refresh_cmd_timeout();
           quick_pause_timeout += previous_cmd_ms;  // keep track of when we started waiting
-          // if (!lcd_hasstatus()) LCD_MESSAGEPGM(MSG_DWELL); // LCD support removed
           while (PENDING(millis(), quick_pause_timeout)) idle();
 
           // Second extrude before ejection
@@ -7016,16 +6967,6 @@ inline void gcode_M503() {
         #endif
       }
 
-      // LCD support removed
-      //#if ENABLED(ULTRA_LCD) && DISABLED(NO_LCD_FOR_FILAMENTCHANGEABLE)
-      //  if (lcd_clicked()) {
-      //    SERIAL_ECHOLNPGM("pause: lcd clicked");
-      //    exit_pause_asked = true;
-      //    lcd_quick_feedback();
-      //  }
-      //#endif
-
-
       // Detemines if we can really exit
       if (
         exit_pause_asked
@@ -7062,18 +7003,6 @@ inline void gcode_M503() {
     //
 
     KEEPALIVE_STATE(IN_HANDLER);
-    // LCD support removed
-    //#if ENABLED(ULTRA_LCD) && DISABLED(NO_LCD_FOR_FILAMENTCHANGEABLE)
-    //  lcd_quick_feedback(); // click sound feedback
-    //  lcd_reset_alert_level();
-    //  if (previous_activity_state == ACTIVITY_PRINTING) {
-    //    LCD_MESSAGEPGM(MSG_RESUMING);
-    //  }
-    //  else {
-    //    LCD_MESSAGEPGM(WELCOME_MSG);
-    //  }
-    //#endif
-
 
     // Return back to normal positions
     destination[X_AXIS] = previous_position[X_AXIS];
@@ -7304,8 +7233,6 @@ inline void gcode_M907() {
  */
 inline void gcode_M999() {
   Running = true;
-  // lcd_reset_alert_level(); // LCD support removed
-  // gcode_LastN = Stopped_gcode_LastN;
   FlushSerialRequestResend();
 }
 
@@ -7341,7 +7268,6 @@ inline void gcode_T(uint8_t tmp_extruder) {
       if (tmp_extruder != active_extruder) {
         // Save current position to return to after applying extruder offset
         set_destination_to_current();
-        // Delta-only firmware - DUAL_X_CARRIAGE code removed
         #if ENABLED(AUTO_BED_LEVELING_FEATURE)
           // Offset extruder, make sure to apply the bed level rotation matrix
           vector_3 tmp_offset_vec = vector_3(hotend_offset[X_AXIS][tmp_extruder],
@@ -9516,11 +9442,6 @@ inline void manage_printer_states() {
   }
 }
 
-// LCD support removed
-//#if ENABLED(ULTRA_LCD) && DISABLED(NO_LCD_FOR_FILAMENTCHANGEABLE)
-//  millis_t next_lcd_feedback = 0UL;
-//#endif
-
 /**
  * Standard idle routine keeps the machine alive
  */
@@ -9541,45 +9462,11 @@ void idle(
   );
   host_keepalive();
 
-  // LCD support removed
-  // if (!printer_states.in_critical_section) {
-  //   #if ENABLED(U8GLIB_SSD1306) && ENABLED(INTELLIGENT_LCD_REFRESH_RATE)
-  //     if (IS_SD_PRINTING && axis_homed[X_AXIS] && axis_homed[Y_AXIS] && axis_homed[Z_AXIS]) {
-  //
-  //       if ( last_intelligent_F_lcd_update != feedrate ) {
-  //         last_intelligent_F_authorized_lcd_update = feedrate > last_intelligent_F_lcd_update;
-  //         last_intelligent_F_lcd_update = feedrate;
-  //       }
-  //
-  //       if ( last_intelligent_z_lcd_update != current_position[Z_AXIS] || last_intelligent_F_authorized_lcd_update ) {
-  //         last_intelligent_z_lcd_update = current_position[Z_AXIS];
-  //         lcd_update();
-  //       }
-  //
-  //     }
-  //     else {
-  //       lcd_update();
-  //     }
-  //   #else
-  //     lcd_update();
-  //   #endif
-  // }
-
   #if ENABLED( WIFI_PRINT )
     manage_second_serial_status();
   #endif
 
   millis_t now = millis();
-
-  // LCD support removed
-  //#if ENABLED(ULTRA_LCD) && DISABLED(NO_LCD_FOR_FILAMENTCHANGEABLE)
-  //  if (printer_states.activity_state == ACTIVITY_PAUSED) {
-  //    if (ELAPSED(now, next_lcd_feedback)) {
-  //      next_lcd_feedback = now + 2500UL;
-  //      lcd_quick_feedback();
-  //    }
-  //  }
-  //#endif
 
   #if ENABLED( Z_MIN_MAGIC ) && DISABLED(LONG_PRESS_SUPPORT)
     if (enable_z_magic_tap) {
@@ -9778,7 +9665,6 @@ void manage_inactivity(bool ignore_stepper_queue/*=false*/) {
     if (!READ(HOME_PIN)) {
       if (!homeDebounceCount) {
         enqueue_and_echo_commands_P(PSTR("G28"));
-        // LCD_MESSAGEPGM(MSG_AUTO_HOME); // LCD support removed
       }
       if (homeDebounceCount < HOME_DEBOUNCE_DELAY)
         homeDebounceCount++;
@@ -9891,7 +9777,7 @@ void manage_inactivity(bool ignore_stepper_queue/*=false*/) {
 }
 
 void kill(const char* lcd_msg) {
-  UNUSED(lcd_msg); // LCD support not available in Delta-only firmware
+  UNUSED(lcd_msg);
 
   #if ENABLED( DELTA_EXTRA )
     #if ENABLED( SDSUPPORT )
@@ -9948,7 +9834,6 @@ void kill(const char* lcd_msg) {
 
   // FMC small patch to update the LCD before ending
   sei();   // enable interrupts
-  // for (int i = 5; i--; lcd_update()) delay(200); // Wait a short time // LCD support removed
   for (int i = 5; i--;) delay(200); // Wait a short time
   #if DISABLED( ONE_LED )
     cli();   // disable interrupts
@@ -10071,7 +9956,6 @@ void stop() {
     Stopped_gcode_LastN = gcode_LastN; // Save last g_code for restart
     SERIAL_ERROR_START;
     SERIAL_ERRORLNPGM(MSG_ERR_STOPPED);
-    // LCD_MESSAGEPGM(MSG_STOPPED); // LCD support removed
   }
 }
 
