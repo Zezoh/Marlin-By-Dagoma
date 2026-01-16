@@ -8842,15 +8842,6 @@ void disable_all_steppers() {
   disable_e3();
 }
 
-#if ENABLED(ONE_BUTTON)
-
-  millis_t next_one_button_check = 0;
-  bool print_asked = false;
-  bool asked_to_pause = false;
-  millis_t has_to_print_timeout = 0;
-
-#endif
-
 #if ENABLED(ONE_LED)
 
   int state_blink = 0;
@@ -8921,6 +8912,8 @@ void disable_all_steppers() {
 #if ENABLED(ONE_BUTTON) && ENABLED(DELTA_EXTRA)
 
   inline void manage_one_button_start_print() {
+    static millis_t next_one_button_check = 0;
+    static millis_t has_to_print_timeout = 0;
     if (printer_states.pause_asked) return;
     // De-Bounce button press
     const millis_t now = millis();
