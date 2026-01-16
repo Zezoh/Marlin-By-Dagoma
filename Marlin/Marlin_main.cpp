@@ -810,6 +810,11 @@ void suicide() {
   inline void set_notify_not_calibrated();
 #endif
 
+#if ENABLED(DELTA_EXTRA)
+  // Pre-declaration for calibration warning management
+  inline void reset_calibration_warning_flag();
+#endif
+
 #if ENABLED(ONE_BUTTON) || ENABLED(SUMMON_PRINT_PAUSE)
   #define ONE_BUTTON_PRESSED  (READ( SUMMON_PRINT_PAUSE_PIN ) ^ SUMMON_PRINT_PAUSE_INVERTING)
   #define ONE_BUTTON_RELEASED (!ONE_BUTTON_PRESSED)
@@ -6088,8 +6093,7 @@ inline void gcode_M503() {
       if ( !printer_states.pause_asked ) {
         if (z_magic_tap_count == 2) {
           if (NOT_YET_CALIBRATED) {
-            SERIAL_ERRORLNPGM("Printer not yet calibrated. Please calibrate.");
-            set_notify_not_calibrated();
+            show_calibration_warning_once();
             return;
           }
 
@@ -7575,6 +7579,9 @@ inline void gcode_D851() {
   gcode_G28();
 
   printer_states.activity_state = ACTIVITY_IDLE;
+  #if ENABLED(DELTA_EXTRA)
+    reset_calibration_warning_flag();
+  #endif
 }
 
 #if ENABLED(Z_MIN_MAGIC)
@@ -8842,6 +8849,33 @@ void disable_all_steppers() {
   disable_e3();
 }
 
+#if ENABLED(DELTA_EXTRA)
+  // Calibration warning management
+  // Flag to track if the "not yet calibrated" warning has been shown
+  // This prevents spam when the printer is not calibrated and checks happen repeatedly
+  static bool calibration_warning_shown = false;
+
+  // Display the calibration warning message once
+  // This function will only print the warning the first time it's called
+  // The flag is reset by reset_calibration_warning_flag() when calibration completes
+  inline void show_calibration_warning_once() {
+    if (!calibration_warning_shown) {
+      SERIAL_ERRORLNPGM("Printer not yet calibrated. Please calibrate.");
+      #if ENABLED(ONE_LED)
+        set_notify_not_calibrated();
+      #endif
+      calibration_warning_shown = true;
+    }
+  }
+
+  // Reset the calibration warning flag
+  // Call this when calibration is completed (e.g., after D851 command)
+  // to allow the warning to be shown again if needed
+  inline void reset_calibration_warning_flag() {
+    calibration_warning_shown = false;
+  }
+#endif
+
 #if ENABLED(ONE_LED)
 
   int state_blink = 0;
@@ -8950,8 +8984,7 @@ void disable_all_steppers() {
       if (ONE_BUTTON_RELEASED) return;
 
       if (NOT_YET_CALIBRATED) {
-        SERIAL_ERRORLNPGM("Printer not yet calibrated. Please calibrate.");
-        set_notify_not_calibrated();
+        show_calibration_warning_once();
         return;
       }
       if (printer_states.filament_state == FILAMENT_IN) {
@@ -8977,8 +9010,7 @@ inline void manage_filament1_auto_insertion() {
     ) {
       #if ENABLED(DELTA_EXTRA)
         if (NOT_YET_CALIBRATED) {
-          SERIAL_ERRORLNPGM("Printer not yet calibrated. Please calibrate.");
-          set_notify_not_calibrated();
+          show_calibration_warning_once();
           return;
         }
       #endif
@@ -9065,8 +9097,7 @@ inline void manage_filament2_auto_insertion() {
     ) {
       #if ENABLED(DELTA_EXTRA)
         if (NOT_YET_CALIBRATED) {
-          SERIAL_ERRORLNPGM("Printer not yet calibrated. Please calibrate.");
-          set_notify_not_calibrated();
+          show_calibration_warning_once();
           return;
         }
       #endif
