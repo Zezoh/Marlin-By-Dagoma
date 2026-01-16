@@ -34,9 +34,14 @@
 
 #include "Marlin.h"
 
-// MESH_BED_LEVELING removed - not supported for Delta printers
+/**
+ * Delta-only firmware notes:
+ * - MESH_BED_LEVELING features removed (not supported for Delta printers)
+ * - DUAL_X_CARRIAGE features removed
+ * - LCD/ULTRA_LCD support removed
+ * - Non-Delta movement code removed
+ */
 
-// LCD support removed - no ultralcd.h include
 #include "motion.h"
 #include "temperature.h"
 #include "cardreader.h"
@@ -95,137 +100,128 @@
  *
  * "M" Codes
  *
- * M0   - Unconditional stop - Wait for user to press a button on the LCD (Only if ULTRA_LCD is enabled)
- * M1   - Same as M0
  * M17  - Enable/Power all stepper motors
  * M18  - Disable all stepper motors; same as M84
- * M20  - List SD card
- * M21  - Init SD card
- * M22  - Release SD card
- * M23  - Select SD file (M23 filename.g)
- * M24  - Start/resume SD print
- * M25  - Pause SD print
- * M26  - Set SD position in bytes (M26 S12345)
- * M27  - Report SD print status
- * M28  - Start SD write (M28 filename.g)
- * M29  - Stop SD write
- * M30  - Delete file from SD (M30 filename.g)
+ * M20  - List SD card (SDSUPPORT)
+ * M21  - Init SD card (SDSUPPORT)
+ * M22  - Release SD card (SDSUPPORT)
+ * M23  - Select SD file: M23 filename.g (SDSUPPORT)
+ * M24  - Start/resume SD print (SDSUPPORT)
+ * M25  - Pause SD print (SDSUPPORT)
+ * M26  - Set SD position in bytes: M26 S12345 (SDSUPPORT)
+ * M27  - Report SD print status (SDSUPPORT)
+ * M28  - Start SD write: M28 filename.g (SDSUPPORT)
+ * M29  - Stop SD write (SDSUPPORT)
+ * M30  - Delete file from SD: M30 filename.g (SDSUPPORT)
  * M31  - Output time since last M109 or SD card start to serial
- * M32  - Select file and start SD print (Can be used _while_ printing from SD card files):
+ * M32  - Select file and start SD print (SDSUPPORT):
  *        syntax "M32 /path/filename#", or "M32 S<startpos bytes> !filename#"
- *        Call gcode file : "M32 P !filename#" and return to caller file after finishing (similar to #include).
+ *        Call gcode file: "M32 P !filename#" and return to caller file after finishing (similar to #include).
  *        The '#' is necessary when calling from within sd files, as it stops buffer prereading
- * M33  - Get the longname version of a path
- * M42  - Change pin status via gcode Use M42 Px Sy to set pin x to value y, when omitting Px the onboard led will be used.
- * M48  - Measure Z_Probe repeatability. M48 [P # of points] [X position] [Y position] [V_erboseness #] [E_ngage Probe] [L # of legs of travel]
- * M80  - Turn on Power Supply
+ * M33  - Get the longname version of a path (SDSUPPORT, LONG_FILENAME_HOST_SUPPORT)
+ * M42  - Change pin status via gcode: M42 Px Sy to set pin x to value y
+ * M48  - Measure Z_Probe repeatability (AUTO_BED_LEVELING_FEATURE, Z_MIN_PROBE_REPEATABILITY_TEST)
+ * M75  - Start the print job timer
+ * M76  - Pause the print job timer
+ * M77  - Stop the print job timer
+ * M80  - Turn on Power Supply (HAS_POWER_SWITCH)
  * M81  - Turn off Power Supply
  * M82  - Set E codes absolute (default)
  * M83  - Set E codes relative while in Absolute Coordinates (G90) mode
- * M84  - Disable steppers until next move,
- *        or use S<seconds> to specify an inactivity timeout, after which the steppers will be disabled.  S0 to disable the timeout.
+ * M84  - Disable steppers until next move, or use S<seconds> to specify an inactivity timeout. S0 to disable the timeout.
  * M85  - Set inactivity shutdown timer with parameter S<seconds>. To disable set zero (default)
  * M92  - Set axis_steps_per_unit - same syntax as G92
+ * M100 - Watch Free Memory (M100_FREE_MEMORY_WATCHER)
  * M104 - Set extruder target temp
  * M105 - Read current temp
- * M106 - Fan on
- * M107 - Fan off
- * M109 - Sxxx Wait for extruder current temp to reach target temp. Waits only when heating
- *        Rxxx Wait for extruder current temp to reach target temp. Waits when heating and cooling
- *        IF AUTOTEMP is enabled, S<mintemp> B<maxtemp> F<factor>. Exit autotemp by any M109 without F
+ * M106 - Fan on (FAN_COUNT > 0)
+ * M107 - Fan off (FAN_COUNT > 0)
+ * M109 - Wait for extruder temp: Sxxx waits when heating, Rxxx waits when heating and cooling
  * M110 - Set the current line number
  * M111 - Set debug flags with S<mask>. See flag bits defined in Marlin.h.
  * M112 - Emergency stop
- * M113 - Get or set the timeout interval for Host Keepalive "busy" messages
+ * M113 - Get or set the timeout interval for Host Keepalive "busy" messages (HOST_KEEPALIVE_FEATURE)
  * M114 - Output current position to serial port
- * M115 - Capabilities string
+ * M115 - Report capabilities string
  * M117 - Display a message on the controller screen
  * M119 - Output Endstop status to serial port
  * M120 - Enable endstop detection
  * M121 - Disable endstop detection
- * M126 - Solenoid Air Valve Open (BariCUDA support by jmil)
- * M127 - Solenoid Air Valve Closed (BariCUDA vent to atmospheric pressure by jmil)
- * M128 - EtoP Open (BariCUDA EtoP = electricity to air pressure transducer by jmil)
- * M129 - EtoP Closed (BariCUDA EtoP = electricity to air pressure transducer by jmil)
+ * M126 - Solenoid Air Valve Open (BARICUDA, HAS_HEATER_1)
+ * M127 - Solenoid Air Valve Closed (BARICUDA, HAS_HEATER_1)
+ * M128 - EtoP Open (BARICUDA, HAS_HEATER_2)
+ * M129 - EtoP Closed (BARICUDA, HAS_HEATER_2)
  * M140 - Set bed target temp
- * M145 - Set the heatup state H<hotend> B<bed> F<fan speed> for S<material> (0=PLA, 1=ABS)
- * M150 - Set BlinkM Color Output R: Red<0-255> U(!): Green<0-255> B: Blue<0-255> over i2c, G for green does not work.
- * M190 - Sxxx Wait for bed current temp to reach target temp. Waits only when heating
- *        Rxxx Wait for bed current temp to reach target temp. Waits when heating and cooling
- * M200 - set filament diameter and set E axis units to cubic millimeters (use S0 to set back to millimeters).:D<millimeters>-
- * M201 - Set max acceleration in units/s^2 for print moves (M201 X1000 Y1000)
- * M202 - Set max acceleration in units/s^2 for travel moves (M202 X1000 Y1000) Unused in Marlin!!
- * M203 - Set maximum feedrate that your machine can sustain (M203 X200 Y200 Z300 E10000) in mm/sec
- * M204 - Set default acceleration: P for Printing moves, R for Retract only (no X, Y, Z) moves and T for Travel (non printing) moves (ex. M204 P800 T3000 R9000) in mm/sec^2
- * M205 -  advanced settings:  minimum travel speed S=while printing T=travel only,  B=minimum segment time X= maximum xy jerk, Z=maximum Z jerk, E=maximum E jerk
+ * M150 - Set BlinkM Color Output R: Red<0-255> U: Green<0-255> B: Blue<0-255> (BLINKM)
+ * M190 - Wait for bed temp: Sxxx waits when heating, Rxxx waits when heating and cooling (HAS_TEMP_BED)
+ * M200 - Set filament diameter and set E axis units to cubic millimeters (use S0 to set back to mm): D<millimeters>
+ * M201 - Set max acceleration in units/s^2 for print moves: M201 X1000 Y1000
+ * M203 - Set maximum feedrate that your machine can sustain in mm/sec: M203 X200 Y200 Z300 E10000
+ * M204 - Set default acceleration: P for Printing, R for Retract only, T for Travel (non printing) in mm/sec^2
+ * M205 - Advanced settings: S=min travel speed, T=travel only, B=min segment time, X=max XY jerk, Z=max Z jerk, E=max E jerk
  * M206 - Set additional homing offset
- * M207 - Set retract length S[positive mm] F[feedrate mm/min] Z[additional zlift/hop], stays in mm regardless of M200 setting
- * M208 - Set recover=unretract length S[positive mm surplus to the M207 S*] F[feedrate mm/min]
- * M209 - S<1=true/0=false> enable automatic retract detect if the slicer did not support G10/11: every normal extrude-only move will be classified as retract depending on the direction.
- * M218 - Set hotend offset (in mm): T<extruder_number> X<offset_on_X> Y<offset_on_Y>
+ * M207 - Set retract length S[mm] F[feedrate mm/min] Z[additional zlift/hop] (FWRETRACT)
+ * M208 - Set recover=unretract length S[mm surplus to M207 S*] F[feedrate mm/min] (FWRETRACT)
+ * M209 - S<1=true/0=false> enable automatic retract detect (FWRETRACT)
+ * M218 - Set hotend offset in mm: T<extruder_number> X<offset_on_X> Y<offset_on_Y> (HOTENDS > 1)
  * M220 - Set speed factor override percentage: S<factor in percent>
  * M221 - Set extrude factor override percentage: S<factor in percent>
  * M226 - Wait until the specified pin reaches the state required: P<pin number> S<pin state>
- * M240 - Trigger a camera to take a photograph
- * M250 - Set LCD contrast C<contrast value> (value 0..63)
- * M301 - Set PID parameters P I and D
- * M302 - Allow cold extrudes, or set the minimum extrude S<temperature>.
- * M303 - PID relay autotune S<temperature> sets the target temperature. (default target temperature = 150C)
- * M304 - Set bed PID parameters P I and D
- * M380 - Activate solenoid on active extruder
- * M381 - Disable all solenoids
+ * M240 - Trigger a camera to take a photograph (CHDK or HAS_PHOTOGRAPH)
+ * M301 - Set PID parameters P I and D (PIDTEMP)
+ * M302 - Allow cold extrudes, or set the minimum extrude S<temperature> (PREVENT_DANGEROUS_EXTRUDE)
+ * M303 - PID relay autotune S<temperature> sets the target temperature (default 150C)
+ * M304 - Set bed PID parameters P I and D (PIDTEMPBED)
+ * M350 - Set microstepping mode (HAS_MICROSTEPS)
+ * M351 - Toggle MS1 MS2 pins directly (HAS_MICROSTEPS)
  * M400 - Finish all moves
- * M401 - Lower Z probe if present
- * M402 - Raise Z probe if present
- * M404 - N<dia in mm> Enter the nominal filament width (3mm, 1.75mm ) or will display nominal filament width without parameters
- * M405 - Turn on Filament Sensor extrusion control.  Optional D<delay in cm> to set delay in centimeters between sensor and extruder
- * M406 - Turn off Filament Sensor extrusion control
- * M407 - Display measured filament diameter
+ * M401 - Lower Z probe if present (AUTO_BED_LEVELING_FEATURE)
+ * M402 - Raise Z probe if present (AUTO_BED_LEVELING_FEATURE)
+ * M404 - N<dia in mm> Enter the nominal filament width or display it (FILAMENT_WIDTH_SENSOR)
+ * M405 - Turn on Filament Sensor extrusion control (FILAMENT_WIDTH_SENSOR)
+ * M406 - Turn off Filament Sensor extrusion control (FILAMENT_WIDTH_SENSOR)
+ * M407 - Display measured filament diameter (FILAMENT_WIDTH_SENSOR)
  * M410 - Quickstop. Abort all the planned moves
- * M420 - Enable/Disable Mesh Leveling (with current values) S1=enable S0=disable
- * M421 - Set a single Z coordinate in the Mesh Leveling grid. X<mm> Y<mm> Z<mm>
  * M428 - Set the home_offset logically based on the current_position
  * M500 - Store parameters in EEPROM
- * M501 - Read parameters from EEPROM (if you need reset them after you changed them temporarily).
- * M502 - Revert to the default "factory settings". You still need to store them in EEPROM afterwards if you want to.
+ * M501 - Read parameters from EEPROM
+ * M502 - Revert to the default "factory settings"
  * M503 - Print the current settings (from memory not from EEPROM). Use S0 to leave off headings.
- * M540 - Use S[0|1] to enable or disable the stop SD card print on endstop hit (requires ABORT_ON_ENDSTOP_HIT_FEATURE_ENABLED)
- * M600 - Pause for filament change X[pos] Y[pos] Z[relative lift] E[initial retract] L[later retract distance for removal]
- * M665 - Set delta configurations: L<diagonal rod> R<delta radius> S<segments/s>
- * M666 - Set delta endstop adjustment
- * M605 - Set dual x-carriage movement mode: S<mode> [ X<duplication x-offset> R<duplication temp offset> ]
- * M907 - Set digital trimpot motor current using axis codes.
- * M908 - Control digital trimpot directly.
- * M909 - DAC_STEPPER_CURRENT: Print digipot/DAC current value
- * M910 - DAC_STEPPER_CURRENT: Commit digipot/DAC value to external EEPROM via I2C
- * M350 - Set microstepping mode.
- * M351 - Toggle MS1 MS2 pins directly.
- *
-
- * ************ DAGOMA.FR Specific - This can change to suit future G-code regulations
- * M700 - Wifi : Set SSID to use.
- * M701 - Wifi : Set Password to use and connect !
- * M702 - Wifi : Get current local IP Address if wifi is ready, 0 otherwize.
- * M710 - Wifi : Set printer technical name.
- * M711 - Wifi : Set API Url to use.
- * M712 - Wifi : Set API Key to use.
- * M720 - Wifi : Echo the string in serial .
-
- * ************ DAGOMA.FR End ***************
- *
- * ************ Custom codes - This can change to suit future G-code regulations
- * M100 - Watch Free Memory (For Debugging Only)
- * M851 - Set Z probe's Z offset (mm above extruder -- The value will always be negative)
-
-
- * M928 - Start SD logging (M928 filename.g) - ended by M29
+ * M540 - Use S[0|1] to enable or disable the stop SD card print on endstop hit (ABORT_ON_ENDSTOP_HIT_FEATURE_ENABLED)
+ * M600 - Pause for filament change (FILAMENTCHANGEENABLE)
+ * M665 - Set delta configurations: L<diagonal rod> R<delta radius> S<segments/s> (DELTA)
+ * M666 - Set delta endstop adjustment (DELTA)
+ * M851 - Set Z probe's Z offset (CUSTOM_M_CODE_SET_Z_PROBE_OFFSET)
+ * M907 - Set digital trimpot motor current using axis codes
+ * M908 - Control digital trimpot directly (DAC_STEPPER_CURRENT)
+ * M909 - Print digipot/DAC current value (DAC_STEPPER_CURRENT)
+ * M910 - Commit digipot/DAC value to external EEPROM via I2C (DAC_STEPPER_CURRENT)
+ * M928 - Start SD logging: M928 filename.g - ended by M29 (SDSUPPORT)
  * M999 - Restart after being stopped by error
+ *
+ * "D" Codes (DAGOMA.FR Specific)
+ *
+ * D130 - Set active extruder for dual extruder (EXTRUDERS > 1)
+ * D131 - Set active extruder for dual extruder (EXTRUDERS > 1)
+ * D410 - Delta calibration abort (DELTA_EXTRA)
+ * D700 - Wifi: Set SSID to use (WIFI_PRINT)
+ * D701 - Wifi: Set Password to use and connect (WIFI_PRINT)
+ * D702 - Wifi: Get current local IP Address (WIFI_PRINT)
+ * D710 - Wifi: Set printer technical name (WIFI_PRINT)
+ * D711 - Wifi: Set API Url to use (WIFI_PRINT)
+ * D712 - Wifi: Set API Key to use (WIFI_PRINT)
+ * D720 - Wifi: Echo the string in serial (WIFI_PRINT)
+ * D850 - Delta calibration start (DELTA_EXTRA)
+ * D851 - Delta calibration procedure (DELTA_EXTRA)
+ * D852 - Delta calibration step (DELTA_EXTRA)
+ * D853 - Delta calibration finish (DELTA_EXTRA)
+ * D888 - Debug command (DELTA_EXTRA)
+ * D999 - Factory reset (DELTA_EXTRA)
  *
  * "T" Codes
  *
  * T0-T3 - Select a tool by index (usually an extruder) [ F<mm/min> ]
  *
-
  */
 
 #if ENABLED(M100_FREE_MEMORY_WATCHER)
@@ -1654,8 +1650,6 @@ static void setup_for_endstop_move() {
 
   #endif // AUTO_BED_LEVELING_GRID
 
-  // 3-point leveling (set_bed_level_equation_3pts) removed - Delta requires grid leveling
-
   // Check if pause is triggered during G29 (manuel bed leveling) and D851 (custom calibration)
   #if ENABLED(EMERGENCY_STOP)
     void handle_emergency_stop(){
@@ -2731,8 +2725,6 @@ inline void gcode_G28() {
     #endif
   #endif
 
-  // MESH_BED_LEVELING removed - not supported for Delta
-
   setup_for_endstop_move();
 
   /**
@@ -3002,8 +2994,6 @@ inline void gcode_G28() {
     #endif
   #endif
 
-  // MESH_BED_LEVELING code removed - not supported for Delta
-
   feedrate = saved_feedrate;
   feedrate_multiplier = saved_feedrate_multiplier;
   refresh_cmd_timeout();
@@ -3017,9 +3007,6 @@ inline void gcode_G28() {
 
   gcode_M114(); // Send end position to RepetierHost
 }
-
-// MESH_BED_LEVELING G29 implementation removed - not supported for Delta
-// Use AUTO_BED_LEVELING_FEATURE with AUTO_BED_LEVELING_GRID instead
 
 #if ENABLED(AUTO_BED_LEVELING_FEATURE)
 
@@ -3897,8 +3884,6 @@ inline void gcode_G28() {
       #endif //!DELTA
 
     #endif // AUTO_BED_LEVELING_GRID
-
-    // 3-point leveling code removed - Delta requires AUTO_BED_LEVELING_GRID
 
     #if ENABLED(DELTA)
       // Allen Key Probe for Delta
@@ -6003,8 +5988,6 @@ inline void gcode_M400() { st_synchronize(); }
  */
 inline void gcode_M410() { quickStop(); }
 
-// M420/M421 for MESH_BED_LEVELING removed - not supported for Delta
-
 /**
  * M428: Set home_offset based on the distance between the
  *       current_position and the nearest "reference point."
@@ -7170,8 +7153,6 @@ inline void gcode_M503() {
 
 #endif // FILAMENTCHANGEENABLE
 
-// M605 (DUAL_X_CARRIAGE) has been removed - Delta-only firmware
-
 /*****************************************************************************
  * DAGOMA.FR Specific
  *****************************************************************************/
@@ -8283,11 +8264,6 @@ void process_next_command() {
       case 201: // M201
         gcode_M201();
         break;
-      #if 0 // Not used for Sprinter/grbl gen6
-        case 202: // M202
-          gcode_M202();
-          break;
-      #endif
       case 203: // M203 max feedrate mm/sec
         gcode_M203();
         break;
@@ -8361,13 +8337,6 @@ void process_next_command() {
           break;
       #endif // CHDK || PHOTOGRAPH_PIN
 
-      // LCD support removed
-      //#if ENABLED(HAS_LCD_CONTRAST)
-      //  case 250: // M250  Set LCD contrast value: C<value> (value 0..63)
-      //    gcode_M250();
-      //    break;
-      //#endif // HAS_LCD_CONTRAST
-
       #if ENABLED(PREVENT_DANGEROUS_EXTRUDE)
         case 302: // allow cold extrudes, or set the minimum extrude temperature
           gcode_M302();
@@ -8410,8 +8379,6 @@ void process_next_command() {
         gcode_M410();
         break;
 
-      // M420/M421 for MESH_BED_LEVELING removed - not supported for Delta
-
       case 428: // M428 Apply current_position to home_offset
         gcode_M428();
         break;
@@ -8446,8 +8413,6 @@ void process_next_command() {
           gcode_M600();
           break;
       #endif // FILAMENTCHANGEENABLE
-
-      // M605 (DUAL_X_CARRIAGE) removed - Delta-only firmware
 
       case 907: // M907 Set digital trimpot motor current using axis codes.
         gcode_M907();
@@ -8823,8 +8788,6 @@ void clamp_to_software_endstops(float target[3]) {
 
 #endif // DELTA
 
-// mesh_plan_buffer_line function for MESH_BED_LEVELING removed - not supported for Delta
-
 #if ENABLED(PREVENT_DANGEROUS_EXTRUDE)
 
   inline void prevent_dangerous_extrude(float& curr_e, float& dest_e) {
@@ -8891,10 +8854,6 @@ void clamp_to_software_endstops(float target[3]) {
 
 #endif // DELTA
 
-// DUAL_X_CARRIAGE prepare_move function removed - Delta-only firmware
-
-// prepare_move_cartesian removed - Delta-only firmware
-
 /**
  * Prepare a single move and get ready for the next one
  *
@@ -8912,9 +8871,6 @@ void prepare_move() {
   #if ENABLED(DELTA)
     if (!prepare_move_delta(destination)) return;
   #endif
-
-  // DUAL_X_CARRIAGE code removed - Delta-only firmware
-  // Cartesian prepare_move code removed - Delta-only firmware
 
   set_current_to_destination();
 }
@@ -9927,8 +9883,6 @@ void manage_inactivity(bool ignore_stepper_queue/*=false*/) {
     }
   #endif
 
-  // DUAL_X_CARRIAGE delayed move handling removed - Delta-only firmware
-
   #if ENABLED(TEMP_STAT_LEDS)
     handle_status_leds();
   #endif
@@ -9937,12 +9891,7 @@ void manage_inactivity(bool ignore_stepper_queue/*=false*/) {
 }
 
 void kill(const char* lcd_msg) {
-  // LCD support removed
-  //#if ENABLED(ULTRA_LCD)
-  //  lcd_setalertstatuspgm(lcd_msg);
-  //#else
-    UNUSED(lcd_msg);
-  //#endif
+  UNUSED(lcd_msg);
 
   #if ENABLED( DELTA_EXTRA )
     #if ENABLED( SDSUPPORT )
