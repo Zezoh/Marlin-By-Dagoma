@@ -810,6 +810,11 @@ void suicide() {
   inline void set_notify_not_calibrated();
 #endif
 
+#if ENABLED(DELTA_EXTRA)
+  // Pre-declaration for calibration warning management
+  inline void reset_calibration_warning_flag();
+#endif
+
 #if ENABLED(ONE_BUTTON) || ENABLED(SUMMON_PRINT_PAUSE)
   #define ONE_BUTTON_PRESSED  (READ( SUMMON_PRINT_PAUSE_PIN ) ^ SUMMON_PRINT_PAUSE_INVERTING)
   #define ONE_BUTTON_RELEASED (!ONE_BUTTON_PRESSED)
