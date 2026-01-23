@@ -65,8 +65,6 @@
   #include "Wire.h"
 #endif
 
-
-
 #if ENABLED(USE_SECOND_SERIAL)
   #include "HardwareSerial.h"
 #endif
@@ -934,8 +932,6 @@ void setup() {
   #if ENABLED(DIGIPOT_I2C)
     digipot_i2c_init();
   #endif
-
-
 
   #if ENABLED(Z_PROBE_SLED)
     pinMode(SLED_PIN, OUTPUT);
@@ -5271,8 +5267,6 @@ inline void gcode_M115() {
   SERIAL_PROTOCOLPGM(MSG_M115_REPORT);
 }
 
-
-
 /**
  * M119: Output endstop states to serial output
  */
@@ -7000,8 +6994,6 @@ inline void gcode_M907() {
 
 }
 
-
-
 #if HAS_MICROSTEPS
 
   // M350 Set microstepping mode. Warning: Steps per unit remains unchanged. S code sets stepping mode for all drivers.
@@ -8118,8 +8110,6 @@ void process_next_command() {
       case 907: // M907 Set digital trimpot motor current using axis codes.
         gcode_M907();
         break;
-
-
 
       #if HAS_MICROSTEPS
 
