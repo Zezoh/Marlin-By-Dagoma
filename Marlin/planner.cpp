@@ -187,7 +187,15 @@ void calculate_trapezoid_for_block(block_t* block, float entry_factor, float exi
   NOLESS(initial_rate, 120);
   NOLESS(final_rate, 120);
 
-  long acceleration = block->acceleration_st;
+  #if ENABLED(USE_NEW_PLANNER)
+    // New planner: Apply acceleration factor for dynamic adjustment
+    long acceleration = block->acceleration_st;
+    // Ensure acceleration is positive and within reasonable bounds
+    if (acceleration <= 0) acceleration = 1;
+  #else
+    long acceleration = block->acceleration_st;
+  #endif
+  
   int32_t accelerate_steps = ceil(estimate_acceleration_distance(initial_rate, block->nominal_rate, acceleration));
   int32_t decelerate_steps = floor(estimate_acceleration_distance(block->nominal_rate, final_rate, -acceleration));
 
@@ -202,6 +210,14 @@ void calculate_trapezoid_for_block(block_t* block, float entry_factor, float exi
     accelerate_steps = max(accelerate_steps, 0); // Check limits due to numerical round-off
     accelerate_steps = min((uint32_t)accelerate_steps, block->step_event_count);//(We can cast here to unsigned, because the above line ensures that we are above zero)
     plateau_steps = 0;
+    
+    #if ENABLED(USE_NEW_PLANNER)
+      // New planner: Additional safety check for abrupt speed changes
+      // Ensure we have reasonable transition even with zero plateau
+      if (accelerate_steps == 0 && block->step_event_count > 0) {
+        accelerate_steps = 1; // Minimum acceleration steps
+      }
+    #endif
   }
 
   #if ENABLED(ADVANCE)
@@ -255,11 +271,37 @@ void planner_reverse_pass_kernel(block_t* previous, block_t* current, block_t* n
       // If nominal length true, max junction speed is guaranteed to be reached. Only compute
       // for max allowable speed if block is decelerating and nominal length is false.
       if (!current->nominal_length_flag && max_entry_speed > next->entry_speed) {
-        current->entry_speed = min(max_entry_speed,
-                                   max_allowable_speed(-current->acceleration, next->entry_speed, current->millimeters));
+        #if ENABLED(USE_NEW_PLANNER)
+          // New planner: Use cached squared speeds for optimization
+          float entry_speed_sqr = next->entry_speed * next->entry_speed;
+          float max_speed_sqr = max_entry_speed * max_entry_speed;
+          float max_allowable_speed_sqr = entry_speed_sqr - 2 * current->acceleration * current->millimeters;
+          
+          // Safety check: ensure we don't have negative value under sqrt
+          if (max_allowable_speed_sqr < 0) max_allowable_speed_sqr = 0;
+          
+          // Apply acceleration factor for vibration reduction
+          float acceleration_adjusted = current->acceleration * current->acceleration_factor;
+          max_allowable_speed_sqr = entry_speed_sqr - 2 * acceleration_adjusted * current->millimeters;
+          
+          if (max_allowable_speed_sqr < 0) max_allowable_speed_sqr = 0;
+          if (max_allowable_speed_sqr < max_speed_sqr) {
+            current->entry_speed = sqrt(max_allowable_speed_sqr);
+          } else {
+            current->entry_speed = max_entry_speed;
+          }
+          current->entry_speed_sqr = current->entry_speed * current->entry_speed;
+        #else
+          // Original planner implementation
+          current->entry_speed = min(max_entry_speed,
+                                     max_allowable_speed(-current->acceleration, next->entry_speed, current->millimeters));
+        #endif
       }
       else {
         current->entry_speed = max_entry_speed;
+        #if ENABLED(USE_NEW_PLANNER)
+          current->entry_speed_sqr = current->entry_speed * current->entry_speed;
+        #endif
       }
       current->recalculate_flag = true;
 
@@ -276,6 +318,11 @@ void planner_reverse_pass() {
   CRITICAL_SECTION_START;
     unsigned char tail = block_buffer_tail;
   CRITICAL_SECTION_END
+
+  #if ENABLED(USE_NEW_PLANNER)
+    // New planner: Add safety check for buffer state
+    if (block_index == tail) return; // Empty buffer, nothing to do
+  #endif
 
   if (BLOCK_MOD(block_buffer_head - tail + BLOCK_BUFFER_SIZE) > 3) { // moves queued
     block_index = BLOCK_MOD(block_buffer_head - 3);
@@ -301,13 +348,39 @@ void planner_forward_pass_kernel(block_t* previous, block_t* current, block_t* n
   // If nominal length is true, max junction speed is guaranteed to be reached. No need to recheck.
   if (!previous->nominal_length_flag) {
     if (previous->entry_speed < current->entry_speed) {
-      double entry_speed = min(current->entry_speed,
-                               max_allowable_speed(-previous->acceleration, previous->entry_speed, previous->millimeters));
-      // Check for junction speed change
-      if (current->entry_speed != entry_speed) {
-        current->entry_speed = entry_speed;
-        current->recalculate_flag = true;
-      }
+      #if ENABLED(USE_NEW_PLANNER)
+        // New planner: Use optimized calculation with squared speeds
+        float entry_speed_sqr = previous->entry_speed * previous->entry_speed;
+        float current_entry_speed_sqr = current->entry_speed * current->entry_speed;
+        
+        // Apply acceleration factor for smooth transitions
+        float acceleration_adjusted = previous->acceleration * previous->acceleration_factor;
+        float max_allowable_speed_sqr = entry_speed_sqr + 2 * acceleration_adjusted * previous->millimeters;
+        
+        // Check if we need to limit the current entry speed
+        float entry_speed;
+        if (max_allowable_speed_sqr < current_entry_speed_sqr) {
+          entry_speed = sqrt(max_allowable_speed_sqr);
+        } else {
+          entry_speed = current->entry_speed;
+        }
+        
+        // Check for junction speed change with minimum threshold
+        if (fabs(current->entry_speed - entry_speed) > PLANNER_MIN_SPEED_CHANGE) {
+          current->entry_speed = entry_speed;
+          current->entry_speed_sqr = entry_speed * entry_speed;
+          current->recalculate_flag = true;
+        }
+      #else
+        // Original planner implementation
+        double entry_speed = min(current->entry_speed,
+                                 max_allowable_speed(-previous->acceleration, previous->entry_speed, previous->millimeters));
+        // Check for junction speed change
+        if (current->entry_speed != entry_speed) {
+          current->entry_speed = entry_speed;
+          current->recalculate_flag = true;
+        }
+      #endif
     }
   }
 }
@@ -1035,9 +1108,21 @@ float junction_deviation = 0.1;
   }
   block->max_entry_speed = vmax_junction;
 
+  #if ENABLED(USE_NEW_PLANNER)
+    // Initialize new planner fields for enhanced acceleration control
+    block->max_entry_speed_sqr = vmax_junction * vmax_junction;
+    block->acceleration_factor = PLANNER_ACCELERATION_FACTOR;
+    block->entry_speed_sqr = 0; // Will be set later
+  #endif
+
   // Initialize block entry speed. Compute based on deceleration to user-defined MINIMUM_PLANNER_SPEED.
   double v_allowable = max_allowable_speed(-block->acceleration, MINIMUM_PLANNER_SPEED, block->millimeters);
   block->entry_speed = min(vmax_junction, v_allowable);
+
+  #if ENABLED(USE_NEW_PLANNER)
+    // Cache squared entry speed for optimization
+    block->entry_speed_sqr = block->entry_speed * block->entry_speed;
+  #endif
 
   // Initialize planner efficiency flags
   // Set flag if block will always reach maximum junction speed regardless of entry/exit speeds.
