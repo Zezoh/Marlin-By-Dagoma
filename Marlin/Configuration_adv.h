@@ -476,7 +476,6 @@
 // Acceleration profile tuning constants for new planner
 #define PLANNER_ACCELERATION_FACTOR 1.0    // Global acceleration scaling factor (0.5 - 1.5 recommended)
 #define PLANNER_MIN_SPEED_CHANGE 0.001     // Minimum speed change for recalculation (mm/s)
-#define PLANNER_JUNCTION_DEVIATION 0.1     // Junction deviation for cornering (mm)
 
 // @section more
 

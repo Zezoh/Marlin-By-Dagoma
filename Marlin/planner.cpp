@@ -213,9 +213,11 @@ void calculate_trapezoid_for_block(block_t* block, float entry_factor, float exi
     
     #if ENABLED(USE_NEW_PLANNER)
       // New planner: Additional safety check for abrupt speed changes
-      // Ensure we have reasonable transition even with zero plateau
+      // When there's no plateau and zero acceleration steps calculated, we need at least
+      // one step for smooth transition to avoid instantaneous velocity changes which could
+      // cause mechanical stress and ringing artifacts in prints
       if (accelerate_steps == 0 && block->step_event_count > 0) {
-        accelerate_steps = 1; // Minimum acceleration steps
+        accelerate_steps = 1; // Minimum one step for gradual speed transition
       }
     #endif
   }
@@ -275,16 +277,14 @@ void planner_reverse_pass_kernel(block_t* previous, block_t* current, block_t* n
           // New planner: Use cached squared speeds for optimization
           float entry_speed_sqr = next->entry_speed * next->entry_speed;
           float max_speed_sqr = max_entry_speed * max_entry_speed;
-          float max_allowable_speed_sqr = entry_speed_sqr - 2 * current->acceleration * current->millimeters;
+          
+          // Apply acceleration factor for vibration reduction
+          float acceleration_adjusted = current->acceleration * current->acceleration_factor;
+          float max_allowable_speed_sqr = entry_speed_sqr - 2 * acceleration_adjusted * current->millimeters;
           
           // Safety check: ensure we don't have negative value under sqrt
           if (max_allowable_speed_sqr < 0) max_allowable_speed_sqr = 0;
           
-          // Apply acceleration factor for vibration reduction
-          float acceleration_adjusted = current->acceleration * current->acceleration_factor;
-          max_allowable_speed_sqr = entry_speed_sqr - 2 * acceleration_adjusted * current->millimeters;
-          
-          if (max_allowable_speed_sqr < 0) max_allowable_speed_sqr = 0;
           if (max_allowable_speed_sqr < max_speed_sqr) {
             current->entry_speed = sqrt(max_allowable_speed_sqr);
           } else {
@@ -366,7 +366,9 @@ void planner_forward_pass_kernel(block_t* previous, block_t* current, block_t* n
         }
         
         // Check for junction speed change with minimum threshold
-        if (fabs(current->entry_speed - entry_speed) > PLANNER_MIN_SPEED_CHANGE) {
+        float speed_diff = current->entry_speed - entry_speed;
+        if (speed_diff < 0) speed_diff = -speed_diff; // Inline abs for performance
+        if (speed_diff > PLANNER_MIN_SPEED_CHANGE) {
           current->entry_speed = entry_speed;
           current->entry_speed_sqr = entry_speed * entry_speed;
           current->recalculate_flag = true;
