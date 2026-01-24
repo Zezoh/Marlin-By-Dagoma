@@ -79,13 +79,8 @@
  * Z_DUAL_ENDSTOPS:
  *  283  M666 Z    z_endstop_adj (float)
  *
- * ULTIPANEL:
- *  287  M145 S0 H plaPreheatHotendTemp (int)
- *  289  M145 S0 B plaPreheatHPBTemp (int)
- *  291  M145 S0 F plaPreheatFanSpeed (int)
- *  293  M145 S1 H absPreheatHotendTemp (int)
- *  295  M145 S1 B absPreheatHPBTemp (int)
- *  297  M145 S1 F absPreheatFanSpeed (int)
+ * Reserved bytes (formerly preheat settings):
+ *  287-298  Reserved (6 ints = 12 bytes for EEPROM layout compatibility)
  *
  * PIDTEMP:
  *  299  M301 E0 PIDC  Kp[0], Ki[0], Kd[0], Kc[0] (float x4)
@@ -96,12 +91,6 @@
  *
  * PIDTEMPBED:
  *  365  M304 PID  bedKp, bedKi, bedKd (float x3)
- *
- * DOGLCD:
- *  377  M250 C    lcd_contrast (int)
- *
- * SCARA:
- *  379  M365 XYZ  axis_scaling (float x3)
  *
  * FWRETRACT:
  *  391  M209 S    autoretract_enabled (bool)
@@ -125,14 +114,12 @@
  */
 #include "Marlin.h"
 #include "language.h"
-#include "planner.h"
+#include "motion.h"
 #include "temperature.h"
-#include "ultralcd.h"
+// LCD support removed - no ultralcd.h include
 #include "configuration_store.h"
 
-#if ENABLED(MESH_BED_LEVELING)
-#include "mesh_bed_leveling.h"
-#endif
+// MESH_BED_LEVELING removed - not supported for Delta
 
 void _EEPROM_writeData(int &pos, uint8_t *value, uint8_t size)
 {
@@ -196,19 +183,9 @@ void Config_StoreSettings()
   EEPROM_WRITE_VAR(i, max_e_jerk);
   EEPROM_WRITE_VAR(i, home_offset);
 
+  // MESH_BED_LEVELING removed - write dummy values for EEPROM layout compatibility
   uint8_t mesh_num_x = 3;
   uint8_t mesh_num_y = 3;
-#if ENABLED(MESH_BED_LEVELING)
-  // Compile time test that sizeof(mbl.z_values) is as expected
-  typedef char c_assert[(sizeof(mbl.z_values) == (MESH_NUM_X_POINTS) * (MESH_NUM_Y_POINTS) * sizeof(dummy)) ? 1 : -1];
-  mesh_num_x = MESH_NUM_X_POINTS;
-  mesh_num_y = MESH_NUM_Y_POINTS;
-  EEPROM_WRITE_VAR(i, mbl.active);
-  EEPROM_WRITE_VAR(i, mbl.z_offset);
-  EEPROM_WRITE_VAR(i, mesh_num_x);
-  EEPROM_WRITE_VAR(i, mesh_num_y);
-  EEPROM_WRITE_VAR(i, mbl.z_values);
-#else
   uint8_t dummy_uint8 = 0;
   dummy = 0.0f;
   EEPROM_WRITE_VAR(i, dummy_uint8);
@@ -217,7 +194,6 @@ void Config_StoreSettings()
   EEPROM_WRITE_VAR(i, mesh_num_y);
   for (uint8_t q = 0; q < mesh_num_x * mesh_num_y; q++)
     EEPROM_WRITE_VAR(i, dummy);
-#endif // MESH_BED_LEVELING
 
 #if DISABLED(AUTO_BED_LEVELING_FEATURE)
   float zprobe_zoffset = 0;
@@ -243,17 +219,10 @@ void Config_StoreSettings()
     EEPROM_WRITE_VAR(i, dummy);
 #endif
 
-#if DISABLED(ULTIPANEL)
-  int plaPreheatHotendTemp = PLA_PREHEAT_HOTEND_TEMP, plaPreheatHPBTemp = PLA_PREHEAT_HPB_TEMP, plaPreheatFanSpeed = PLA_PREHEAT_FAN_SPEED,
-      absPreheatHotendTemp = ABS_PREHEAT_HOTEND_TEMP, absPreheatHPBTemp = ABS_PREHEAT_HPB_TEMP, absPreheatFanSpeed = ABS_PREHEAT_FAN_SPEED;
-#endif // !ULTIPANEL
-
-  EEPROM_WRITE_VAR(i, plaPreheatHotendTemp);
-  EEPROM_WRITE_VAR(i, plaPreheatHPBTemp);
-  EEPROM_WRITE_VAR(i, plaPreheatFanSpeed);
-  EEPROM_WRITE_VAR(i, absPreheatHotendTemp);
-  EEPROM_WRITE_VAR(i, absPreheatHPBTemp);
-  EEPROM_WRITE_VAR(i, absPreheatFanSpeed);
+  // Reserved bytes for EEPROM layout compatibility (6 ints = 12 bytes at offset 287-298)
+  int reserved_dummy = 0;
+  for (uint8_t q = 6; q--;)
+    EEPROM_WRITE_VAR(i, reserved_dummy);
 
   for (uint8_t e = 0; e < 4; e++)
   {
@@ -296,17 +265,14 @@ void Config_StoreSettings()
   EEPROM_WRITE_VAR(i, bedKi);
   EEPROM_WRITE_VAR(i, bedKd);
 
-#if DISABLED(HAS_LCD_CONTRAST)
+  // LCD contrast - LCD support removed, write dummy value for EEPROM layout compatibility
   const int lcd_contrast = 32;
-#endif
   EEPROM_WRITE_VAR(i, lcd_contrast);
 
-#if ENABLED(SCARA)
-  EEPROM_WRITE_VAR(i, axis_scaling); // 3 floats
-#else
+  // Dummy write for removed SCARA axis_scaling (3 floats to maintain EEPROM layout compatibility)
+  // SCARA used to store 3 floats here for axis_scaling[3]
   dummy = 1.0f;
-  EEPROM_WRITE_VAR(i, dummy);
-#endif
+  for (uint8_t q = 0; q < 3; q++) EEPROM_WRITE_VAR(i, dummy);
 
 #if ENABLED(FWRETRACT)
   EEPROM_WRITE_VAR(i, autoretract_enabled);
@@ -393,28 +359,14 @@ void Config_RetrieveSettings()
     EEPROM_READ_VAR(i, max_e_jerk);
     EEPROM_READ_VAR(i, home_offset);
 
+    // MESH_BED_LEVELING removed - read dummy values for EEPROM layout compatibility
     uint8_t dummy_uint8 = 0, mesh_num_x = 0, mesh_num_y = 0;
     EEPROM_READ_VAR(i, dummy_uint8);
     EEPROM_READ_VAR(i, dummy);
     EEPROM_READ_VAR(i, mesh_num_x);
     EEPROM_READ_VAR(i, mesh_num_y);
-#if ENABLED(MESH_BED_LEVELING)
-    mbl.active = dummy_uint8;
-    mbl.z_offset = dummy;
-    if (mesh_num_x == MESH_NUM_X_POINTS && mesh_num_y == MESH_NUM_Y_POINTS)
-    {
-      EEPROM_READ_VAR(i, mbl.z_values);
-    }
-    else
-    {
-      mbl.reset();
-      for (uint8_t q = 0; q < mesh_num_x * mesh_num_y; q++)
-        EEPROM_READ_VAR(i, dummy);
-    }
-#else
     for (uint8_t q = 0; q < mesh_num_x * mesh_num_y; q++)
       EEPROM_READ_VAR(i, dummy);
-#endif // MESH_BED_LEVELING
 
 #if DISABLED(AUTO_BED_LEVELING_FEATURE)
     float zprobe_zoffset = 0;
@@ -440,17 +392,10 @@ void Config_RetrieveSettings()
       EEPROM_READ_VAR(i, dummy);
 #endif
 
-#if DISABLED(ULTIPANEL)
-    int plaPreheatHotendTemp, plaPreheatHPBTemp, plaPreheatFanSpeed,
-        absPreheatHotendTemp, absPreheatHPBTemp, absPreheatFanSpeed;
-#endif
-
-    EEPROM_READ_VAR(i, plaPreheatHotendTemp);
-    EEPROM_READ_VAR(i, plaPreheatHPBTemp);
-    EEPROM_READ_VAR(i, plaPreheatFanSpeed);
-    EEPROM_READ_VAR(i, absPreheatHotendTemp);
-    EEPROM_READ_VAR(i, absPreheatHPBTemp);
-    EEPROM_READ_VAR(i, absPreheatFanSpeed);
+    // Skip reserved bytes for EEPROM layout compatibility (6 ints = 12 bytes)
+    int reserved_dummy;
+    for (uint8_t q = 6; q--;)
+      EEPROM_READ_VAR(i, reserved_dummy);
 
 #if ENABLED(PIDTEMP)
     for (uint8_t e = 0; e < 4; e++)
@@ -503,16 +448,13 @@ void Config_RetrieveSettings()
         EEPROM_READ_VAR(i, dummy); // bedKi, bedKd
     }
 
-#if DISABLED(HAS_LCD_CONTRAST)
+    // LCD contrast - LCD support removed, read dummy value for EEPROM layout compatibility
     int lcd_contrast;
-#endif
     EEPROM_READ_VAR(i, lcd_contrast);
 
-#if ENABLED(SCARA)
-    EEPROM_READ_VAR(i, axis_scaling); // 3 floats
-#else
-    EEPROM_READ_VAR(i, dummy);
-#endif
+  // Dummy read for removed SCARA axis_scaling (3 floats to maintain EEPROM layout compatibility)
+  // SCARA used to read 3 floats here for axis_scaling[3]
+  for (uint8_t q = 0; q < 3; q++) EEPROM_READ_VAR(i, dummy);
 
 #if ENABLED(FWRETRACT)
     EEPROM_READ_VAR(i, autoretract_enabled);
@@ -578,10 +520,6 @@ void Config_ResetDefault(bool resetZMagicThreshold)
     axis_steps_per_unit[i] = tmp1[i];
     max_feedrate[i] = tmp2[i];
     max_acceleration_units_per_sq_second[i] = tmp3[i];
-#if ENABLED(SCARA)
-    if (i < COUNT(axis_scaling))
-      axis_scaling[i] = 1;
-#endif
   }
 
   // steps per sq second need to be updated to agree with the units per sq second
@@ -598,9 +536,7 @@ void Config_ResetDefault(bool resetZMagicThreshold)
   max_e_jerk = DEFAULT_EJERK;
   home_offset[X_AXIS] = home_offset[Y_AXIS] = home_offset[Z_AXIS] = 0;
 
-#if ENABLED(MESH_BED_LEVELING)
-  mbl.active = false;
-#endif
+// MESH_BED_LEVELING removed - not supported for Delta
 
 #if ENABLED(AUTO_BED_LEVELING_FEATURE)
   zprobe_zoffset = Z_PROBE_OFFSET_FROM_EXTRUDER;
@@ -615,21 +551,6 @@ void Config_ResetDefault(bool resetZMagicThreshold)
   delta_diagonal_rod_trim_tower_2 = DELTA_DIAGONAL_ROD_TRIM_TOWER_2;
   delta_diagonal_rod_trim_tower_3 = DELTA_DIAGONAL_ROD_TRIM_TOWER_3;
   recalc_delta_settings(delta_radius, delta_diagonal_rod);
-#elif ENABLED(Z_DUAL_ENDSTOPS)
-  z_endstop_adj = 0;
-#endif
-
-#if ENABLED(ULTIPANEL)
-  plaPreheatHotendTemp = PLA_PREHEAT_HOTEND_TEMP;
-  plaPreheatHPBTemp = PLA_PREHEAT_HPB_TEMP;
-  plaPreheatFanSpeed = PLA_PREHEAT_FAN_SPEED;
-  absPreheatHotendTemp = ABS_PREHEAT_HOTEND_TEMP;
-  absPreheatHPBTemp = ABS_PREHEAT_HPB_TEMP;
-  absPreheatFanSpeed = ABS_PREHEAT_FAN_SPEED;
-#endif
-
-#if ENABLED(HAS_LCD_CONTRAST)
-  lcd_contrast = DEFAULT_LCD_CONTRAST;
 #endif
 
 #if ENABLED(PIDTEMP)
@@ -720,19 +641,6 @@ void Config_PrintSettings(bool forReplay)
 
   CONFIG_ECHO_START;
 
-#if ENABLED(SCARA)
-  if (!forReplay)
-  {
-    SERIAL_ECHOLNPGM("Scaling factors:");
-    CONFIG_ECHO_START;
-  }
-  SERIAL_ECHOPAIR("  M365 X", axis_scaling[X_AXIS]);
-  SERIAL_ECHOPAIR(" Y", axis_scaling[Y_AXIS]);
-  SERIAL_ECHOPAIR(" Z", axis_scaling[Z_AXIS]);
-  SERIAL_EOL;
-  CONFIG_ECHO_START;
-#endif // SCARA
-
   if (!forReplay)
   {
     SERIAL_ECHOLNPGM("Maximum feedrates (mm/s):");
@@ -791,28 +699,7 @@ void Config_PrintSettings(bool forReplay)
   SERIAL_ECHOPAIR(" Z", home_offset[Z_AXIS]);
   SERIAL_EOL;
 
-#if ENABLED(MESH_BED_LEVELING)
-  if (!forReplay)
-  {
-    SERIAL_ECHOLNPGM("Mesh bed leveling:");
-    CONFIG_ECHO_START;
-  }
-  SERIAL_ECHOPAIR("  M420 S", mbl.active);
-  SERIAL_ECHOPAIR(" X", MESH_NUM_X_POINTS);
-  SERIAL_ECHOPAIR(" Y", MESH_NUM_Y_POINTS);
-  SERIAL_EOL;
-  for (uint8_t y = 0; y < MESH_NUM_Y_POINTS; y++)
-  {
-    for (uint8_t x = 0; x < MESH_NUM_X_POINTS; x++)
-    {
-      CONFIG_ECHO_START;
-      SERIAL_ECHOPAIR("  M421 X", mbl.get_x(x));
-      SERIAL_ECHOPAIR(" Y", mbl.get_y(y));
-      SERIAL_ECHOPAIR(" Z", mbl.z_values[y][x]);
-      SERIAL_EOL;
-    }
-  }
-#endif
+// MESH_BED_LEVELING config report removed - not supported for Delta
 
 #if ENABLED(DELTA)
   CONFIG_ECHO_START;
@@ -849,23 +736,7 @@ void Config_PrintSettings(bool forReplay)
   SERIAL_EOL;
 #endif // DELTA
 
-#if ENABLED(ULTIPANEL)
-  CONFIG_ECHO_START;
-  if (!forReplay)
-  {
-    SERIAL_ECHOLNPGM("Material heatup parameters:");
-    CONFIG_ECHO_START;
-  }
-  SERIAL_ECHOPAIR("  M145 S0 H", plaPreheatHotendTemp);
-  SERIAL_ECHOPAIR(" B", plaPreheatHPBTemp);
-  SERIAL_ECHOPAIR(" F", plaPreheatFanSpeed);
-  SERIAL_EOL;
-  CONFIG_ECHO_START;
-  SERIAL_ECHOPAIR("  M145 S1 H", absPreheatHotendTemp);
-  SERIAL_ECHOPAIR(" B", absPreheatHPBTemp);
-  SERIAL_ECHOPAIR(" F", absPreheatFanSpeed);
-  SERIAL_EOL;
-#endif // ULTIPANEL
+  // LCD support removed - M145 material heatup reporting removed
 
 #if HAS_PID_HEATING
 
@@ -919,16 +790,7 @@ void Config_PrintSettings(bool forReplay)
 
 #endif // PIDTEMP || PIDTEMPBED
 
-#if ENABLED(HAS_LCD_CONTRAST)
-  CONFIG_ECHO_START;
-  if (!forReplay)
-  {
-    SERIAL_ECHOLNPGM("LCD Contrast:");
-    CONFIG_ECHO_START;
-  }
-  SERIAL_ECHOPAIR("  M250 C", lcd_contrast);
-  SERIAL_EOL;
-#endif
+  // LCD contrast reporting removed - LCD support not present in this firmware
 
 #if ENABLED(FWRETRACT)
 
