@@ -843,7 +843,6 @@ void suicide() {
  *    • stepper
  *    • photo pin
  *    • servos
- *    • LCD controller
  *    • Z probe sled
  *    • status LEDs
  */
@@ -1057,7 +1056,6 @@ void setup() {
  *  - Call heater manager
  *  - Call inactivity manager
  *  - Call endstop manager
- *  - Call LCD update
  */
 void loop() {
   #if ENABLED(SDSUPPORT)
@@ -9529,7 +9527,7 @@ void kill(const char* lcd_msg) {
   SERIAL_ERROR_START;
   SERIAL_ERRORLNPGM(MSG_ERR_KILLED);
 
-  // FMC small patch to update the LCD before ending
+  // FMC small patch to allow time before ending
   sei();   // enable interrupts
   for (int i = 5; i--;) delay(200); // Wait a short time
   #if DISABLED( ONE_LED )
