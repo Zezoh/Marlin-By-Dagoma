@@ -1546,7 +1546,6 @@ ISR(TIMER1_COMPA_vect) {
 #endif // ADVANCE
 
 void st_init() {
-  digipot_init();
   microstep_init();
 
   #if HAS_X_DIR
@@ -1887,44 +1886,6 @@ void quickStop() {
   }
 
 #endif //BABYSTEPPING
-
-void digipot_init() {
-  #if HAS_MOTOR_CURRENT_PWM
-    #if PIN_EXISTS(MOTOR_CURRENT_PWM_XY)
-      pinMode(MOTOR_CURRENT_PWM_XY_PIN, OUTPUT);
-      digipot_current(0, motor_current_setting[0]);
-    #endif
-    #if PIN_EXISTS(MOTOR_CURRENT_PWM_Z)
-      pinMode(MOTOR_CURRENT_PWM_Z_PIN, OUTPUT);
-      digipot_current(1, motor_current_setting[1]);
-    #endif
-    #if PIN_EXISTS(MOTOR_CURRENT_PWM_E)
-      pinMode(MOTOR_CURRENT_PWM_E_PIN, OUTPUT);
-      digipot_current(2, motor_current_setting[2]);
-    #endif
-    TCCR5B = (TCCR5B & ~(_BV(CS50) | _BV(CS51) | _BV(CS52))) | _BV(CS50);
-  #endif
-}
-
-void digipot_current(uint8_t driver, int current) {
-  #if HAS_MOTOR_CURRENT_PWM
-    #define _WRITE_CURRENT_PWM(P) analogWrite(P, 255L * current / (MOTOR_CURRENT_PWM_RANGE))
-    switch (driver) {
-      #if PIN_EXISTS(MOTOR_CURRENT_PWM_XY)
-        case 0: _WRITE_CURRENT_PWM(MOTOR_CURRENT_PWM_XY_PIN); break;
-      #endif
-      #if PIN_EXISTS(MOTOR_CURRENT_PWM_Z)
-        case 1: _WRITE_CURRENT_PWM(MOTOR_CURRENT_PWM_Z_PIN); break;
-      #endif
-      #if PIN_EXISTS(MOTOR_CURRENT_PWM_E)
-        case 2: _WRITE_CURRENT_PWM(MOTOR_CURRENT_PWM_E_PIN); break;
-      #endif
-    }
-  #else
-    UNUSED(driver);
-    UNUSED(current);
-  #endif
-}
 
 void microstep_init() {
   #if HAS_MICROSTEPS_E1

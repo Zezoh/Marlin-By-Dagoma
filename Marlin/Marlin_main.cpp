@@ -65,10 +65,6 @@
   #include "Wire.h"
 #endif
 
-#if ENABLED(DAC_STEPPER_CURRENT)
-  #include "stepper_dac.h"
-#endif
-
 #if ENABLED(USE_SECOND_SERIAL)
   #include "HardwareSerial.h"
 #endif
@@ -847,8 +843,6 @@ void suicide() {
  *    • stepper
  *    • photo pin
  *    • servos
- *    • LCD controller
- *    • Digipot I2C
  *    • Z probe sled
  *    • status LEDs
  */
@@ -931,20 +925,6 @@ void setup() {
 
   #if HAS_STEPPER_RESET
     enableStepperDrivers();
-  #endif
-
-  #if ENABLED(DIGIPOT_I2C)
-    digipot_i2c_init();
-  #endif
-
-  #if ENABLED(DAC_STEPPER_CURRENT)
-    dac_init();
-
-    //TODO: Store these values to eeprom
-    dac_current_raw(0, 1200);
-    dac_current_raw(1, 1200);
-    dac_current_raw(2, 900);
-    dac_current_raw(3, 1200);
   #endif
 
   #if ENABLED(Z_PROBE_SLED)
@@ -1076,7 +1056,6 @@ void setup() {
  *  - Call heater manager
  *  - Call inactivity manager
  *  - Call endstop manager
- *  - Call LCD update
  */
 void loop() {
   #if ENABLED(SDSUPPORT)
@@ -5282,12 +5261,6 @@ inline void gcode_M115() {
 }
 
 /**
- * M117: Set LCD Status Message
- */
-inline void gcode_M117() {
-}
-
-/**
  * M119: Output endstop states to serial output
  */
 inline void gcode_M119() {
@@ -6387,14 +6360,6 @@ inline void gcode_M503() {
 
     if (pin_state >= -1 && pin_state <= 1) {
 
-      // DAGOMA - byPass sensitive pin
-      // for (uint8_t i = 0; i < COUNT(sensitive_pins); i++) {
-      //   if (sensitive_pins[i] == pin_number) {
-      //     pin_number = -1;
-      //     break;
-      //   }
-      // }
-
       if (pin_number > -1) {
         target = LOW;
 
@@ -7005,46 +6970,6 @@ inline void gcode_D720() {
 }
 
 #endif
-
-/**
- * M907: Set digital trimpot motor current using axis codes X, Y, Z, E, B, S
- */
-inline void gcode_M907() {
-  #if PIN_EXISTS(MOTOR_CURRENT_PWM_XY)
-    if (code_seen('X')) digipot_current(0, code_value());
-  #endif
-  #if PIN_EXISTS(MOTOR_CURRENT_PWM_Z)
-    if (code_seen('Z')) digipot_current(1, code_value());
-  #endif
-  #if PIN_EXISTS(MOTOR_CURRENT_PWM_E)
-    if (code_seen('E')) digipot_current(2, code_value());
-  #endif
-  #if ENABLED(DAC_STEPPER_CURRENT)
-    if (code_seen('S')) {
-      float dac_percent = code_value();
-      for (uint8_t i = 0; i <= 4; i++) dac_current_percent(i, dac_percent);
-    }
-    for (uint8_t i = 0; i < NUM_AXIS; i++) if (code_seen(axis_codes[i])) dac_current_percent(i, code_value());
-  #endif
-}
-
-#if ENABLED(DAC_STEPPER_CURRENT)
-
-  /**
-   * M908: Control digital trimpot directly (M908 P<pin> S<current>)
-   */
-  inline void gcode_M908() {
-    dac_current_raw(
-      code_seen('P') ? code_value_long() : -1,
-      code_seen('S') ? code_value_short() : 0
-    );
-  }
-
-  inline void gcode_M909() { dac_print_values(); }
-
-  inline void gcode_M910() { dac_commit_eeprom(); }
-
-#endif // DAC_STEPPER_CURRENT
 
 #if HAS_MICROSTEPS
 
@@ -7997,9 +7922,6 @@ void process_next_command() {
       case 115: // M115: Report capabilities
         gcode_M115();
         break;
-      case 117: // M117: Set LCD message text, if possible
-        gcode_M117();
-        break;
       case 114: // M114: Report current position
         gcode_M114();
         break;
@@ -8161,26 +8083,6 @@ void process_next_command() {
           gcode_M600();
           break;
       #endif // FILAMENTCHANGEENABLE
-
-      case 907: // M907 Set digital trimpot motor current using axis codes.
-        gcode_M907();
-        break;
-
-      #if ENABLED(DAC_STEPPER_CURRENT)
-
-        case 908: // M908 Control digital trimpot directly.
-          gcode_M908();
-          break;
-
-        case 909: // M909 Print digipot/DAC current value
-          gcode_M909();
-          break;
-
-        case 910: // M910 Commit digipot/DAC value to external EEPROM
-          gcode_M910();
-          break;
-
-      #endif // DAC_STEPPER_CURRENT
 
       #if HAS_MICROSTEPS
 
@@ -8571,10 +8473,6 @@ void clamp_to_software_endstops(float target[3]) {
     float seconds = 6000 * cartesian_mm / feedrate / feedrate_multiplier;
     int steps = max(1, int(delta_segments_per_second * seconds));
 
-    // SERIAL_ECHOPGM("mm="); SERIAL_ECHO(cartesian_mm);
-    // SERIAL_ECHOPGM(" seconds="); SERIAL_ECHO(seconds);
-    // SERIAL_ECHOPGM(" steps="); SERIAL_ECHOLN(steps);
-
     for (int s = 1; s <= steps; s++) {
 
       float fraction = float(s) / float(steps);
@@ -8587,13 +8485,6 @@ void clamp_to_software_endstops(float target[3]) {
       #if ENABLED(AUTO_BED_LEVELING_FEATURE)
         adjust_delta(target);
       #endif
-
-      //SERIAL_ECHOPGM("target[X_AXIS]="); SERIAL_ECHOLN(target[X_AXIS]);
-      //SERIAL_ECHOPGM("target[Y_AXIS]="); SERIAL_ECHOLN(target[Y_AXIS]);
-      //SERIAL_ECHOPGM("target[Z_AXIS]="); SERIAL_ECHOLN(target[Z_AXIS]);
-      //SERIAL_ECHOPGM("delta[X_AXIS]="); SERIAL_ECHOLN(delta[X_AXIS]);
-      //SERIAL_ECHOPGM("delta[Y_AXIS]="); SERIAL_ECHOLN(delta[Y_AXIS]);
-      //SERIAL_ECHOPGM("delta[Z_AXIS]="); SERIAL_ECHOLN(delta[Z_AXIS]);
 
       plan_buffer_line(delta[X_AXIS], delta[Y_AXIS], delta[Z_AXIS], target[E_AXIS], feedrate / 60 * feedrate_multiplier / 100.0, active_extruder);
     }
@@ -9636,7 +9527,7 @@ void kill(const char* lcd_msg) {
   SERIAL_ERROR_START;
   SERIAL_ERRORLNPGM(MSG_ERR_KILLED);
 
-  // FMC small patch to update the LCD before ending
+  // FMC small patch to allow time before ending
   sei();   // enable interrupts
   for (int i = 5; i--;) delay(200); // Wait a short time
   #if DISABLED( ONE_LED )

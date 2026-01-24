@@ -353,11 +353,6 @@ extern Stopwatch print_job_timer;
 // Handling multiple extruders pins
 extern uint8_t active_extruder;
 
-#if ENABLED(DIGIPOT_I2C)
-  extern void digipot_i2c_set_current(int channel, float current);
-  extern void digipot_i2c_init();
-#endif
-
 #if HAS_TEMP_HOTEND || HAS_TEMP_BED
   void print_heaterstates();
 #endif
