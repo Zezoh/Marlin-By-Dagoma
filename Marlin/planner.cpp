@@ -187,13 +187,11 @@ void calculate_trapezoid_for_block(block_t* block, float entry_factor, float exi
   NOLESS(initial_rate, 120);
   NOLESS(final_rate, 120);
 
+  long acceleration = block->acceleration_st;
+  
   #if ENABLED(USE_NEW_PLANNER)
-    // New planner: Apply acceleration factor for dynamic adjustment
-    long acceleration = block->acceleration_st;
-    // Ensure acceleration is positive and within reasonable bounds
+    // New planner: Ensure acceleration is positive and within reasonable bounds
     if (acceleration <= 0) acceleration = 1;
-  #else
-    long acceleration = block->acceleration_st;
   #endif
   
   int32_t accelerate_steps = ceil(estimate_acceleration_distance(initial_rate, block->nominal_rate, acceleration));
@@ -278,8 +276,13 @@ void planner_reverse_pass_kernel(block_t* previous, block_t* current, block_t* n
           float entry_speed_sqr = next->entry_speed * next->entry_speed;
           float max_speed_sqr = max_entry_speed * max_entry_speed;
           
-          // Apply acceleration factor for vibration reduction
-          float acceleration_adjusted = current->acceleration * current->acceleration_factor;
+          // Apply acceleration factor for vibration reduction with validation
+          float acceleration_factor = current->acceleration_factor;
+          // Validate acceleration_factor is within reasonable bounds (0.1 to 2.0)
+          if (acceleration_factor < 0.1) acceleration_factor = 0.1;
+          if (acceleration_factor > 2.0) acceleration_factor = 2.0;
+          
+          float acceleration_adjusted = current->acceleration * acceleration_factor;
           float max_allowable_speed_sqr = entry_speed_sqr - 2 * acceleration_adjusted * current->millimeters;
           
           // Safety check: ensure we don't have negative value under sqrt
@@ -353,8 +356,13 @@ void planner_forward_pass_kernel(block_t* previous, block_t* current, block_t* n
         float entry_speed_sqr = previous->entry_speed * previous->entry_speed;
         float current_entry_speed_sqr = current->entry_speed * current->entry_speed;
         
-        // Apply acceleration factor for smooth transitions
-        float acceleration_adjusted = previous->acceleration * previous->acceleration_factor;
+        // Apply acceleration factor for smooth transitions with validation
+        float acceleration_factor = previous->acceleration_factor;
+        // Validate acceleration_factor is within reasonable bounds (0.1 to 2.0)
+        if (acceleration_factor < 0.1) acceleration_factor = 0.1;
+        if (acceleration_factor > 2.0) acceleration_factor = 2.0;
+        
+        float acceleration_adjusted = previous->acceleration * acceleration_factor;
         float max_allowable_speed_sqr = entry_speed_sqr + 2 * acceleration_adjusted * previous->millimeters;
         
         // Check if we need to limit the current entry speed
