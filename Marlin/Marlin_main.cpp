@@ -844,7 +844,6 @@ void suicide() {
  *    • photo pin
  *    • servos
  *    • LCD controller
- *    • Digipot I2C
  *    • Z probe sled
  *    • status LEDs
  */
@@ -927,10 +926,6 @@ void setup() {
 
   #if HAS_STEPPER_RESET
     enableStepperDrivers();
-  #endif
-
-  #if ENABLED(DIGIPOT_I2C)
-    digipot_i2c_init();
   #endif
 
   #if ENABLED(Z_PROBE_SLED)
@@ -6978,22 +6973,6 @@ inline void gcode_D720() {
 
 #endif
 
-/**
- * M907: Set digital trimpot motor current using axis codes X, Y, Z, E, B, S
- */
-inline void gcode_M907() {
-  #if PIN_EXISTS(MOTOR_CURRENT_PWM_XY)
-    if (code_seen('X')) digipot_current(0, code_value());
-  #endif
-  #if PIN_EXISTS(MOTOR_CURRENT_PWM_Z)
-    if (code_seen('Z')) digipot_current(1, code_value());
-  #endif
-  #if PIN_EXISTS(MOTOR_CURRENT_PWM_E)
-    if (code_seen('E')) digipot_current(2, code_value());
-  #endif
-
-}
-
 #if HAS_MICROSTEPS
 
   // M350 Set microstepping mode. Warning: Steps per unit remains unchanged. S code sets stepping mode for all drivers.
@@ -8106,10 +8085,6 @@ void process_next_command() {
           gcode_M600();
           break;
       #endif // FILAMENTCHANGEENABLE
-
-      case 907: // M907 Set digital trimpot motor current using axis codes.
-        gcode_M907();
-        break;
 
       #if HAS_MICROSTEPS
 
