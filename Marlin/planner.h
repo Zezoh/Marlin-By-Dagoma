@@ -76,10 +76,12 @@ typedef struct {
   unsigned char recalculate_flag;                    // Planner flag to recalculate trapezoids on entry junction
   unsigned char nominal_length_flag;                 // Planner flag for nominal speed always reached
   
-  // New planner fields for enhanced acceleration control
-  float entry_speed_sqr;                             // Cached square of entry speed for optimization
-  float max_entry_speed_sqr;                         // Cached square of max entry speed for optimization
-  float acceleration_factor;                         // Dynamic acceleration factor for vibration reduction
+  #if ENABLED(USE_NEW_PLANNER)
+    // New planner fields for enhanced acceleration control
+    float entry_speed_sqr;                             // Cached square of entry speed for optimization
+    float max_entry_speed_sqr;                         // Cached square of max entry speed for optimization
+    float acceleration_factor;                         // Dynamic acceleration factor for vibration reduction
+  #endif
 
   // Settings for the trapezoid generator
   unsigned long nominal_rate;                        // The nominal step rate for this block in step_events/sec

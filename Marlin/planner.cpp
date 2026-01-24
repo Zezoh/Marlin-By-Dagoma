@@ -273,6 +273,8 @@ void planner_reverse_pass_kernel(block_t* previous, block_t* current, block_t* n
       if (!current->nominal_length_flag && max_entry_speed > next->entry_speed) {
         #if ENABLED(USE_NEW_PLANNER)
           // New planner: Use cached squared speeds for optimization
+          // Reverse pass calculates max entry speed when decelerating to next block
+          // Formula: sqrt(exit_speed^2 + 2*accel*distance) because we can accelerate from exit
           float entry_speed_sqr = next->entry_speed * next->entry_speed;
           float max_speed_sqr = max_entry_speed * max_entry_speed;
           
@@ -283,10 +285,8 @@ void planner_reverse_pass_kernel(block_t* previous, block_t* current, block_t* n
           if (acceleration_factor > 2.0) acceleration_factor = 2.0;
           
           float acceleration_adjusted = current->acceleration * acceleration_factor;
-          float max_allowable_speed_sqr = entry_speed_sqr - 2 * acceleration_adjusted * current->millimeters;
-          
-          // Safety check: ensure we don't have negative value under sqrt
-          if (max_allowable_speed_sqr < 0) max_allowable_speed_sqr = 0;
+          // Correct formula: we can enter faster if we have distance to decelerate to exit speed
+          float max_allowable_speed_sqr = entry_speed_sqr + 2 * acceleration_adjusted * current->millimeters;
           
           if (max_allowable_speed_sqr < max_speed_sqr) {
             current->entry_speed = sqrt(max_allowable_speed_sqr);
