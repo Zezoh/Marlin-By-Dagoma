@@ -475,7 +475,10 @@
 
 #if ENABLED(USE_NEW_PLANNER)
   // Acceleration profile tuning constants for new planner
-  #define PLANNER_ACCELERATION_FACTOR 1.0    // Global acceleration scaling factor (0.1 - 2.0 range)
+  // Valid range is 0.1 - 2.0 (enforced at runtime with clamping)
+  // Values < 1.0 reduce acceleration for smoother motion (less vibration, slower prints)
+  // Values > 1.0 increase acceleration for faster motion (more vibration, faster prints)
+  #define PLANNER_ACCELERATION_FACTOR 1.0    // Global acceleration scaling factor
   #define PLANNER_MIN_SPEED_CHANGE 0.001     // Minimum speed change for recalculation (mm/s)
 #endif
 

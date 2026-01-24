@@ -155,6 +155,19 @@ uint8_t g_uc_extruder_last_move[EXTRUDERS] = { 0 };
 //================================ functions ================================
 //===========================================================================
 
+#if ENABLED(USE_NEW_PLANNER)
+  // New planner constants for acceleration factor validation
+  #define MIN_ACCEL_FACTOR 0.1f
+  #define MAX_ACCEL_FACTOR 2.0f
+  
+  // Helper function to validate and clamp acceleration factor
+  FORCE_INLINE float validate_acceleration_factor(float factor) {
+    if (factor < MIN_ACCEL_FACTOR) return MIN_ACCEL_FACTOR;
+    if (factor > MAX_ACCEL_FACTOR) return MAX_ACCEL_FACTOR;
+    return factor;
+  }
+#endif
+
 // Get the next / previous index of the next block in the ring buffer
 // NOTE: Using & here (not %) because BLOCK_BUFFER_SIZE is always a power of 2
 FORCE_INLINE int8_t next_block_index(int8_t block_index) { return BLOCK_MOD(block_index + 1); }
@@ -278,13 +291,8 @@ void planner_reverse_pass_kernel(block_t* previous, block_t* current, block_t* n
           float entry_speed_sqr = next->entry_speed * next->entry_speed;
           float max_speed_sqr = max_entry_speed * max_entry_speed;
           
-          // Apply acceleration factor for vibration reduction with validation
-          float acceleration_factor = current->acceleration_factor;
-          // Validate acceleration_factor is within reasonable bounds (0.1 to 2.0)
-          if (acceleration_factor < 0.1) acceleration_factor = 0.1;
-          if (acceleration_factor > 2.0) acceleration_factor = 2.0;
-          
-          float acceleration_adjusted = current->acceleration * acceleration_factor;
+          // Apply validated acceleration factor for vibration reduction
+          float acceleration_adjusted = current->acceleration * validate_acceleration_factor(current->acceleration_factor);
           // Correct formula: we can enter faster if we have distance to decelerate to exit speed
           float max_allowable_speed_sqr = entry_speed_sqr + 2 * acceleration_adjusted * current->millimeters;
           
@@ -356,13 +364,8 @@ void planner_forward_pass_kernel(block_t* previous, block_t* current, block_t* n
         float entry_speed_sqr = previous->entry_speed * previous->entry_speed;
         float current_entry_speed_sqr = current->entry_speed * current->entry_speed;
         
-        // Apply acceleration factor for smooth transitions with validation
-        float acceleration_factor = previous->acceleration_factor;
-        // Validate acceleration_factor is within reasonable bounds (0.1 to 2.0)
-        if (acceleration_factor < 0.1) acceleration_factor = 0.1;
-        if (acceleration_factor > 2.0) acceleration_factor = 2.0;
-        
-        float acceleration_adjusted = previous->acceleration * acceleration_factor;
+        // Apply validated acceleration factor for smooth transitions
+        float acceleration_adjusted = previous->acceleration * validate_acceleration_factor(previous->acceleration_factor);
         float max_allowable_speed_sqr = entry_speed_sqr + 2 * acceleration_adjusted * previous->millimeters;
         
         // Check if we need to limit the current entry speed
