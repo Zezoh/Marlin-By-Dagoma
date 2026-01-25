@@ -274,8 +274,14 @@ void planner_recalculate_trapezoids() {
   if (next) {
     float nom = next->nominal_speed;
     // Calculate minimum planner speed for this block based on acceleration
-    float steps_per_mm = next->step_event_count / next->millimeters;
-    float minimum_planner_speed = sqrt(0.5f * next->acceleration / steps_per_mm);
+    // Only calculate if we have a valid millimeters value to prevent division by zero
+    float minimum_planner_speed;
+    if (next->millimeters > 0) {
+      float steps_per_mm = next->step_event_count / next->millimeters;
+      minimum_planner_speed = sqrt(0.5f * next->acceleration / steps_per_mm);
+    } else {
+      minimum_planner_speed = 0.05f; // Fallback to safe default
+    }
     calculate_trapezoid_for_block(next, next->entry_speed / nom, minimum_planner_speed / nom);
     next->recalculate_flag = false;
   }
