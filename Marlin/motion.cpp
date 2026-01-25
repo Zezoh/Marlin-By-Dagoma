@@ -126,8 +126,8 @@ uint8_t g_uc_extruder_last_move[EXTRUDERS] = { 0 };
 //================================ functions ================================
 //===========================================================================
 
-FORCE_INLINE int8_t next_block_index(int8_t block_index) { return BLOCK_MOD(block_index + 1); }
-FORCE_INLINE int8_t prev_block_index(int8_t block_index) { return BLOCK_MOD(block_index - 1); }
+FORCE_INLINE int8_t next_block_index(int8_t block_index) { return block_inc_mod(block_index, 1); }
+FORCE_INLINE int8_t prev_block_index(int8_t block_index) { return block_dec_mod(block_index, 1); }
 
 FORCE_INLINE float estimate_acceleration_distance(float initial_rate, float target_rate, float acceleration) {
   if (acceleration == 0) return 0;
@@ -207,8 +207,8 @@ void planner_reverse_pass() {
     unsigned char tail = block_buffer_tail;
   CRITICAL_SECTION_END
 
-  if (BLOCK_MOD(block_buffer_head - tail + BLOCK_BUFFER_SIZE) > 3) { // moves queued
-    block_index = BLOCK_MOD(block_buffer_head - 3);
+  if (block_dec_mod(block_buffer_head, tail) > 3) { // moves queued
+    block_index = block_dec_mod(block_buffer_head, 3);
     block_t* block[3] = { NULL, NULL, NULL };
     while (block_index != tail) {
       block_index = prev_block_index(block_index);
@@ -273,7 +273,10 @@ void planner_recalculate_trapezoids() {
   }
   if (next) {
     float nom = next->nominal_speed;
-    calculate_trapezoid_for_block(next, next->entry_speed / nom, (MINIMUM_PLANNER_SPEED) / nom);
+    // Calculate minimum planner speed for this block based on acceleration
+    float steps_per_mm = next->step_event_count / next->millimeters;
+    float minimum_planner_speed = sqrt(0.5f * next->acceleration / steps_per_mm);
+    calculate_trapezoid_for_block(next, next->entry_speed / nom, minimum_planner_speed / nom);
     next->recalculate_flag = false;
   }
 }
@@ -786,6 +789,10 @@ float junction_deviation = 0.1;
   block->acceleration = acc_st / steps_per_mm;
   block->acceleration_rate = (long)(acc_st * 16777216.0 / (F_CPU / 8.0));
 
+  // The minimum possible speed is the average speed for
+  // the first / last step at current acceleration limit
+  float minimum_planner_speed = sqrt(0.5f * block->acceleration / steps_per_mm);
+
   // Start with a safe speed
   float vmax_junction = max_xy_jerk / 2;
   float vmax_junction_factor = 1.0;
@@ -812,7 +819,10 @@ float junction_deviation = 0.1;
   }
   block->max_entry_speed = vmax_junction;
 
-  float v_allowable = max_allowable_speed(-block->acceleration, MINIMUM_PLANNER_SPEED, block->millimeters);
+  // Ensure minimum_planner_speed accounts for jerk-based safe speed
+  NOLESS(minimum_planner_speed, safe_speed);
+
+  float v_allowable = max_allowable_speed(-block->acceleration, minimum_planner_speed, block->millimeters);
   block->entry_speed = min(vmax_junction, v_allowable);
   block->nominal_length_flag = (block->nominal_speed <= v_allowable);
   block->recalculate_flag = true;

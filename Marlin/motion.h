@@ -128,7 +128,23 @@ typedef struct {
 
 } block_t;
 
-#define BLOCK_MOD(n) ((n)&(BLOCK_BUFFER_SIZE-1))
+// Helper functions for block buffer index manipulation that work with any buffer size
+FORCE_INLINE uint8_t block_dec_mod(const uint8_t v1, const uint8_t v2) {
+  return v1 >= v2 ? v1 - v2 : v1 - v2 + BLOCK_BUFFER_SIZE;
+}
+
+FORCE_INLINE uint8_t block_inc_mod(const uint8_t v1, const uint8_t v2) {
+  return v1 + v2 < BLOCK_BUFFER_SIZE ? v1 + v2 : v1 + v2 - BLOCK_BUFFER_SIZE;
+}
+
+// Check if BLOCK_BUFFER_SIZE is a power of 2
+#define IS_POWER_OF_2(x) ((x) && !((x) & ((x) - 1)))
+
+#if IS_POWER_OF_2(BLOCK_BUFFER_SIZE)
+  #define BLOCK_MOD(n) ((n)&(BLOCK_BUFFER_SIZE-1))
+#else
+  #define BLOCK_MOD(n) ((n) % BLOCK_BUFFER_SIZE)
+#endif
 
 //===========================================================================
 //==================== Stepper Indirection Macros ===========================
@@ -323,7 +339,7 @@ void check_axes_activity();
 // Get the number of buffered moves
 extern volatile unsigned char block_buffer_head;
 extern volatile unsigned char block_buffer_tail;
-FORCE_INLINE uint8_t movesplanned() { return BLOCK_MOD(block_buffer_head - block_buffer_tail + BLOCK_BUFFER_SIZE); }
+FORCE_INLINE uint8_t movesplanned() { return block_dec_mod(block_buffer_head, block_buffer_tail); }
 
 #if ENABLED(AUTO_BED_LEVELING_FEATURE)
   extern matrix_3x3 plan_bed_level_matrix;
@@ -366,7 +382,7 @@ FORCE_INLINE bool blocks_queued() { return (block_buffer_head != block_buffer_ta
 
 FORCE_INLINE void plan_discard_current_block() {
   if (blocks_queued())
-    block_buffer_tail = BLOCK_MOD(block_buffer_tail + 1);
+    block_buffer_tail = block_inc_mod(block_buffer_tail, 1);
 }
 
 FORCE_INLINE block_t* plan_get_current_block() {
