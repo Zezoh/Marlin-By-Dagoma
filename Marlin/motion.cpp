@@ -154,14 +154,14 @@ FORCE_INLINE float intersection_distance(float initial_rate, float final_rate, f
  */
 void calculate_trapezoid_for_block(block_t* block, float entry_speed, float exit_speed) {
   const float spmm = block->steps_per_mm;
-  unsigned long initial_rate = entry_speed ? lround(entry_speed * spmm) : block->initial_rate,
+  unsigned long initial_rate = (entry_speed != 0.0f) ? lround(entry_speed * spmm) : block->initial_rate,
                 final_rate = lround(exit_speed * spmm);
 
   // Removing code to constrain values produces judder in direction-switching moves because the
   // current discrete stepping math diverges from physical motion under constant acceleration
   // when acceleration_st is large compared to initial/final_rate.
-  NOLESS(initial_rate, (long)MINIMAL_STEP_RATE);
-  NOLESS(final_rate, (long)MINIMAL_STEP_RATE);
+  NOLESS(initial_rate, (unsigned long)MINIMAL_STEP_RATE);
+  NOLESS(final_rate, (unsigned long)MINIMAL_STEP_RATE);
   NOMORE(initial_rate, block->nominal_rate);  // NOTE: The nominal rate may be less than MINIMAL_STEP_RATE!
   NOMORE(final_rate, block->nominal_rate);
 
@@ -330,7 +330,7 @@ void planner_recalculate_trapezoids(float safe_exit_speed) {
         if (block->busy) {
           // Block is BUSY so we can't change the exit speed. Revert any reverse pass change.
           next->entry_speed = next->min_entry_speed;
-          if (!next->initial_rate) {
+          if (next->initial_rate == 0) {
             // 'next' was never calculated. Planner is falling behind so for maximum efficiency
             // set next's stepping speed directly and forgo checking against min_entry_speed.
             // calculate_trapezoid_for_block() can handle it.
