@@ -109,7 +109,6 @@ typedef struct {
   float steps_per_mm;                                // Steps per mm for this block
   float acceleration;                                // acceleration mm/sec^2
   unsigned char recalculate_flag;                    // Planner flag to recalculate trapezoids on entry junction
-  unsigned char nominal_length_flag;                 // Planner flag for nominal speed always reached
 
   // Settings for the trapezoid generator
   unsigned long nominal_rate;                        // The nominal step rate for this block in step_events/sec

@@ -214,12 +214,9 @@ bool planner_reverse_pass_kernel(block_t* current, block_t* next, float safe_exi
   if (!next || next->recalculate_flag) {
     // And only if we're not already at max entry speed.
     if (current->entry_speed < current->max_entry_speed) {
-      // Get the maximum entry speed based on deceleration from exit speed
-      float new_entry_speed = (next ? next->entry_speed : safe_exit_speed);
-      
-      if (!current->nominal_length_flag && current->max_entry_speed > new_entry_speed) {
-        new_entry_speed = max_allowable_speed(-current->acceleration, new_entry_speed, current->millimeters);
-      }
+      // Compute maximum entry speed decelerating over the current block from its exit speed.
+      float next_entry_speed = (next ? next->entry_speed : safe_exit_speed);
+      float new_entry_speed = max_allowable_speed(-current->acceleration, next_entry_speed, current->millimeters);
       
       // Limit to max_entry_speed
       if (new_entry_speed > current->max_entry_speed)
@@ -880,9 +877,13 @@ float junction_deviation = 0.1;
   block->acceleration = acc_st / steps_per_mm;
   block->acceleration_rate = (long)(acc_st * 16777216.0 / (F_CPU / 8.0));
 
-  // The minimum possible speed is the average speed for
-  // the first / last step at current acceleration limit
+  // Formula for the average speed over a 1 step worth of distance if starting from zero and
+  // accelerating at the current limit. Since we can only change the speed every step this is a
+  // good lower limit for the entry and exit speeds. Note that for calculate_trapezoid_for_block()
+  // to work correctly, this must be accurately set and propagated.
   float minimum_planner_speed = sqrt(0.5f * block->acceleration / steps_per_mm);
+  // Go straight to/from nominal speed if block->acceleration is too high for it.
+  NOMORE(minimum_planner_speed, block->nominal_speed);
 
   // Start with a safe speed
   float vmax_junction = max_xy_jerk / 2;
@@ -908,16 +909,20 @@ float junction_deviation = 0.1;
 
     vmax_junction = min(previous_nominal_speed, vmax_junction * vmax_junction_factor);
   }
+  else {
+    // Init entry speed to minimum_planner_speed when starting from rest
+    vmax_junction = minimum_planner_speed;
+  }
+
+  // High acceleration limits override low jerk/junction deviation limits
+  NOLESS(vmax_junction, minimum_planner_speed);
+
+  // Max entry speed of this block equals the max exit speed of the previous block.
   block->max_entry_speed = vmax_junction;
-
-  // Ensure minimum_planner_speed accounts for jerk-based safe speed
-  NOLESS(minimum_planner_speed, safe_speed);
-
-  float v_allowable = max_allowable_speed(-block->acceleration, minimum_planner_speed, block->millimeters);
-  block->entry_speed = min(vmax_junction, v_allowable);
+  // Set entry speed. The reverse and forward passes will optimize it later.
+  block->entry_speed = minimum_planner_speed;
   // Set min entry speed. Rarely it could be higher than the previous nominal speed but that's ok.
   block->min_entry_speed = minimum_planner_speed;
-  block->nominal_length_flag = (block->nominal_speed <= v_allowable);
   block->recalculate_flag = true;
   // Zero the initial_rate to indicate that calculate_trapezoid_for_block() hasn't been called yet.
   block->initial_rate = 0;
