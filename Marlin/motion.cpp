@@ -145,24 +145,32 @@ FORCE_INLINE float intersection_distance(float initial_rate, float final_rate, f
 }
 
 void calculate_trapezoid_for_block(block_t* block, float entry_factor, float exit_factor) {
-  unsigned long initial_rate = ceil(block->nominal_rate * entry_factor),
-                final_rate = ceil(block->nominal_rate * exit_factor);
+  unsigned long initial_rate = lround(block->nominal_rate * entry_factor),
+                final_rate = lround(block->nominal_rate * exit_factor);
 
-  // Ensure all rates are at least the minimal step rate to avoid calculation issues
-  NOLESS(initial_rate, (unsigned long)MINIMAL_STEP_RATE);
+  // Legacy check against supposed timer overflow. However calc_timer() already
+  // should protect against it. But removing this code produces judder in direction-switching
+  // moves. This is because the current discrete stepping math diverges from physical motion under
+  // constant acceleration when acceleration is large compared to initial/final_rate.
+  NOLESS(initial_rate, (unsigned long)MINIMAL_STEP_RATE);  // Enforce the minimum speed
   NOLESS(final_rate, (unsigned long)MINIMAL_STEP_RATE);
+  NOMORE(initial_rate, block->nominal_rate);               // NOTE: The nominal rate may be less than MINIMAL_STEP_RATE!
+  NOMORE(final_rate, block->nominal_rate);
   NOLESS(block->nominal_rate, (unsigned long)MINIMAL_STEP_RATE);
 
   long acceleration = block->acceleration_st;
+  // Aims to fully reach nominal and final rates
   int32_t accelerate_steps = ceil(estimate_acceleration_distance(initial_rate, block->nominal_rate, acceleration));
-  int32_t decelerate_steps = floor(estimate_acceleration_distance(block->nominal_rate, final_rate, -acceleration));
+  int32_t decelerate_steps = ceil(estimate_acceleration_distance(block->nominal_rate, final_rate, -acceleration));
   int32_t plateau_steps = block->step_event_count - accelerate_steps - decelerate_steps;
 
+  // Calculate accel / braking time in order to reach the final_rate exactly
+  // at the end of this block.
   if (plateau_steps < 0) {
-    accelerate_steps = ceil(intersection_distance(initial_rate, final_rate, acceleration, block->step_event_count));
-    NOMORE(accelerate_steps, block->step_event_count);
-    NOLESS(accelerate_steps, 0);
-    plateau_steps = 0;
+    accelerate_steps = lround(intersection_distance(initial_rate, final_rate, acceleration, block->step_event_count));
+    if (accelerate_steps < 0) accelerate_steps = 0;
+    if (accelerate_steps > (int32_t)block->step_event_count) accelerate_steps = block->step_event_count;
+    decelerate_steps = block->step_event_count - accelerate_steps;
   }
 
   #if ENABLED(ADVANCE)
@@ -172,8 +180,8 @@ void calculate_trapezoid_for_block(block_t* block, float entry_factor, float exi
 
   CRITICAL_SECTION_START;
   if (!block->busy) {
-    block->accelerate_until = accelerate_steps;
-    block->decelerate_after = accelerate_steps + plateau_steps;
+    block->accelerate_before = accelerate_steps;
+    block->decelerate_start = block->step_event_count - decelerate_steps;
     block->initial_rate = initial_rate;
     block->final_rate = final_rate;
     #if ENABLED(ADVANCE)
@@ -1287,10 +1295,16 @@ inline void update_endstops() {
 //
 //                           time ----->
 //
-//  The trapezoid is the shape the speed curve over time. It starts at block->initial_rate, accelerates
-//  first block->accelerate_until step_events_completed, then keeps going at constant speed until
-//  step_events_completed reaches block->decelerate_after after which it decelerates until the trapezoid generator is reset.
-//  The slope of acceleration is calculated using v = u + at where t is the accumulated timer values of the steps so far.
+//  The speed over time graph forms a TRAPEZOID. The slope of acceleration is calculated by
+//    v = u + t
+//  where 't' is the accumulated timer values of the steps so far.
+//
+//  The Stepper ISR dynamically executes acceleration, deceleration, and cruising according to the block parameters.
+//    - Start at block->initial_rate.
+//    - Accelerate while step_events_completed < block->accelerate_before.
+//    - Cruise while step_events_completed < block->decelerate_start.
+//    - Decelerate after that, until all steps are completed.
+//    - Reset the trapezoid generator.
 
 void st_wake_up() {
   //  TCNT1 = 0;
@@ -1385,12 +1399,14 @@ FORCE_INLINE void trapezoid_generator_reset() {
     e_steps[current_block->active_extruder] += ((advance >>8) - old_advance);
     old_advance = advance >>8;
   #endif
-  deceleration_time = 0;
   OCR1A_nominal = calc_timer(current_block->nominal_rate);
   step_loops_nominal = step_loops;
   acc_step_rate = current_block->initial_rate;
-  acceleration_time = calc_timer(acc_step_rate);
-  OCR1A = acceleration_time;
+  unsigned short initial_timer = calc_timer(acc_step_rate);
+  // Initialize ac/deceleration time as if half the time passed.
+  // This smooths the speed change shock between segments.
+  acceleration_time = deceleration_time = initial_timer / 2;
+  OCR1A = initial_timer;
 }
 
 ISR(TIMER1_COMPA_vect) {
@@ -1481,13 +1497,15 @@ ISR(TIMER1_COMPA_vect) {
     }
     unsigned short timer;
     unsigned short step_rate;
-    if (step_events_completed <= (unsigned long)current_block->accelerate_until) {
+    // Are we in acceleration phase?
+    if (step_events_completed < (unsigned long)current_block->accelerate_before) {
       MultiU24X32toH16(acc_step_rate, acceleration_time, current_block->acceleration_rate);
       acc_step_rate += current_block->initial_rate;
       NOMORE(acc_step_rate, current_block->nominal_rate);
       timer = calc_timer(acc_step_rate);
       OCR1A = timer;
       acceleration_time += timer;
+      deceleration_time = 0; // Reset since we're doing acceleration first.
 
       #if ENABLED(ADVANCE)
         advance += advance_rate * step_loops;
@@ -1495,10 +1513,11 @@ ISR(TIMER1_COMPA_vect) {
         old_advance = advance >> 8;
       #endif
     }
-    else if (step_events_completed > (unsigned long)current_block->decelerate_after) {
+    // Are we in deceleration phase?
+    else if (step_events_completed >= (unsigned long)current_block->decelerate_start) {
       MultiU24X32toH16(step_rate, deceleration_time, current_block->acceleration_rate);
 
-      if (step_rate <= acc_step_rate) {
+      if (step_rate < acc_step_rate) {
         step_rate = acc_step_rate - step_rate;
         NOLESS(step_rate, current_block->final_rate);
       }
@@ -1519,9 +1538,13 @@ ISR(TIMER1_COMPA_vect) {
         old_advance = advance_whole;
       #endif //ADVANCE
     }
+    // We're in cruising phase
     else {
       OCR1A = OCR1A_nominal;
       step_loops = step_loops_nominal;
+      // Prepare for deceleration
+      acc_step_rate = current_block->nominal_rate;
+      deceleration_time = OCR1A_nominal / 2;
     }
 
     OCR1A = (OCR1A < (TCNT1 + 16)) ? (TCNT1 + 16) : OCR1A;
