@@ -148,15 +148,17 @@ void calculate_trapezoid_for_block(block_t* block, float entry_factor, float exi
   unsigned long initial_rate = lround(block->nominal_rate * entry_factor),
                 final_rate = lround(block->nominal_rate * exit_factor);
 
+  // Ensure nominal_rate meets minimum first
+  NOLESS(block->nominal_rate, (unsigned long)MINIMAL_STEP_RATE);
+  
   // Legacy check against supposed timer overflow. However calc_timer() already
   // should protect against it. But removing this code produces judder in direction-switching
   // moves. This is because the current discrete stepping math diverges from physical motion under
   // constant acceleration when acceleration is large compared to initial/final_rate.
   NOLESS(initial_rate, (unsigned long)MINIMAL_STEP_RATE);  // Enforce the minimum speed
   NOLESS(final_rate, (unsigned long)MINIMAL_STEP_RATE);
-  NOMORE(initial_rate, block->nominal_rate);               // NOTE: The nominal rate may be less than MINIMAL_STEP_RATE!
+  NOMORE(initial_rate, block->nominal_rate);               // Initial/final should not exceed nominal
   NOMORE(final_rate, block->nominal_rate);
-  NOLESS(block->nominal_rate, (unsigned long)MINIMAL_STEP_RATE);
 
   long acceleration = block->acceleration_st;
   // Aims to fully reach nominal and final rates
