@@ -122,6 +122,11 @@ uint8_t g_uc_extruder_last_move[EXTRUDERS] = { 0 };
 
 // DUAL_X_CARRIAGE removed - Delta-only firmware
 
+// The minimal step rate ensures calculations stay within limits
+// and avoid the most unreasonably slow step rates.
+// For AVR this is F_CPU / 500000 (32 for 16MHz, 40 for 20MHz)
+#define MINIMAL_STEP_RATE ((F_CPU) / 500000UL)
+
 //===========================================================================
 //================================ functions ================================
 //===========================================================================
@@ -143,8 +148,10 @@ void calculate_trapezoid_for_block(block_t* block, float entry_factor, float exi
   unsigned long initial_rate = ceil(block->nominal_rate * entry_factor),
                 final_rate = ceil(block->nominal_rate * exit_factor);
 
-  NOLESS(initial_rate, 120);
-  NOLESS(final_rate, 120);
+  // Ensure all rates are at least the minimal step rate to avoid calculation issues
+  NOLESS(initial_rate, (unsigned long)MINIMAL_STEP_RATE);
+  NOLESS(final_rate, (unsigned long)MINIMAL_STEP_RATE);
+  NOLESS(block->nominal_rate, (unsigned long)MINIMAL_STEP_RATE);
 
   long acceleration = block->acceleration_st;
   int32_t accelerate_steps = ceil(estimate_acceleration_distance(initial_rate, block->nominal_rate, acceleration));
@@ -1305,8 +1312,8 @@ FORCE_INLINE unsigned short calc_timer(unsigned short step_rate) {
     step_loops = 1;
   }
 
-  NOLESS(step_rate, F_CPU / 500000);
-  step_rate -= F_CPU / 500000;
+  NOLESS(step_rate, (unsigned short)MINIMAL_STEP_RATE);
+  step_rate -= MINIMAL_STEP_RATE;
   
   unsigned short timer;
   if (step_rate >= (8 * 256)) {
