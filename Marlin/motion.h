@@ -104,7 +104,9 @@ typedef struct {
   float nominal_speed;                               // The nominal speed for this block in mm/sec
   float entry_speed;                                 // Entry speed at previous-current junction in mm/sec
   float max_entry_speed;                             // Maximum allowable junction entry speed in mm/sec
+  float min_entry_speed;                             // Minimum allowable junction entry speed in mm/sec
   float millimeters;                                 // The total travel of this block in mm
+  float steps_per_mm;                                // Steps per mm for this block
   float acceleration;                                // acceleration mm/sec^2
   unsigned char recalculate_flag;                    // Planner flag to recalculate trapezoids on entry junction
   unsigned char nominal_length_flag;                 // Planner flag for nominal speed always reached
