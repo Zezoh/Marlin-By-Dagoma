@@ -302,13 +302,9 @@
 
 // @section hidden
 
-// The number of linear motions that can be in the plan at any give time.
+// The number of linear motions that can be in the plan at any given time.
 // For delta printers with high segment rates, a larger buffer prevents stuttering.
-#if ENABLED(SDSUPPORT)
-  #define BLOCK_BUFFER_SIZE 32   // Larger buffer for smooth delta motion
-#else
-  #define BLOCK_BUFFER_SIZE 32   // Larger buffer for smooth delta motion
-#endif
+#define BLOCK_BUFFER_SIZE 32
 
 // @section more
 
