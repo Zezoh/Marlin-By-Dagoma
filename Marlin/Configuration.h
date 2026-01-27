@@ -433,8 +433,9 @@
 
 #if ENABLED(DELTA)
 
-  // Motion interpolation (segments per second)
-  #define DELTA_SEGMENTS_PER_SECOND 60
+  // Motion interpolation - higher values = smoother curves but more CPU load
+  // For delta printers, 200 provides good smoothness at typical speeds
+  #define DELTA_SEGMENTS_PER_SECOND 200
 
   // Delta arm geometry (mm)
   #define DELTA_DIAGONAL_ROD 210            // Diagonal rod length (POM + PTFE)

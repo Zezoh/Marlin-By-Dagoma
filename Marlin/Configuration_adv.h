@@ -221,8 +221,10 @@
 
 // @section extras
 
-// minimum time in microseconds that a movement needs to take if the buffer is emptied.
-#define DEFAULT_MINSEGMENTTIME        20000
+// Minimum time in microseconds that a movement needs to take if the buffer is emptied.
+// Lower values allow faster segment rates for smoother delta motion.
+// 10000 (10ms) allows 100Hz segment rate, good for deltas.
+#define DEFAULT_MINSEGMENTTIME        10000
 
 // Microstep setting (Only functional when stepper driver microstep pins are connected to MCU.
 #define MICROSTEP_MODES {16,16,16,16,16} // [1,2,4,8,16]
@@ -301,10 +303,11 @@
 // @section hidden
 
 // The number of linear motions that can be in the plan at any give time.
+// For delta printers with high segment rates, a larger buffer prevents stuttering.
 #if ENABLED(SDSUPPORT)
-  #define BLOCK_BUFFER_SIZE 16   // SD,LCD,Buttons take more memory, block buffer needs to be smaller
+  #define BLOCK_BUFFER_SIZE 32   // Larger buffer for smooth delta motion
 #else
-  #define BLOCK_BUFFER_SIZE 16 // maximize block buffer
+  #define BLOCK_BUFFER_SIZE 32   // Larger buffer for smooth delta motion
 #endif
 
 // @section more

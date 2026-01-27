@@ -94,7 +94,8 @@
    * DELTA
    */
   #if ENABLED(DELTA)
-    #undef SLOWDOWN
+    // SLOWDOWN helps prevent buffer underruns for smooth motion - enabled by default
+    #define SLOWDOWN
     #define QUICK_HOME // Delta needs Quick Home
   #endif
 
