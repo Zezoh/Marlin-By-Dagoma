@@ -889,19 +889,26 @@ void check_axes_activity() {
   // Classic jerk allows instantaneous speed change up to jerk/2 when starting from rest.
   float safe_speed = block->nominal_speed;  // Start with nominal, apply limits below
   
-  // For XY movement, limit by XY jerk (using vector magnitude)
-  float xy_speed = sqrt(sq(current_speed[X_AXIS]) + sq(current_speed[Y_AXIS]));
-  if (xy_speed > 0.0001f) {
-    NOMORE(safe_speed, max_xy_jerk / 2);
-  }
+  #if ENABLED(DELTA)
+    // For delta printers, X/Y/Z in plan_buffer_line are tower positions (A/B/C), not Cartesian.
+    // All towers should use the same jerk limit (tower jerk = max_z_jerk).
+    // We apply Z jerk limit for any tower movement.
+    float tower_speed = sqrt(sq(current_speed[X_AXIS]) + sq(current_speed[Y_AXIS]) + sq(current_speed[Z_AXIS]));
+    if (tower_speed > 0.0001f) {
+      NOMORE(safe_speed, max_z_jerk / 2);
+    }
+  #else
+    // For Cartesian/CoreXY printers, use separate XY and Z jerk limits
+    float xy_speed = sqrt(sq(current_speed[X_AXIS]) + sq(current_speed[Y_AXIS]));
+    if (xy_speed > 0.0001f) {
+      NOMORE(safe_speed, max_xy_jerk / 2);
+    }
+    if (fabs(current_speed[Z_AXIS]) > 0.0001f) {
+      NOMORE(safe_speed, max_z_jerk / 2);
+    }
+  #endif
   
-  // For Z movement, limit by Z jerk
-  float csz = current_speed[Z_AXIS];
-  if (fabs(csz) > 0.0001f) {
-    NOMORE(safe_speed, max_z_jerk / 2);
-  }
-  
-  // For E movement, limit by E jerk
+  // For E movement, limit by E jerk (same for all printer types)
   float cse = current_speed[E_AXIS];
   if (fabs(cse) > 0.0001f) {
     NOMORE(safe_speed, max_e_jerk / 2);
@@ -918,15 +925,26 @@ void check_axes_activity() {
     // Compute the speed change (jerk) from the previous segment
     float dsx = current_speed[X_AXIS] - previous_speed[X_AXIS],
           dsy = current_speed[Y_AXIS] - previous_speed[Y_AXIS],
-          dsz = fabs(csz - previous_speed[Z_AXIS]),
-          dse = fabs(cse - previous_speed[E_AXIS]),
-          xy_jerk = sqrt(dsx * dsx + dsy * dsy);
+          dsz = current_speed[Z_AXIS] - previous_speed[Z_AXIS],
+          dse = fabs(cse - previous_speed[E_AXIS]);
 
     // Start with the nominal speed and apply jerk limits
     max_entry_speed_jerk = block->nominal_speed;
     float jerk_factor = 1.0;
-    if (xy_jerk > max_xy_jerk) jerk_factor = max_xy_jerk / xy_jerk;
-    if (dsz > max_z_jerk) jerk_factor = min(jerk_factor, max_z_jerk / dsz);
+    
+    #if ENABLED(DELTA)
+      // For delta, X/Y/Z are tower positions - use max_z_jerk for all towers
+      // Calculate total tower jerk as vector magnitude
+      float tower_jerk = sqrt(dsx * dsx + dsy * dsy + dsz * dsz);
+      if (tower_jerk > max_z_jerk) jerk_factor = max_z_jerk / tower_jerk;
+    #else
+      // For Cartesian/CoreXY, use separate XY and Z jerk limits
+      float xy_jerk = sqrt(dsx * dsx + dsy * dsy);
+      if (xy_jerk > max_xy_jerk) jerk_factor = max_xy_jerk / xy_jerk;
+      if (fabs(dsz) > max_z_jerk) jerk_factor = min(jerk_factor, max_z_jerk / fabs(dsz));
+    #endif
+    
+    // E jerk limit (same for all printer types)
     if (dse > max_e_jerk) jerk_factor = min(jerk_factor, max_e_jerk / dse);
 
     // Entry speed is limited by both current and previous nominal speeds
