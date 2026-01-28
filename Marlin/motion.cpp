@@ -885,20 +885,35 @@ float junction_deviation = 0.1;
   // Go straight to/from nominal speed if block->acceleration is too high for it.
   NOMORE(minimum_planner_speed, block->nominal_speed);
 
-  // Start with a safe speed (used when starting from rest)
-  float vmax_junction = max_xy_jerk / 2;
-  float mz2 = max_z_jerk / 2, me2 = max_e_jerk / 2;
-  float csz = current_speed[Z_AXIS], cse = current_speed[E_AXIS];
-  if (fabs(csz) > mz2) vmax_junction = min(vmax_junction, mz2);
-  if (fabs(cse) > me2) vmax_junction = min(vmax_junction, me2);
-  vmax_junction = min(vmax_junction, block->nominal_speed);
-  float safe_speed = vmax_junction;
+  // Calculate safe_speed - the maximum speed we can start/stop from rest.
+  // This should only consider axes that are actually moving in this block.
+  // Classic jerk allows instantaneous speed change up to jerk/2 when starting from rest.
+  float safe_speed = block->nominal_speed;  // Start with nominal, apply limits below
+  
+  // For XY movement, limit by XY jerk (using vector magnitude)
+  float xy_speed = sqrt(sq(current_speed[X_AXIS]) + sq(current_speed[Y_AXIS]));
+  if (xy_speed > 0.0001f) {
+    NOMORE(safe_speed, max_xy_jerk / 2);
+  }
+  
+  // For Z movement, limit by Z jerk
+  float csz = current_speed[Z_AXIS];
+  if (fabs(csz) > 0.0001f) {
+    NOMORE(safe_speed, max_z_jerk / 2);
+  }
+  
+  // For E movement, limit by E jerk
+  float cse = current_speed[E_AXIS];
+  if (fabs(cse) > 0.0001f) {
+    NOMORE(safe_speed, max_e_jerk / 2);
+  }
 
   // Calculate junction speed based on jerk limits.
   // NOTE: We use previous_nominal_speed to detect if there was a previous move,
   // NOT moves_queued, because moves_queued can be low even when moves are being
   // processed continuously (ISR processes faster than new segments are added).
   // This is critical for delta segmented moves to avoid stuttering.
+  float vmax_junction;
   if (previous_nominal_speed > 0.0001f) {
     // Compute the speed change (jerk) from the previous segment
     float dsx = current_speed[X_AXIS] - previous_speed[X_AXIS],
@@ -918,8 +933,8 @@ float junction_deviation = 0.1;
     vmax_junction = min(previous_nominal_speed, vmax_junction * vmax_junction_factor);
   }
   else {
-    // Starting from rest - use minimum speed
-    vmax_junction = minimum_planner_speed;
+    // Starting from rest - use safe_speed (which is already axis-aware)
+    vmax_junction = safe_speed;
   }
 
   // High acceleration limits override low jerk/junction deviation limits
