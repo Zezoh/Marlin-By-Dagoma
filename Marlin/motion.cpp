@@ -909,7 +909,7 @@ float junction_deviation = 0.1;
 
     // Start with the nominal speed and apply jerk limits
     vmax_junction = block->nominal_speed;
-    float vmax_junction_factor = 1.0f;
+    float vmax_junction_factor = 1.0;
     if (jerk > max_xy_jerk) vmax_junction_factor = max_xy_jerk / jerk;
     if (dsz > max_z_jerk) vmax_junction_factor = min(vmax_junction_factor, max_z_jerk / dsz);
     if (dse > max_e_jerk) vmax_junction_factor = min(vmax_junction_factor, max_e_jerk / dse);
