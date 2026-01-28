@@ -102,13 +102,13 @@ typedef struct {
 
   // Fields used by the motion planner to manage acceleration
   float nominal_speed;                               // The nominal speed for this block in mm/sec
-  float entry_speed;                                 // Entry speed at previous-current junction in mm/sec
-  float max_entry_speed;                             // Maximum allowable junction entry speed in mm/sec
-  float min_entry_speed;                             // Minimum allowable junction entry speed in mm/sec
+  float entry_speed;                                 // Entry speed at start of this block in mm/sec
+  float max_entry_speed;                             // Maximum allowable entry speed in mm/sec (based on jerk)
+  float min_entry_speed;                             // Minimum allowable entry speed in mm/sec
   float millimeters;                                 // The total travel of this block in mm
   float steps_per_mm;                                // Steps per mm for this block
   float acceleration;                                // acceleration mm/sec^2
-  unsigned char recalculate_flag;                    // Planner flag to recalculate trapezoids on entry junction
+  unsigned char recalculate_flag;                    // Planner flag to recalculate trapezoids
 
   // Settings for the trapezoid generator
   unsigned long nominal_rate;                        // The nominal step rate for this block in step_events/sec

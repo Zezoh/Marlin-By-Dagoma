@@ -543,7 +543,6 @@ void check_axes_activity() {
 }
 
 
-float junction_deviation = 0.1;
 // Add a new linear movement to the buffer. steps[X_AXIS], _y and _z is the absolute position in
 // mm. Microseconds specify how many microseconds the move should take to perform. To aid acceleration
 // calculation the caller must also provide the physical length of the line in millimeters.
@@ -908,40 +907,41 @@ float junction_deviation = 0.1;
     NOMORE(safe_speed, max_e_jerk / 2);
   }
 
-  // Calculate junction speed based on jerk limits.
+  // Calculate max_entry_speed using classic jerk.
+  // Classic jerk limits the instantaneous speed change at segment boundaries.
   // NOTE: We use previous_nominal_speed to detect if there was a previous move,
   // NOT moves_queued, because moves_queued can be low even when moves are being
   // processed continuously (ISR processes faster than new segments are added).
   // This is critical for delta segmented moves to avoid stuttering.
-  float vmax_junction;
+  float max_entry_speed_jerk;
   if (previous_nominal_speed > 0.0001f) {
     // Compute the speed change (jerk) from the previous segment
     float dsx = current_speed[X_AXIS] - previous_speed[X_AXIS],
           dsy = current_speed[Y_AXIS] - previous_speed[Y_AXIS],
           dsz = fabs(csz - previous_speed[Z_AXIS]),
           dse = fabs(cse - previous_speed[E_AXIS]),
-          jerk = sqrt(dsx * dsx + dsy * dsy);
+          xy_jerk = sqrt(dsx * dsx + dsy * dsy);
 
     // Start with the nominal speed and apply jerk limits
-    vmax_junction = block->nominal_speed;
-    float vmax_junction_factor = 1.0;
-    if (jerk > max_xy_jerk) vmax_junction_factor = max_xy_jerk / jerk;
-    if (dsz > max_z_jerk) vmax_junction_factor = min(vmax_junction_factor, max_z_jerk / dsz);
-    if (dse > max_e_jerk) vmax_junction_factor = min(vmax_junction_factor, max_e_jerk / dse);
+    max_entry_speed_jerk = block->nominal_speed;
+    float jerk_factor = 1.0;
+    if (xy_jerk > max_xy_jerk) jerk_factor = max_xy_jerk / xy_jerk;
+    if (dsz > max_z_jerk) jerk_factor = min(jerk_factor, max_z_jerk / dsz);
+    if (dse > max_e_jerk) jerk_factor = min(jerk_factor, max_e_jerk / dse);
 
-    // Junction speed is limited by both current and previous nominal speeds
-    vmax_junction = min(previous_nominal_speed, vmax_junction * vmax_junction_factor);
+    // Entry speed is limited by both current and previous nominal speeds
+    max_entry_speed_jerk = min(previous_nominal_speed, max_entry_speed_jerk * jerk_factor);
   }
   else {
     // Starting from rest - use safe_speed (which is already axis-aware)
-    vmax_junction = safe_speed;
+    max_entry_speed_jerk = safe_speed;
   }
 
-  // High acceleration limits override low jerk/junction deviation limits
-  NOLESS(vmax_junction, minimum_planner_speed);
+  // High acceleration limits override low jerk limits
+  NOLESS(max_entry_speed_jerk, minimum_planner_speed);
 
   // Max entry speed of this block equals the max exit speed of the previous block.
-  block->max_entry_speed = vmax_junction;
+  block->max_entry_speed = max_entry_speed_jerk;
   // Set entry speed. The reverse and forward passes will optimize it later.
   block->entry_speed = minimum_planner_speed;
   // Set min entry speed. Rarely it could be higher than the previous nominal speed but that's ok.
@@ -1018,7 +1018,7 @@ float junction_deviation = 0.1;
          nz = position[Z_AXIS] = lround(z * axis_steps_per_unit[Z_AXIS]),
          ne = position[E_AXIS] = lround(e * axis_steps_per_unit[E_AXIS]);
     st_set_position(nx, ny, nz, ne);
-    previous_nominal_speed = 0.0; // Resets planner junction speeds. Assumes start from rest.
+    previous_nominal_speed = 0.0; // Resets planner to start from rest.
 
     for (int i = 0; i < NUM_AXIS; i++) previous_speed[i] = 0.0;
   }
