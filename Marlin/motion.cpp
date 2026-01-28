@@ -885,9 +885,8 @@ float junction_deviation = 0.1;
   // Go straight to/from nominal speed if block->acceleration is too high for it.
   NOMORE(minimum_planner_speed, block->nominal_speed);
 
-  // Start with a safe speed
+  // Start with a safe speed (used when starting from rest)
   float vmax_junction = max_xy_jerk / 2;
-  float vmax_junction_factor = 1.0;
   float mz2 = max_z_jerk / 2, me2 = max_e_jerk / 2;
   float csz = current_speed[Z_AXIS], cse = current_speed[E_AXIS];
   if (fabs(csz) > mz2) vmax_junction = min(vmax_junction, mz2);
@@ -895,22 +894,31 @@ float junction_deviation = 0.1;
   vmax_junction = min(vmax_junction, block->nominal_speed);
   float safe_speed = vmax_junction;
 
-  if ((moves_queued > 1) && (previous_nominal_speed > 0.0001)) {
+  // Calculate junction speed based on jerk limits.
+  // NOTE: We use previous_nominal_speed to detect if there was a previous move,
+  // NOT moves_queued, because moves_queued can be low even when moves are being
+  // processed continuously (ISR processes faster than new segments are added).
+  // This is critical for delta segmented moves to avoid stuttering.
+  if (previous_nominal_speed > 0.0001f) {
+    // Compute the speed change (jerk) from the previous segment
     float dsx = current_speed[X_AXIS] - previous_speed[X_AXIS],
           dsy = current_speed[Y_AXIS] - previous_speed[Y_AXIS],
           dsz = fabs(csz - previous_speed[Z_AXIS]),
           dse = fabs(cse - previous_speed[E_AXIS]),
           jerk = sqrt(dsx * dsx + dsy * dsy);
 
+    // Start with the nominal speed and apply jerk limits
     vmax_junction = block->nominal_speed;
+    float vmax_junction_factor = 1.0f;
     if (jerk > max_xy_jerk) vmax_junction_factor = max_xy_jerk / jerk;
     if (dsz > max_z_jerk) vmax_junction_factor = min(vmax_junction_factor, max_z_jerk / dsz);
     if (dse > max_e_jerk) vmax_junction_factor = min(vmax_junction_factor, max_e_jerk / dse);
 
+    // Junction speed is limited by both current and previous nominal speeds
     vmax_junction = min(previous_nominal_speed, vmax_junction * vmax_junction_factor);
   }
   else {
-    // Init entry speed to minimum_planner_speed when starting from rest
+    // Starting from rest - use minimum speed
     vmax_junction = minimum_planner_speed;
   }
 
