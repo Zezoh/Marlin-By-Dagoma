@@ -88,8 +88,8 @@ typedef struct {
   // Fields used by the bresenham algorithm for tracing the line
   long steps[NUM_AXIS];                     // Step count along each axis
   unsigned long step_event_count;           // The number of step events required to complete this block
-  long accelerate_until;                    // The index of the step event on which to stop acceleration
-  long decelerate_after;                    // The index of the step event on which to start decelerating
+  long accelerate_before;                   // The index of the step event where cruising starts
+  long decelerate_start;                    // The index of the step event on which to start decelerating
   long acceleration_rate;                   // The acceleration rate used for acceleration calculation
   unsigned char direction_bits;             // The direction bit set for this block (refers to *_DIRECTION_BIT in config.h)
   unsigned char active_extruder;            // Selects the active extruder
@@ -102,12 +102,13 @@ typedef struct {
 
   // Fields used by the motion planner to manage acceleration
   float nominal_speed;                               // The nominal speed for this block in mm/sec
-  float entry_speed;                                 // Entry speed at previous-current junction in mm/sec
-  float max_entry_speed;                             // Maximum allowable junction entry speed in mm/sec
+  float entry_speed;                                 // Entry speed at start of this block in mm/sec
+  float max_entry_speed;                             // Maximum allowable entry speed in mm/sec (based on jerk)
+  float min_entry_speed;                             // Minimum allowable entry speed in mm/sec
   float millimeters;                                 // The total travel of this block in mm
+  float steps_per_mm;                                // Steps per mm for this block
   float acceleration;                                // acceleration mm/sec^2
-  unsigned char recalculate_flag;                    // Planner flag to recalculate trapezoids on entry junction
-  unsigned char nominal_length_flag;                 // Planner flag for nominal speed always reached
+  unsigned char recalculate_flag;                    // Planner flag to recalculate trapezoids
 
   // Settings for the trapezoid generator
   unsigned long nominal_rate;                        // The nominal step rate for this block in step_events/sec
@@ -128,7 +129,23 @@ typedef struct {
 
 } block_t;
 
-#define BLOCK_MOD(n) ((n)&(BLOCK_BUFFER_SIZE-1))
+// Helper functions for block buffer index manipulation that work with any buffer size
+FORCE_INLINE uint8_t block_dec_mod(const uint8_t v1, const uint8_t v2) {
+  return v1 >= v2 ? v1 - v2 : v1 - v2 + BLOCK_BUFFER_SIZE;
+}
+
+FORCE_INLINE uint8_t block_inc_mod(const uint8_t v1, const uint8_t v2) {
+  return v1 + v2 < BLOCK_BUFFER_SIZE ? v1 + v2 : v1 + v2 - BLOCK_BUFFER_SIZE;
+}
+
+// Check if BLOCK_BUFFER_SIZE is a power of 2
+#define IS_POWER_OF_2(x) ((x) && !((x) & ((x) - 1)))
+
+#if IS_POWER_OF_2(BLOCK_BUFFER_SIZE)
+  #define BLOCK_MOD(n) ((n)&(BLOCK_BUFFER_SIZE-1))
+#else
+  #define BLOCK_MOD(n) ((n) % BLOCK_BUFFER_SIZE)
+#endif
 
 //===========================================================================
 //==================== Stepper Indirection Macros ===========================
@@ -323,7 +340,7 @@ void check_axes_activity();
 // Get the number of buffered moves
 extern volatile unsigned char block_buffer_head;
 extern volatile unsigned char block_buffer_tail;
-FORCE_INLINE uint8_t movesplanned() { return BLOCK_MOD(block_buffer_head - block_buffer_tail + BLOCK_BUFFER_SIZE); }
+FORCE_INLINE uint8_t movesplanned() { return block_dec_mod(block_buffer_head, block_buffer_tail); }
 
 #if ENABLED(AUTO_BED_LEVELING_FEATURE)
   extern matrix_3x3 plan_bed_level_matrix;
@@ -366,7 +383,7 @@ FORCE_INLINE bool blocks_queued() { return (block_buffer_head != block_buffer_ta
 
 FORCE_INLINE void plan_discard_current_block() {
   if (blocks_queued())
-    block_buffer_tail = BLOCK_MOD(block_buffer_tail + 1);
+    block_buffer_tail = block_inc_mod(block_buffer_tail, 1);
 }
 
 FORCE_INLINE block_t* plan_get_current_block() {
