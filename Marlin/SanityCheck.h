@@ -74,40 +74,31 @@
 #endif
 
 /**
- * Dual Stepper Drivers
+ * This firmware is Delta-only. Non-Delta features are not supported.
  */
-#if ENABLED(Z_DUAL_STEPPER_DRIVERS) && ENABLED(Y_DUAL_STEPPER_DRIVERS)
-  #error You cannot have dual stepper drivers for both Y and Z.
+#if ENABLED(Z_DUAL_STEPPER_DRIVERS)
+  #error Z_DUAL_STEPPER_DRIVERS is not supported in this Delta-only firmware.
+#endif
+#if ENABLED(Y_DUAL_STEPPER_DRIVERS)
+  #error Y_DUAL_STEPPER_DRIVERS is not supported in this Delta-only firmware.
+#endif
+#if ENABLED(DUAL_X_CARRIAGE)
+  #error DUAL_X_CARRIAGE is not supported in this Delta-only firmware.
 #endif
 
 /**
  * Progress Bar
  */
+// LCD_PROGRESS_BAR - LCD support has been removed
 #if ENABLED(LCD_PROGRESS_BAR)
-  #if DISABLED(SDSUPPORT)
-    #error LCD_PROGRESS_BAR requires SDSUPPORT.
-  #endif
-  #if ENABLED(DOGLCD)
-    #error LCD_PROGRESS_BAR does not apply to graphical displays.
-  #endif
-  #if ENABLED(FILAMENT_LCD_DISPLAY)
-    #error LCD_PROGRESS_BAR and FILAMENT_LCD_DISPLAY are not fully compatible. Comment out this line to use both.
-  #endif
+  #error LCD_PROGRESS_BAR requires LCD support which has been removed from this firmware.
 #endif
 
 /**
- * Babystepping
+ * Babystepping - LCD support has been removed so babystepping is disabled
  */
 #if ENABLED(BABYSTEPPING)
-  #if DISABLED(ULTRA_LCD)
-    #error BABYSTEPPING requires an LCD controller.
-  #endif
-  #if ENABLED(SCARA)
-    #error BABYSTEPPING is not implemented for SCARA yet.
-  #endif
-  #if ENABLED(DELTA) && ENABLED(BABYSTEP_XY)
-    #error BABYSTEPPING only implemented for Z axis on deltabots.
-  #endif
+  #error BABYSTEPPING requires LCD support which has been removed from this firmware.
 #endif
 
 /**
@@ -132,14 +123,6 @@
 
   #if ENABLED(HEATERS_PARALLEL)
     #error EXTRUDERS must be 1 with HEATERS_PARALLEL.
-  #endif
-
-  #if ENABLED(Y_DUAL_STEPPER_DRIVERS)
-    #error EXTRUDERS must be 1 with Y_DUAL_STEPPER_DRIVERS.
-  #endif
-
-  #if ENABLED(Z_DUAL_STEPPER_DRIVERS)
-    #error EXTRUDERS must be 1 with Z_DUAL_STEPPER_DRIVERS.
   #endif
 
 #endif // EXTRUDERS > 1
@@ -172,9 +155,8 @@
 /**
  * Required LCD language
  */
-#if DISABLED(DOGLCD) && ENABLED(ULTRA_LCD) && DISABLED(DISPLAY_CHARSET_HD44780_JAPAN) && DISABLED(DISPLAY_CHARSET_HD44780_WESTERN) && DISABLED(DISPLAY_CHARSET_HD44780_CYRILLIC)
-  #error You must enable either DISPLAY_CHARSET_HD44780_JAPAN or DISPLAY_CHARSET_HD44780_WESTERN  or DISPLAY_CHARSET_HD44780_CYRILLIC for your LCD controller.
-#endif
+// LCD CHARACTER SET - LCD support removed
+// #if DISABLED(DOGLCD) && ENABLED(ULTRA_LCD) ...
 
 /**
  * Bed Heating Options - PID vs Limit Switching
@@ -184,20 +166,13 @@
 #endif
 
 /**
- * Mesh Bed Leveling
+ * Mesh Bed Leveling - Not supported for Delta printers
  */
 #if ENABLED(MESH_BED_LEVELING)
-  #if ENABLED(DELTA)
-    #error MESH_BED_LEVELING does not yet support DELTA printers.
-  #endif
-  #if ENABLED(AUTO_BED_LEVELING_FEATURE)
-    #error Select AUTO_BED_LEVELING_FEATURE or MESH_BED_LEVELING, not both.
-  #endif
-  #if MESH_NUM_X_POINTS > 7 || MESH_NUM_Y_POINTS > 7
-    #error MESH_NUM_X_POINTS and MESH_NUM_Y_POINTS need to be less than 8.
-  #endif
-#elif ENABLED(MANUAL_BED_LEVELING)
-  #error MESH_BED_LEVELING is required for MANUAL_BED_LEVELING.
+  #error MESH_BED_LEVELING is not supported in this Delta-only firmware. Use AUTO_BED_LEVELING_FEATURE with AUTO_BED_LEVELING_GRID instead.
+#endif
+#if ENABLED(MANUAL_BED_LEVELING)
+  #error MANUAL_BED_LEVELING is not supported in this Delta-only firmware.
 #endif
 
 /**
@@ -285,24 +260,9 @@
         #error "The given BACK_PROBE_BED_POSITION can't be reached by the Z probe."
       #endif
     #endif
-  #else // !AUTO_BED_LEVELING_GRID
+  #endif // AUTO_BED_LEVELING_GRID
 
-    // Check the triangulation points
-    #if ABL_PROBE_PT_1_X < MIN_PROBE_X || ABL_PROBE_PT_1_X > MAX_PROBE_X
-      #error "The given ABL_PROBE_PT_1_X can't be reached by the Z probe."
-    #elif ABL_PROBE_PT_2_X < MIN_PROBE_X || ABL_PROBE_PT_2_X > MAX_PROBE_X
-      #error "The given ABL_PROBE_PT_2_X can't be reached by the Z probe."
-    #elif ABL_PROBE_PT_3_X < MIN_PROBE_X || ABL_PROBE_PT_3_X > MAX_PROBE_X
-      #error "The given ABL_PROBE_PT_3_X can't be reached by the Z probe."
-    #elif ABL_PROBE_PT_1_Y < MIN_PROBE_Y || ABL_PROBE_PT_1_Y > MAX_PROBE_Y
-      #error "The given ABL_PROBE_PT_1_Y can't be reached by the Z probe."
-    #elif ABL_PROBE_PT_2_Y < MIN_PROBE_Y || ABL_PROBE_PT_2_Y > MAX_PROBE_Y
-      #error "The given ABL_PROBE_PT_2_Y can't be reached by the Z probe."
-    #elif ABL_PROBE_PT_3_Y < MIN_PROBE_Y || ABL_PROBE_PT_3_Y > MAX_PROBE_Y
-      #error "The given ABL_PROBE_PT_3_Y can't be reached by the Z probe."
-    #endif
-
-  #endif // !AUTO_BED_LEVELING_GRID
+  // 3-point leveling validation removed - Delta requires AUTO_BED_LEVELING_GRID
 
 #endif // AUTO_BED_LEVELING_FEATURE
 
@@ -314,16 +274,7 @@
 #endif
 
 
-/**
- * ULTIPANEL encoder
- */
-#if ENABLED(ULTIPANEL) && DISABLED(NEWPANEL) && DISABLED(SR_LCD_2W_NL) && !defined(SHIFT_CLK)
-  #error ULTIPANEL requires some kind of encoder.
-#endif
-
-#if ENCODER_PULSES_PER_STEP < 0
-  #error ENCODER_PULSES_PER_STEP should not be negative, use REVERSE_MENU_DIRECTION instead
-#endif
+// LCD/ULTIPANEL encoder check removed - LCD support not present in this firmware
 
 /**
  * Delta has limited bed leveling options
@@ -350,21 +301,6 @@
 #if ENABLED(Z_PROBE_ALLEN_KEY) && !(ENABLED(AUTO_BED_LEVELING_GRID) && ENABLED(DELTA))
   #error Invalid use of Z_PROBE_ALLEN_KEY.
 #endif
-
-/**
- * Dual X Carriage requirements
- */
-#if ENABLED(DUAL_X_CARRIAGE)
-  #if EXTRUDERS == 1 || ENABLED(COREXY) \
-      || !HAS_X2_ENABLE || !HAS_X2_STEP || !HAS_X2_DIR \
-      || !defined(X2_HOME_POS) || !defined(X2_MIN_POS) || !defined(X2_MAX_POS) \
-      || !HAS_X_MAX
-    #error Missing or invalid definitions for DUAL_X_CARRIAGE mode.
-  #endif
-  #if X_HOME_DIR != -1 || X2_HOME_DIR != 1
-    #error Please use canonical x-carriage assignment.
-  #endif
-#endif // DUAL_X_CARRIAGE
 
 /**
  * Make sure auto fan pins don't conflict with the fan pin
@@ -459,14 +395,12 @@
 /**
  * Endstops
  */
-#if DISABLED(USE_XMIN_PLUG) && DISABLED(USE_XMAX_PLUG) && !(ENABLED(Z_DUAL_ENDSTOPS) && Z2_USE_ENDSTOP >= _XMAX_ && Z2_USE_ENDSTOP <= _XMIN_)
- #error You must enable USE_XMIN_PLUG or USE_XMAX_PLUG
-#elif DISABLED(USE_YMIN_PLUG) && DISABLED(USE_YMAX_PLUG) && !(ENABLED(Z_DUAL_ENDSTOPS) && Z2_USE_ENDSTOP >= _YMAX_ && Z2_USE_ENDSTOP <= _YMIN_)
- #error You must enable USE_YMIN_PLUG or USE_YMAX_PLUG
-#elif DISABLED(USE_ZMIN_PLUG) && DISABLED(USE_ZMAX_PLUG) && !(ENABLED(Z_DUAL_ENDSTOPS) && Z2_USE_ENDSTOP >= _ZMAX_ && Z2_USE_ENDSTOP <= _ZMIN_)
- #error You must enable USE_ZMIN_PLUG or USE_ZMAX_PLUG
-#elif ENABLED(Z_DUAL_ENDSTOPS) && !Z2_USE_ENDSTOP
- #error You must set Z2_USE_ENDSTOP with Z_DUAL_ENDSTOPS
+#if DISABLED(USE_XMIN_PLUG) && DISABLED(USE_XMAX_PLUG)
+  #error You must enable USE_XMIN_PLUG or USE_XMAX_PLUG
+#elif DISABLED(USE_YMIN_PLUG) && DISABLED(USE_YMAX_PLUG)
+  #error You must enable USE_YMIN_PLUG or USE_YMAX_PLUG
+#elif DISABLED(USE_ZMIN_PLUG) && DISABLED(USE_ZMAX_PLUG)
+  #error You must enable USE_ZMIN_PLUG or USE_ZMAX_PLUG
 #endif
 
 /**
@@ -478,8 +412,6 @@
   #error Thermal Runaway Protection for hotends is now enabled with THERMAL_PROTECTION_HOTENDS.
 #elif DISABLED(THERMAL_PROTECTION_BED) && defined(THERMAL_PROTECTION_BED_PERIOD)
   #error Thermal Runaway Protection for the bed is now enabled with THERMAL_PROTECTION_BED.
-#elif ENABLED(COREXZ) && ENABLED(Z_LATE_ENABLE)
-  #error "Z_LATE_ENABLE can't be used with COREXZ."
 #elif defined(X_HOME_RETRACT_MM)
   #error [XYZ]_HOME_RETRACT_MM settings have been renamed [XYZ]_HOME_BUMP_MM.
 #elif defined(PROBE_SERVO_DEACTIVATION_DELAY)
@@ -508,8 +440,6 @@
   #error FILAMENT_SENSOR is deprecated. Use FILAMENT_WIDTH_SENSOR instead.
 #elif defined(DISABLE_MAX_ENDSTOPS) || defined(DISABLE_MIN_ENDSTOPS)
   #error DISABLE_MAX_ENDSTOPS and DISABLE_MIN_ENDSTOPS deprecated. Use individual USE_*_PLUG options instead.
-#elif ENABLED(Z_DUAL_ENDSTOPS) && !defined(Z2_USE_ENDSTOP)
-  #error Z_DUAL_ENDSTOPS settings are simplified. Just set Z2_USE_ENDSTOP to the endstop you want to repurpose for Z2
 #endif
 
 #endif //SANITYCHECK_H

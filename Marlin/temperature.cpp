@@ -41,10 +41,10 @@
 */
 
 #include "Marlin.h"
-#include "ultralcd.h"
+// LCD support removed - no ultralcd.h include
 #include "temperature.h"
 #include "language.h"
-#include "Sd2PinMap.h"
+#include "sd_card_hardware.h"
 
 #if ENABLED(USE_WATCHDOG)
   #include "watchdog.h"
@@ -117,7 +117,6 @@ unsigned char soft_pwm_bed;
 static volatile bool temp_meas_ready = false;
 
 #if ENABLED(PIDTEMP)
-  //static cannot be external:
   static float temp_iState[HOTENDS] = { 0 };
   static float temp_dState[HOTENDS] = { 0 };
   static float pTerm[HOTENDS];
@@ -129,20 +128,17 @@ static volatile bool temp_meas_ready = false;
     static long lpq[LPQ_MAX_LEN];
     static int lpq_ptr = 0;
   #endif
-  //int output;
   static float pid_error[HOTENDS];
   static float temp_iState_min[HOTENDS];
   static float temp_iState_max[HOTENDS];
   static bool pid_reset[HOTENDS];
 #endif //PIDTEMP
 #if ENABLED(PIDTEMPBED)
-  //static cannot be external:
   static float temp_iState_bed = { 0 };
   static float temp_dState_bed = { 0 };
   static float pTerm_bed;
   static float iTerm_bed;
   static float dTerm_bed;
-  //int output;
   static float pid_error_bed;
   static float temp_iState_min_bed;
   static float temp_iState_max_bed;
@@ -213,9 +209,6 @@ static void updateTemperaturesFromRawValues();
   static int meas_shift_index;  //used to point to a delayed sample in buffer for filament width sensor
 #endif
 
-#if ENABLED(HEATER_0_USES_MAX6675)
-  static int read_max6675();
-#endif
 
 //===========================================================================
 //================================ Functions ================================
@@ -236,7 +229,7 @@ static void updateTemperaturesFromRawValues();
     float workKp = 0, workKi = 0, workKd = 0;
     float max = 0, min = 10000;
 
-    #if HAS_AUTO_FAN || ENABLED(IS_MONO_FAN) || ENABLED(PRINTER_HEAD_EASY)
+    #if HAS_AUTO_FAN || ENABLED(IS_MONO_FAN)
       millis_t next_auto_fan_check_ms = temp_ms + 2500UL;
     #endif
 
@@ -290,7 +283,7 @@ static void updateTemperaturesFromRawValues();
         max = max(max, input);
         min = min(min, input);
 
-        #if HAS_AUTO_FAN || ENABLED(IS_MONO_FAN) || ENABLED(PRINTER_HEAD_EASY)
+        #if HAS_AUTO_FAN || ENABLED(IS_MONO_FAN)
           if (ELAPSED(ms, next_auto_fan_check_ms)) {
             #if HAS_AUTO_FAN
             checkExtruderAutoFans();
@@ -298,10 +291,6 @@ static void updateTemperaturesFromRawValues();
             #if ENABLED(IS_MONO_FAN)
             digitalWrite(FAN_PIN, MONO_FAN_MIN_PWM);
             analogWrite(FAN_PIN, MONO_FAN_MIN_PWM);
-            #endif
-            #if ENABLED(PRINTER_HEAD_EASY)
-            digitalWrite(PRINTER_HEAD_EASY_CONSTANT_FAN_PIN, 255);
-            analogWrite(PRINTER_HEAD_EASY_CONSTANT_FAN_PIN, 255);
             #endif
             next_auto_fan_check_ms = ms + 2500UL;
           }
@@ -460,7 +449,7 @@ static void updateTemperaturesFromRawValues();
         }
         return;
       }
-      lcd_update();
+      // LCD support removed - lcd_update();
     }
   }
 
@@ -722,12 +711,6 @@ void manage_heater() {
 
   updateTemperaturesFromRawValues();
 
-  #if ENABLED(HEATER_0_USES_MAX6675)
-    float ct = current_temperature[0];
-    if (ct > min(HEATER_0_MAXTEMP, 1023)) max_temp_error(0);
-    if (ct < max(HEATER_0_MINTEMP, 0.01)) min_temp_error(0);
-  #endif
-
   #if ENABLED(THERMAL_PROTECTION_HOTENDS) || DISABLED(PIDTEMPBED) || HAS_AUTO_FAN
     millis_t ms = millis();
   #endif
@@ -850,10 +833,6 @@ static float analog2temp(int raw, uint8_t e) {
       return 0.0;
     }
 
-  #if ENABLED(HEATER_0_USES_MAX6675)
-    if (e == 0) return 0.25 * raw;
-  #endif
-
   if (heater_ttbl_map[e] != NULL) {
     float celsius = 0;
     uint8_t i;
@@ -914,9 +893,6 @@ static float analog2tempBed(int raw) {
 /* Called to get the raw values into the the actual temperatures. The raw values are created in interrupt context,
     and this function is called from normal context as it is too slow to run in interrupts and will block the stepper routine otherwise */
 static void updateTemperaturesFromRawValues() {
-  #if ENABLED(HEATER_0_USES_MAX6675)
-    current_temperature_raw[0] = read_max6675();
-  #endif
   for (uint8_t e = 0; e < HOTENDS; e++) {
     current_temperature[e] = analog2temp(current_temperature_raw[e], e);
   }
@@ -1035,21 +1011,6 @@ void tp_init() {
     #endif
 
   #endif // FAST_PWM_FAN || FAN_SOFT_PWM
-
-  #if ENABLED(HEATER_0_USES_MAX6675)
-
-    #if DISABLED(SDSUPPORT)
-      OUT_WRITE(SCK_PIN, LOW);
-      OUT_WRITE(MOSI_PIN, HIGH);
-      OUT_WRITE(MISO_PIN, HIGH);
-    #else
-      pinMode(SS_PIN, OUTPUT);
-      digitalWrite(SS_PIN, HIGH);
-    #endif
-
-    OUT_WRITE(MAX6675_SS, HIGH);
-
-  #endif //HEATER_0_USES_MAX6675
 
   #ifdef DIDR2
     #define ANALOG_SELECT(pin) do{ if (pin < 8) SBI(DIDR0, pin); else SBI(DIDR2, pin - 8); }while(0)
@@ -1288,66 +1249,6 @@ void disable_all_heaters() {
   #endif
 }
 
-#if ENABLED(HEATER_0_USES_MAX6675)
-
-  #define MAX6675_HEAT_INTERVAL 250u
-
-  #if ENABLED(MAX6675_IS_MAX31855)
-    uint32_t max6675_temp = 2000;
-    #define MAX6675_ERROR_MASK 7
-    #define MAX6675_DISCARD_BITS 18
-  #else
-    uint16_t max6675_temp = 2000;
-    #define MAX6675_ERROR_MASK 4
-    #define MAX6675_DISCARD_BITS 3
-  #endif
-
-  static millis_t next_max6675_ms = 0;
-
-  static int read_max6675() {
-
-    millis_t ms = millis();
-
-    if (PENDING(ms, next_max6675_ms)) return (int)max6675_temp;
-
-    next_max6675_ms = ms + MAX6675_HEAT_INTERVAL;
-
-    CBI(
-      #ifdef PRR
-        PRR
-      #elif defined(PRR0)
-        PRR0
-      #endif
-        , PRSPI);
-    SPCR = _BV(MSTR) | _BV(SPE) | _BV(SPR0);
-
-    WRITE(MAX6675_SS, 0); // enable TT_MAX6675
-
-    // ensure 100ns delay - a bit extra is fine
-    asm("nop");//50ns on 20Mhz, 62.5ns on 16Mhz
-    asm("nop");//50ns on 20Mhz, 62.5ns on 16Mhz
-
-    // Read a big-endian temperature value
-    max6675_temp = 0;
-    for (uint8_t i = sizeof(max6675_temp); i--;) {
-      SPDR = 0;
-      for (;!TEST(SPSR, SPIF););
-      max6675_temp |= SPDR;
-      if (i > 0) max6675_temp <<= 8; // shift left if not the last byte
-    }
-
-    WRITE(MAX6675_SS, 1); // disable TT_MAX6675
-
-    if (max6675_temp & MAX6675_ERROR_MASK)
-      max6675_temp = 4000; // thermocouple open
-    else
-      max6675_temp >>= MAX6675_DISCARD_BITS;
-
-    return (int)max6675_temp;
-  }
-
-#endif //HEATER_0_USES_MAX6675
-
 /**
  * Stages in the ISR loop
  */
@@ -1371,7 +1272,7 @@ static unsigned long raw_temp_value[4] = { 0 };
 static unsigned long raw_temp_bed_value = 0;
 
 static void set_current_temp_raw() {
-  #if HAS_TEMP_0 && DISABLED(HEATER_0_USES_MAX6675)
+  #if HAS_TEMP_0
     current_temperature_raw[0] = raw_temp_value[0];
   #endif
   #if HAS_TEMP_1
@@ -1716,7 +1617,7 @@ ISR(TIMER0_COMPB_vect) {
       #if HAS_TEMP_0
         START_ADC(TEMP_0_PIN);
       #endif
-      lcd_buttons_update();
+      // LCD support removed - lcd_buttons_update();
       temp_state = MeasureTemp_0;
       break;
     case MeasureTemp_0:
@@ -1730,7 +1631,7 @@ ISR(TIMER0_COMPB_vect) {
       #if HAS_TEMP_BED
         START_ADC(TEMP_BED_PIN);
       #endif
-      lcd_buttons_update();
+      // LCD support removed - lcd_buttons_update();
       temp_state = MeasureTemp_BED;
       #if ENABLED( Z_MIN_MAGIC )
         START_ADC(15);
@@ -1750,7 +1651,7 @@ ISR(TIMER0_COMPB_vect) {
       #if HAS_TEMP_1
         START_ADC(TEMP_1_PIN);
       #endif
-      lcd_buttons_update();
+      // LCD support removed - lcd_buttons_update();
       temp_state = MeasureTemp_1;
       // #if ENABLED( Z_MIN_MAGIC )
       //   START_ADC(15);
@@ -1770,7 +1671,7 @@ ISR(TIMER0_COMPB_vect) {
       #if HAS_TEMP_2
         START_ADC(TEMP_2_PIN);
       #endif
-      lcd_buttons_update();
+      // LCD support removed - lcd_buttons_update();
       temp_state = MeasureTemp_2;
       #if ENABLED( Z_MIN_MAGIC )
         START_ADC(15);
@@ -1790,7 +1691,7 @@ ISR(TIMER0_COMPB_vect) {
       #if HAS_TEMP_3
         START_ADC(TEMP_3_PIN);
       #endif
-      lcd_buttons_update();
+      // LCD support removed - lcd_buttons_update();
       temp_state = MeasureTemp_3;
       // #if ENABLED( Z_MIN_MAGIC )
       //   START_ADC(15);
@@ -1810,7 +1711,7 @@ ISR(TIMER0_COMPB_vect) {
       #if ENABLED(FILAMENT_WIDTH_SENSOR)
         START_ADC(FILWIDTH_PIN);
       #endif
-      lcd_buttons_update();
+      // LCD support removed - lcd_buttons_update();
       temp_state = Measure_FILWIDTH;
       #if ENABLED( Z_MIN_MAGIC )
         START_ADC(15);
@@ -1854,7 +1755,7 @@ ISR(TIMER0_COMPB_vect) {
     for (int i = 0; i < 4; i++) raw_temp_value[i] = 0;
     raw_temp_bed_value = 0;
 
-    #if HAS_TEMP_0 && DISABLED(HEATER_0_USES_MAX6675)
+    #if HAS_TEMP_0
       #if HEATER_0_RAW_LO_TEMP > HEATER_0_RAW_HI_TEMP
         #define GE0 <=
       #else

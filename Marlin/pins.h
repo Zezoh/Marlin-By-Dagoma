@@ -37,19 +37,7 @@
 #define HEATER_3_PIN -1
 #define TEMP_3_PIN -1
 
-#if MB(GEN7_CUSTOM)
-  #include "pins_GEN7_CUSTOM.h"
-#elif MB(GEN7_12)
-  #include "pins_GEN7_12.h"
-#elif MB(GEN7_13)
-  #include "pins_GEN7_13.h"
-#elif MB(GEN7_14)
-  #include "pins_GEN7_14.h"
-#elif MB(CHEAPTRONIC)
-  #include "pins_CHEAPTRONIC.h"
-#elif MB(SETHI)
-  #include "pins_SETHI.h"
-#elif MB(RAMPS_OLD)
+#if MB(RAMPS_OLD)
   #include "pins_RAMPS_OLD.h"
 #elif MB(RAMPS_13_EFB)
   #include "pins_RAMPS_13_EFB.h"
@@ -59,100 +47,10 @@
   #include "pins_RAMPS_14_EFB.h"
 #elif MB(RAMPS_14_EEB) || MB(RAMPS_14_EFF) || MB(RAMPS_14_EEF) || MB(RAMPS_14_SF)
   #include "pins_RAMPS_14.h"
-#elif MB(GEN6)
-  #include "pins_GEN6.h"
-#elif MB(GEN6_DELUXE)
-  #include "pins_GEN6_DELUXE.h"
-#elif MB(SANGUINOLOLU_11)
-  #include "pins_SANGUINOLOLU_11.h"
-#elif MB(SANGUINOLOLU_12)
-  #include "pins_SANGUINOLOLU_12.h"
-#elif MB(MELZI)
-  #include "pins_MELZI.h"
-#elif MB(STB_11)
-  #include "pins_STB_11.h"
-#elif MB(AZTEEG_X1)
-  #include "pins_AZTEEG_X1.h"
-#elif MB(MELZI_MAKR3D)
-  #include "pins_MELZI_MAKR3D.h"
-#elif MB(AZTEEG_X3)
-  #include "pins_AZTEEG_X3.h"
-#elif MB(AZTEEG_X3_PRO)
-  #include "pins_AZTEEG_X3_PRO.h"
-#elif MB(ULTIMAKER)
-  #include "pins_ULTIMAKER.h"
-#elif MB(ULTIMAKER_OLD)
-  #include "pins_ULTIMAKER_OLD.h"
-#elif MB(ULTIMAIN_2)
-  #include "pins_ULTIMAIN_2.h"
-#elif MB(3DRAG)
-  #include "pins_3DRAG.h"
-#elif MB(K8200)
-  #include "pins_K8200.h"
-#elif MB(TEENSYLU)
-  #include "pins_TEENSYLU.h"
-#elif MB(RUMBA)
-  #include "pins_RUMBA.h"
-#elif MB(PRINTRBOARD)
-  #include "pins_PRINTRBOARD.h"
-#elif MB(PRINTRBOARD_REVF)
-  #include "pins_PRINTRBOARD_REVF.h"
-#elif MB(BRAINWAVE)
-  #include "pins_BRAINWAVE.h"
-#elif MB(BRAINWAVE_PRO)
-  #include "pins_BRAINWAVE_PRO.h"
-#elif MB(SAV_MKI)
-  #include "pins_SAV_MKI.h"
-#elif MB(TEENSY2)
-  #include "pins_TEENSY2.h"
-#elif MB(GEN3_PLUS)
-  #include "pins_GEN3_PLUS.h"
-#elif MB(GEN3_MONOLITHIC)
-  #include "pins_GEN3_MONOLITHIC.h"
-#elif MB(MEGATRONICS)
-  #include "pins_MEGATRONICS.h"
-#elif MB(MINITRONICS)
-  #include "pins_MINITRONICS.h"
-#elif MB(MEGATRONICS_2)
-  #include "pins_MEGATRONICS_2.h"
-#elif MB(MEGATRONICS_3)
-  #include "pins_MEGATRONICS_3.h"
-#elif MB(OMCA_A)
-  #include "pins_OMCA_A.h"
-#elif MB(OMCA)
-  #include "pins_OMCA.h"
-#elif MB(RAMBO)
-  #include "pins_RAMBO.h"
-#elif MB(MINIRAMBO)
-  #include "pins_MINIRAMBO.h"
-#elif MB(ELEFU_3)
-  #include "pins_ELEFU_3.h"
-#elif MB(5DPRINT)
-  #include "pins_5DPRINT.h"
-#elif MB(LEAPFROG)
-  #include "pins_LEAPFROG.h"
-#elif MB(BAM_DICE)
-  #include "pins_RAMPS_14.h"
-#elif MB(BAM_DICE_DUE)
-  #include "pins_BAM_DICE_DUE.h"
-#elif MB(FELIX2)
-  #include "pins_FELIX2.h"
 #elif MB(MKS_BASE)
   #include "pins_MKS_BASE.h"
-#elif MB(RIGIDBOARD)
-  #include "pins_RIGIDBOARD.h"
-#elif MB(MEGACONTROLLER)
-  #include "pins_MEGACONTROLLER.h"
-#elif MB(BQ_ZUM_MEGA_3D)
-  #include "pins_BQ_ZUM_MEGA_3D.h"
-#elif MB(99)
-  #include "pins_99.h"
-#elif MB(AJ4P)
-  #include "pins_AJ4P.h"
 #elif MB(MKS_13)
   #include "pins_MKS_13.h"
-#elif MB(SAINSMART_2IN1)
-  #include "pins_SAINSMART_2IN1.h"
 #else
   #error Unknown MOTHERBOARD value set in Configuration.h
 #endif
@@ -174,9 +72,7 @@
       #define _E3_PINS E3_STEP_PIN, E3_DIR_PIN, E3_ENABLE_PIN, HEATER_3_PIN, analogInputToDigitalPin(TEMP_3_PIN),
     #endif
   #endif
-#elif ENABLED(Y_DUAL_STEPPER_DRIVERS) || ENABLED(Z_DUAL_STEPPER_DRIVERS)
-  #undef _E1_PINS
-  #define _E1_PINS E1_STEP_PIN, E1_DIR_PIN, E1_ENABLE_PIN,
+// Y_DUAL_STEPPER_DRIVERS and Z_DUAL_STEPPER_DRIVERS removed - Delta-only firmware
 #endif
 
 #ifdef X_STOP_PIN
@@ -274,8 +170,6 @@
     _E0_PINS _E1_PINS _E2_PINS _E3_PINS \
     analogInputToDigitalPin(TEMP_BED_PIN) \
   }
-
-#define HAS_DIGIPOTSS (PIN_EXISTS(DIGIPOTSS))
 
 #undef X_MAX_PIN
 #define X_MAX_PIN 2
