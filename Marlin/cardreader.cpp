@@ -487,6 +487,7 @@ void CardReader::getStatus() {
 }
 
 void CardReader::write_command(char *buf) {
+  if (buf == NULL || buf[0] == '\0') return;
   char* begin = buf;
   char* npos = 0;
   char* end = buf + strlen(buf) - 1;

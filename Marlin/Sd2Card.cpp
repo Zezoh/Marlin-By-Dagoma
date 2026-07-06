@@ -332,8 +332,8 @@ bool Sd2Card::init(uint8_t sckRateID, uint8_t chipSelectPin) {
     type(SD_CARD_TYPE_SD1);
   }
   else {
-    // only need last byte of r7 response
-    for (uint8_t i = 0; i < 3; i++) (void)spiRec(); // discard first 3 bytes
+    // only need last byte of r7 response (check pattern 0xAA)
+    for (uint8_t i = 0; i < 3; i++) (void)spiRec(); // discard first 3 bytes of R7
     uint8_t r7_byte = spiRec();
     if (r7_byte != 0xAA) {
       error(SD_CARD_ERROR_CMD8);
