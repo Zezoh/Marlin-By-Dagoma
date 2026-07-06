@@ -500,7 +500,7 @@ void CardReader::write_command(char *buf) {
       end = star_pos - 1;
     }
   }
-  if (end < buf || end == NULL) return; // safety: abort if end is invalid
+  if (end == NULL || end < buf) return; // safety: abort if end is invalid
   end[1] = '\r';
   end[2] = '\n';
   end[3] = '\0';
