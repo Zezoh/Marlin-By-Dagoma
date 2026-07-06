@@ -333,8 +333,9 @@ bool Sd2Card::init(uint8_t sckRateID, uint8_t chipSelectPin) {
   }
   else {
     // only need last byte of r7 response
-    for (uint8_t i = 0; i < 4; i++) status_ = spiRec();
-    if (status_ != 0XAA) {
+    uint8_t r7_byte;
+    for (uint8_t i = 0; i < 4; i++) r7_byte = spiRec();
+    if (r7_byte != 0XAA) {
       error(SD_CARD_ERROR_CMD8);
       goto fail;
     }
@@ -395,7 +396,7 @@ bool Sd2Card::readBlock(uint32_t blockNumber, uint8_t* dst) {
       else
         error(SD_CARD_ERROR_CMD17);
 
-      if (--retryCnt) break;
+      if (!--retryCnt) break;
 
       chipSelectHigh();
       cardCommand(CMD12, 0); // Try sending a stop command, ignore the result.
@@ -488,7 +489,7 @@ bool Sd2Card::readData(uint8_t* dst, uint16_t count) {
 #if ENABLED(SD_CHECK_AND_RETRY)
   {
     uint16_t calcCrc = CRC_CCITT(dst, count);
-    uint16_t recvCrc = spiRec() << 8;
+    uint16_t recvCrc = (uint16_t)spiRec() << 8;
     recvCrc |= spiRec();
     if (calcCrc != recvCrc) {
       error(SD_CARD_ERROR_CRC);

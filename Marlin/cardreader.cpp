@@ -85,17 +85,17 @@ void CardReader::lsDive(const char *prepend, SdFile parent, const char * const m
       char lfilename[FILENAME_LENGTH];
       createFilename(lfilename, p);
 
-      // Allocate enough stack space for the full path to a folder, trailing slash, and nul
+      // Use fixed-size buffer for the full path to a folder, trailing slash, and nul
+      char path[MAXPATHNAMELENGTH];
       boolean prepend_is_empty = (prepend[0] == '\0');
-      int len = (prepend_is_empty ? 1 : strlen(prepend)) + strlen(lfilename) + 1 + 1;
-      char path[len];
 
       // Append the FOLDERNAME12/ to the passed string.
       // It contains the full path to the "parent" argument.
       // We now have the full path to the item in this folder.
-      strcpy(path, prepend_is_empty ? "/" : prepend); // root slash if prepend is empty
-      strcat(path, lfilename); // FILENAME_LENGTH-1 characters maximum
-      strcat(path, "/");       // 1 character
+      path[0] = '\0';
+      strncat(path, prepend_is_empty ? "/" : prepend, MAXPATHNAMELENGTH - 1);
+      strncat(path, lfilename, MAXPATHNAMELENGTH - strlen(path) - 1);
+      strncat(path, "/", MAXPATHNAMELENGTH - strlen(path) - 1);
 
       // Serial.print(path);
 
@@ -492,8 +492,12 @@ void CardReader::write_command(char *buf) {
 
   file.writeError = false;
   if ((npos = strchr(buf, 'N')) != NULL) {
-    begin = strchr(npos, ' ') + 1;
-    end = strchr(npos, '*') - 1;
+    char* space_pos = strchr(npos, ' ');
+    char* star_pos = strchr(npos, '*');
+    if (space_pos != NULL && star_pos != NULL) {
+      begin = space_pos + 1;
+      end = star_pos - 1;
+    }
   }
   end[1] = '\r';
   end[2] = '\n';
