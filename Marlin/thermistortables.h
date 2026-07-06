@@ -1082,7 +1082,7 @@ const short temptable_70[][2] PROGMEM = {
 #endif
 
 #if (THERMISTORHEATER_0 == 16) || (THERMISTORHEATER_1 == 16) || (THERMISTORHEATER_2 == 16) || (THERMISTORHEATER_3 == 16) || (THERMISTORBED == 16)
-// 16 is 100K thermistor - Alternative ATC Semitec 104GT-2 (4.7k pullup) Dagoma.Fr version (measured/tested/approved)
+// 16 is 100K thermistor - Alternative ATC Semitec 104GT-2 (4.7k pullup) (measured/tested/approved)
 const short temptable_16[][2] PROGMEM = {
   {5*OVERSAMPLENR,320},
   {6*OVERSAMPLENR,310},
@@ -1133,7 +1133,7 @@ const short temptable_16[][2] PROGMEM = {
 
 
 #if (THERMISTORHEATER_0 == 17) || (THERMISTORHEATER_1 == 17) || (THERMISTORHEATER_2 == 17) || (THERMISTORHEATER_3 == 17) || (THERMISTORBED == 17)
-// 17 is 100K thermistor - Alternative ATC Semitec 104GT-2 (4.7k pullup) Dagoma.Fr - MKS_Base - version (measured/tested/approved)
+// 17 is 100K thermistor - Alternative ATC Semitec 104GT-2 (4.7k pullup) MKS_Base version (measured/tested/approved)
 const short temptable_17[][2] PROGMEM = {
   {16*OVERSAMPLENR,309},
   {18*OVERSAMPLENR,307},
@@ -1191,7 +1191,7 @@ const short temptable_17[][2] PROGMEM = {
 #endif
 
 #if (THERMISTORHEATER_0 == 18) || (THERMISTORHEATER_1 == 18) || (THERMISTORHEATER_2 == 18) || (THERMISTORHEATER_3 == 18) || (THERMISTORBED == 18)
-// 18 is ATC Semitec 204GT-2 (4.7k pullup) Dagoma.Fr - MKS_Base_DKU001327 - version (measured/tested/approved)
+// 18 is ATC Semitec 204GT-2 (4.7k pullup) MKS_Base version (measured/tested/approved)
 const short temptable_18[][2] PROGMEM = {
   {1*OVERSAMPLENR,713},
   {17*OVERSAMPLENR,284},

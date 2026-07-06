@@ -1449,12 +1449,12 @@ static void set_current_temp_raw() {
     z_magic_bias_delta += z_magic_bias;
 
     #if ENABLED(LONG_PRESS_SUPPORT)
-      // FIX: Old Neva does not support bias accumulator detection
+      // FIX: Old board does not support bias accumulator detection
       if (!z_magic_hit_flag && z_magic_bias_delta < -fabsf(z_magic_threshold)) {
         z_magic_hit_flag = true;
       }
     #else
-      // FIX: Should work on both Magis and old Neva
+      // FIX: Should work on both board variants
       if (!z_magic_hit_flag && (z_magic_bias < -z_magic_bias_hit_threshold || fabsf(z_magic_bias_delta) > z_magic_bias_delta_hit_threshold)) {
         z_magic_hit_flag = true;
       }

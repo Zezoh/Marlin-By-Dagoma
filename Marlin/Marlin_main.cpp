@@ -1900,7 +1900,7 @@ static void setup_for_endstop_move() {
 
     #else // !DELTA
       #if ENABLED(DEBUG_LEVELING_FEATURE)
-        SERIAL_ECHOLN("run_z_probe (DISCO)");
+        SERIAL_ECHOLN("run_z_probe");
       #endif
 
       plan_bed_level_matrix.set_to_identity();
@@ -6994,7 +6994,7 @@ inline void gcode_M503() {
 
     if (pin_state >= -1 && pin_state <= 1) {
 
-      // DAGOMA - byPass sensitive pin
+      // byPass sensitive pin
       // for (uint8_t i = 0; i < COUNT(sensitive_pins); i++) {
       //   if (sensitive_pins[i] == pin_number) {
       //     pin_number = -1;
@@ -7769,7 +7769,7 @@ inline void gcode_M503() {
 #endif // DUAL_X_CARRIAGE
 
 /*****************************************************************************
- * DAGOMA.FR Specific
+ * Custom D-Code Commands
  *****************************************************************************/
 #if EXTRUDERS > 1
 /**
@@ -9145,7 +9145,7 @@ void process_next_command() {
         case 131:
           gcode_D131();
       #endif
-      // DAGOMA.FR Specific
+      // Custom D-Code Commands
       #if ENABLED(WIFI_PRINT)
         case 700:
           gcode_D700(); // SSID
@@ -9192,7 +9192,7 @@ void process_next_command() {
           gcode_D999();
           break;
       #endif
-      // DAGOMA.FR End
+      // End Custom D-Code Commands
       }
     break;
     default: code_is_good = false;

@@ -556,11 +556,7 @@ void CardReader::checkautostart(bool force) {
   #endif
 
   char autoname[10];
-  #if ENABLED(DISABLE_DAGAUTO_START)
-    sprintf_P(autoname, PSTR("auto%i.g"), autostart_index);
-  #else
-    sprintf_P(autoname, PSTR("dagoma%i.g"), autostart_index);
-  #endif
+  sprintf_P(autoname, PSTR("auto%i.g"), autostart_index);
   for (int8_t i = 0; i < (int8_t)strlen(autoname); i++) autoname[i] = tolower(autoname[i]);
 
   dir_t p;
@@ -570,11 +566,7 @@ void CardReader::checkautostart(bool force) {
   bool found = false;
   while (root.readDir(p, NULL) > 0) {
     for (int8_t i = 0; i < (int8_t)strlen((char*)p.name); i++) p.name[i] = tolower(p.name[i]);
-      #if ENABLED(DISABLE_DAGAUTO_START)
         if (p.name[9] != '~' && strncmp((char*)p.name, autoname, 5) == 0) {
-      #else
-        if (p.name[9] != '~' && strncmp((char*)p.name, autoname, 7) == 0) {
-      #endif
           openAndPrintFile(autoname);
           found = true;
         }

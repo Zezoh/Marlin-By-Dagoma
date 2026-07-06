@@ -443,7 +443,7 @@ inline void update_endstops() {
                 SET_BIT(current_endstop_bits, Z_MIN_PROBE, 1 ); // Emulate endstops hit (here: Z_MIN)
                 trigger_emergency_stop = true;
               }
-            #elif HAS_SUMMON_PRINT_PAUSE // E200 Neva-like (with pause button)
+            #elif HAS_SUMMON_PRINT_PAUSE // E200-like (with pause button)
               if (ONE_BUTTON_PRESSED) {
                 SET_BIT(current_endstop_bits, Z_MIN_PROBE, 1 ); // Emulate endstops hit (here: Z_MIN)
                 trigger_emergency_stop = true;

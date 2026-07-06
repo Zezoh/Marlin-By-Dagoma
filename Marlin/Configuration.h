@@ -44,7 +44,7 @@
 #define EEPROM_SETTINGS
 #define SDSUPPORT
 //===========================================================================
-//====================== Dagoma Custom Feature Flags ========================
+//====================== Custom Feature Flags ===============================
 //===========================================================================
 
 // --------------------------------------------------------------------------
@@ -164,7 +164,7 @@
 // User-specified version info of this build to display in [Pronterface, etc] terminal window during
 // startup. Implementation of an idea by Prof Braino to inform user that any changes made to this
 // build by the user have been successfully uploaded into firmware.
-#define STRING_CONFIG_H_AUTHOR "Dagoma"
+#define STRING_CONFIG_H_AUTHOR "(none, default config)"
 #define SHOW_BOOTSCREEN
 #define STRING_SPLASH_LINE1 SHORT_BUILD_VERSION // will be shown during bootup in line 1
 //#define STRING_SPLASH_LINE2 STRING_DISTRIBUTION_DATE // will be shown during bootup in line 2
@@ -192,7 +192,7 @@
 
 // Optional custom name for your RepStrap or other custom machine
 // Displayed in the "Ready" message
-#define CUSTOM_MACHINE_NAME "Neva"
+#define CUSTOM_MACHINE_NAME "3D Printer"
 
 // Define this to set a unique identifier for this printer, (Used by some programs to differentiate between machines)
 // You can use an online service to generate a random UUID. (eg http://www.uuidgenerator.net/version4)
@@ -246,7 +246,7 @@
 // 11 is 100k beta 3950 1% thermistor (4.7k pullup)
 // 12 is 100k 0603 SMD Vishay NTCS0603E3104FXT (4.7k pullup) (calibrated for Makibox hot bed)
 // 13 is 100k Hisens 3950  1% up to 300 deg C for hotend "Simple ONE " & "Hotend "All In ONE"
-// 16 is 100K thermistor - Alternative ATC Semitec 104GT-2 (4.7k pullup) Dagoma.Fr version (measured/tested/approved)
+// 16 is 100K thermistor - Alternative ATC Semitec 104GT-2 (4.7k pullup) (measured/tested/approved)
 // 20 is the PT100 circuit found in the Ultimainboard V2.x
 // 60 is 100k Maker's Tool Works Kapton Bed Thermistor beta=3950
 // 70 is the 100K thermistor found in the bq Hephestos 2
