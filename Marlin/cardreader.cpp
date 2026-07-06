@@ -96,6 +96,7 @@ void CardReader::lsDive(const char *prepend, SdFile parent, const char * const m
       strncat(path, prepend_is_empty ? "/" : prepend, MAXPATHNAMELENGTH - 1);
       strncat(path, lfilename, MAXPATHNAMELENGTH - strlen(path) - 1);
       strncat(path, "/", MAXPATHNAMELENGTH - strlen(path) - 1);
+      path[MAXPATHNAMELENGTH - 1] = '\0'; // ensure null-termination
 
       // Serial.print(path);
 
@@ -499,6 +500,7 @@ void CardReader::write_command(char *buf) {
       end = star_pos - 1;
     }
   }
+  if (end < buf || end == NULL) return; // safety: abort if end is invalid
   end[1] = '\r';
   end[2] = '\n';
   end[3] = '\0';

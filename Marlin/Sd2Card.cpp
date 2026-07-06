@@ -333,8 +333,8 @@ bool Sd2Card::init(uint8_t sckRateID, uint8_t chipSelectPin) {
   }
   else {
     // only need last byte of r7 response
-    uint8_t r7_byte;
-    for (uint8_t i = 0; i < 4; i++) r7_byte = spiRec();
+    for (uint8_t i = 0; i < 3; i++) (void)spiRec(); // discard first 3 bytes
+    uint8_t r7_byte = spiRec();
     if (r7_byte != 0XAA) {
       error(SD_CARD_ERROR_CMD8);
       goto fail;
