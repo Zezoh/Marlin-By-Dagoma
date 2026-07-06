@@ -63,57 +63,57 @@ uint16_t const SD_WRITE_TIMEOUT = 600;
 //------------------------------------------------------------------------------
 // SD card errors
 /** timeout error for command CMD0 (initialize card in SPI mode) */
-uint8_t const SD_CARD_ERROR_CMD0 = 0X1;
+uint8_t const SD_CARD_ERROR_CMD0 = 0x1;
 /** CMD8 was not accepted - not a valid SD card*/
-uint8_t const SD_CARD_ERROR_CMD8 = 0X2;
+uint8_t const SD_CARD_ERROR_CMD8 = 0x2;
 /** card returned an error response for CMD12 (write stop) */
-uint8_t const SD_CARD_ERROR_CMD12 = 0X3;
+uint8_t const SD_CARD_ERROR_CMD12 = 0x3;
 /** card returned an error response for CMD17 (read block) */
-uint8_t const SD_CARD_ERROR_CMD17 = 0X4;
+uint8_t const SD_CARD_ERROR_CMD17 = 0x4;
 /** card returned an error response for CMD18 (read multiple block) */
-uint8_t const SD_CARD_ERROR_CMD18 = 0X5;
+uint8_t const SD_CARD_ERROR_CMD18 = 0x5;
 /** card returned an error response for CMD24 (write block) */
-uint8_t const SD_CARD_ERROR_CMD24 = 0X6;
+uint8_t const SD_CARD_ERROR_CMD24 = 0x6;
 /**  WRITE_MULTIPLE_BLOCKS command failed */
-uint8_t const SD_CARD_ERROR_CMD25 = 0X7;
+uint8_t const SD_CARD_ERROR_CMD25 = 0x7;
 /** card returned an error response for CMD58 (read OCR) */
-uint8_t const SD_CARD_ERROR_CMD58 = 0X8;
+uint8_t const SD_CARD_ERROR_CMD58 = 0x8;
 /** SET_WR_BLK_ERASE_COUNT failed */
-uint8_t const SD_CARD_ERROR_ACMD23 = 0X9;
+uint8_t const SD_CARD_ERROR_ACMD23 = 0x9;
 /** ACMD41 initialization process timeout */
-uint8_t const SD_CARD_ERROR_ACMD41 = 0XA;
+uint8_t const SD_CARD_ERROR_ACMD41 = 0xA;
 /** card returned a bad CSR version field */
-uint8_t const SD_CARD_ERROR_BAD_CSD = 0XB;
+uint8_t const SD_CARD_ERROR_BAD_CSD = 0xB;
 /** erase block group command failed */
-uint8_t const SD_CARD_ERROR_ERASE = 0XC;
+uint8_t const SD_CARD_ERROR_ERASE = 0xC;
 /** card not capable of single block erase */
-uint8_t const SD_CARD_ERROR_ERASE_SINGLE_BLOCK = 0XD;
+uint8_t const SD_CARD_ERROR_ERASE_SINGLE_BLOCK = 0xD;
 /** Erase sequence timed out */
-uint8_t const SD_CARD_ERROR_ERASE_TIMEOUT = 0XE;
+uint8_t const SD_CARD_ERROR_ERASE_TIMEOUT = 0xE;
 /** card returned an error token instead of read data */
-uint8_t const SD_CARD_ERROR_READ = 0XF;
+uint8_t const SD_CARD_ERROR_READ = 0xF;
 /** read CID or CSD failed */
-uint8_t const SD_CARD_ERROR_READ_REG = 0X10;
+uint8_t const SD_CARD_ERROR_READ_REG = 0x10;
 /** timeout while waiting for start of read data */
-uint8_t const SD_CARD_ERROR_READ_TIMEOUT = 0X11;
+uint8_t const SD_CARD_ERROR_READ_TIMEOUT = 0x11;
 /** card did not accept STOP_TRAN_TOKEN */
-uint8_t const SD_CARD_ERROR_STOP_TRAN = 0X12;
+uint8_t const SD_CARD_ERROR_STOP_TRAN = 0x12;
 /** card returned an error token as a response to a write operation */
-uint8_t const SD_CARD_ERROR_WRITE = 0X13;
+uint8_t const SD_CARD_ERROR_WRITE = 0x13;
 /** attempt to write protected block zero */
-uint8_t const SD_CARD_ERROR_WRITE_BLOCK_ZERO = 0X14;  // REMOVE - not used
+uint8_t const SD_CARD_ERROR_WRITE_BLOCK_ZERO = 0x14;
 /** card did not go ready for a multiple block write */
-uint8_t const SD_CARD_ERROR_WRITE_MULTIPLE = 0X15;
+uint8_t const SD_CARD_ERROR_WRITE_MULTIPLE = 0x15;
 /** card returned an error to a CMD13 status check after a write */
-uint8_t const SD_CARD_ERROR_WRITE_PROGRAMMING = 0X16;
+uint8_t const SD_CARD_ERROR_WRITE_PROGRAMMING = 0x16;
 /** timeout occurred during write programming */
-uint8_t const SD_CARD_ERROR_WRITE_TIMEOUT = 0X17;
+uint8_t const SD_CARD_ERROR_WRITE_TIMEOUT = 0x17;
 /** incorrect rate selected */
-uint8_t const SD_CARD_ERROR_SCK_RATE = 0X18;
+uint8_t const SD_CARD_ERROR_SCK_RATE = 0x18;
 /** init() not called */
-uint8_t const SD_CARD_ERROR_INIT_NOT_CALLED = 0X19;
+uint8_t const SD_CARD_ERROR_INIT_NOT_CALLED = 0x19;
 /** crc check error */
-uint8_t const SD_CARD_ERROR_CRC = 0X20;
+uint8_t const SD_CARD_ERROR_CRC = 0x20;
 //------------------------------------------------------------------------------
 // card types
 /** Standard capacity V1 SD card */
@@ -177,9 +177,9 @@ class Sd2Card {
   /**
    * \return error code for last error. See Sd2Card.h for a list of error codes.
    */
-  int errorCode() const {return errorCode_;}
+  uint8_t errorCode() const {return errorCode_;}
   /** \return error data for last error. */
-  int errorData() const {return status_;}
+  uint8_t errorData() const {return status_;}
   /**
    * Initialize an SD flash memory card with default clock rate and chip
    * select pin.  See sd2Card::init(uint8_t sckRateID, uint8_t chipSelectPin).
@@ -219,7 +219,7 @@ class Sd2Card {
   /** Return the card type: SD V1, SD V2 or SDHC
    * \return 0 - SD V1, 1 - SD V2, or 3 - SDHC.
    */
-  int type() const {return type_;}
+  uint8_t type() const {return type_;}
   bool writeBlock(uint32_t blockNumber, const uint8_t* src);
   bool writeData(const uint8_t* src);
   bool writeStart(uint32_t blockNumber, uint32_t eraseCount);
@@ -247,6 +247,4 @@ class Sd2Card {
   bool writeData(uint8_t token, const uint8_t* src);
 };
 #endif  // Sd2Card_h
-
-
-#endif
+#endif  // SDSUPPORT

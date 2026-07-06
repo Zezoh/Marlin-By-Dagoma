@@ -87,7 +87,7 @@ void CardReader::lsDive(const char *prepend, SdFile parent, const char * const m
 
       // Use fixed-size buffer for the full path to a folder, trailing slash, and nul
       char path[MAXPATHNAMELENGTH];
-      boolean prepend_is_empty = (prepend[0] == '\0');
+      bool prepend_is_empty = (prepend[0] == '\0');
 
       // Append the FOLDERNAME12/ to the passed string.
       // It contains the full path to the "parent" argument.
@@ -705,4 +705,4 @@ void CardReader::printingHasFinished() {
   }
 }
 
-#endif //SDSUPPORT
+#endif  // SDSUPPORT
