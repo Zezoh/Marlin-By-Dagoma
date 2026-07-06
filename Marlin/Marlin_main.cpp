@@ -77,9 +77,6 @@
   #include <SPI.h>
 #endif
 
-#if ENABLED(EXPERIMENTAL_I2CBUS)
-  #include "twibus.h"
-#endif
 
 #if ENABLED(USE_SECOND_SERIAL)
   #include "HardwareSerial.h"
@@ -168,8 +165,6 @@
  *   M129    - EtoP closed (BARICUDA, HEATER_2)
  *   M140    - Set bed target temperature
  *   M150    - Set BlinkM color (BLINKM)
- *   M155    - I2C status report (EXPERIMENTAL_I2CBUS)
- *   M156    - I2C device reset (EXPERIMENTAL_I2CBUS)
  *   M190    - Wait for bed temperature
  *   M200    - Set filament diameter (E units to cubic mm)
  *   M201    - Set maximum acceleration for print moves
@@ -248,9 +243,6 @@
   CardReader card;
 #endif
 
-#if ENABLED(EXPERIMENTAL_I2CBUS)
-  TWIBus i2c;
-#endif
 
 // --------------------------------------------------------------------------
 // Global runtime state
@@ -991,10 +983,6 @@ void setup() {
 
   #if HAS_STEPPER_RESET
     enableStepperDrivers();
-  #endif
-
-  #if ENABLED(DIGIPOT_I2C)
-    digipot_i2c_init();
   #endif
 
   #if ENABLED(Z_PROBE_SLED)
@@ -5843,56 +5831,6 @@ inline void gcode_M121() { enable_endstops_globally(false); }
 
 #endif // BLINKM
 
-#if ENABLED(EXPERIMENTAL_I2CBUS)
-
-  /**
-   * M155: Send data to a I2C slave device
-   *
-   * This is a PoC, the formating and arguments for the GCODE will
-   * change to be more compatible, the current proposal is:
-   *
-   *  M155 A<slave device address base 10> ; Sets the I2C slave address the data will be sent to
-   *
-   *  M155 B<byte-1 value in base 10>
-   *  M155 B<byte-2 value in base 10>
-   *  M155 B<byte-3 value in base 10>
-   *
-   *  M155 S1 ; Send the buffered data and reset the buffer
-   *  M155 R1 ; Reset the buffer without sending data
-   *
-   */
-  inline void gcode_M155() {
-    // Set the target address
-    if (code_seen('A'))
-      i2c.address((uint8_t) code_value_short());
-
-    // Add a new byte to the buffer
-    else if (code_seen('B'))
-      i2c.addbyte((int) code_value_short());
-
-    // Flush the buffer to the bus
-    else if (code_seen('S')) i2c.send();
-
-    // Reset and rewind the buffer
-    else if (code_seen('R')) i2c.reset();
-  }
-
-  /**
-   * M156: Request X bytes from I2C slave device
-   *
-   * Usage: M156 A<slave device address base 10> B<number of bytes>
-   */
-  inline void gcode_M156() {
-    uint8_t addr = code_seen('A') ? code_value_short() : 0;
-    int bytes    = code_seen('B') ? code_value_short() : 0;
-
-    if (addr && bytes) {
-      i2c.address(addr);
-      i2c.reqbytes(bytes);
-    }
-  }
-
-#endif //EXPERIMENTAL_I2CBUS
 
 /**
  * M200: Set filament diameter and set E axis units to cubic millimeters
@@ -7925,12 +7863,6 @@ inline void gcode_M907() {
   #if PIN_EXISTS(MOTOR_CURRENT_PWM_E)
     if (code_seen('E')) digipot_current(2, code_value());
   #endif
-  #if ENABLED(DIGIPOT_I2C)
-    // this one uses actual amps in floating point
-    for (int i = 0; i < NUM_AXIS; i++) if (code_seen(axis_codes[i])) digipot_i2c_set_current(i, code_value());
-    // for each additional extruder (named B,C,D,E..., channels 4,5,6,7...)
-    for (int i = NUM_AXIS; i < DIGIPOT_I2C_NUM_CHANNELS; i++) if (code_seen('B' + i - (NUM_AXIS))) digipot_i2c_set_current(i, code_value());
-  #endif
 }
 
 #if HAS_DIGIPOTSS
@@ -8988,18 +8920,6 @@ void process_next_command() {
           break;
 
       #endif //BLINKM
-
-      #if ENABLED(EXPERIMENTAL_I2CBUS)
-
-        case 155:
-          gcode_M155();
-          break;
-
-        case 156:
-          gcode_M156();
-          break;
-
-      #endif //EXPERIMENTAL_I2CBUS
 
       case 200: // M200 D<millimeters> set filament diameter and set E axis units to cubic millimeters (use S0 to set back to millimeters).
         gcode_M200();
