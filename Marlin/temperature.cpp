@@ -790,18 +790,15 @@ void manage_heater() {
 
 // Convert raw ADC reading to temperature for hot end
 static float analog2temp(int raw, uint8_t e) {
-  #if ENABLED(TEMP_SENSOR_1_AS_REDUNDANT)
-    if (e > HOTENDS)
-  #else
-    if (e >= HOTENDS)
-  #endif
-    {
-      SERIAL_ERROR_START;
-      SERIAL_ERROR((int)e);
-      SERIAL_ERRORLNPGM(MSG_INVALID_EXTRUDER_NUM);
-      kill(PSTR(MSG_KILLED));
-      return 0.0;
-    }
+  // TEMP_SENSOR_1_AS_REDUNDANT uses a second lookup table for the redundant sensor,
+  // so validate against the actual table-map size instead of HOTENDS.
+  if (e >= COUNT(heater_ttbl_map)) {
+    SERIAL_ERROR_START;
+    SERIAL_ERROR((int)e);
+    SERIAL_ERRORLNPGM(MSG_INVALID_EXTRUDER_NUM);
+    kill(PSTR(MSG_KILLED));
+    return 0.0;
+  }
 
   #if ENABLED(HEATER_0_USES_MAX6675)
     if (e == 0) return 0.25 * raw;
