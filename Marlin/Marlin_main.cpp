@@ -8614,6 +8614,7 @@ inline void gcode_D851() {
       radius_correction_gain = 2.0f;
   }
 
+  const float starting_delta_radius = delta_radius;
   uint8_t radius_iteration = 0;
   float previous_diff_center_altitude = diff_center_altitude;
 
@@ -8645,6 +8646,15 @@ inline void gcode_D851() {
     SERIAL_ECHOPGM("Delta radius calibration stopped after ");
     SERIAL_ECHO(radius_max_iterations);
     SERIAL_ECHOLNPGM(" iterations without reaching tolerance.");
+    SERIAL_ECHOPGM("Restoring delta radius: ");
+    SERIAL_ECHOLN(starting_delta_radius);
+
+    delta_radius = starting_delta_radius;
+    recalc_delta_settings(delta_radius, delta_diagonal_rod);
+    gcode_M500();
+    gcode_G28();
+    printer_states.activity_state = ACTIVITY_IDLE;
+    return;
   }
 
   SERIAL_ECHOPGM("Storing delta radius: ");
