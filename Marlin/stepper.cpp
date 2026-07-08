@@ -710,6 +710,7 @@ ISR(TIMER1_COMPA_vect) {
     #endif
 
     // Take multiple steps per interrupt (For high speed moves)
+    const unsigned long step_event_count = current_block->step_event_count;
     for (int8_t i = 0; i < step_loops; i++) {
       #ifndef USBCON
         customizedSerial.checkRx(); // Check for serial chars.
@@ -718,7 +719,7 @@ ISR(TIMER1_COMPA_vect) {
       #if ENABLED(ADVANCE)
         counter_e += current_block->steps[E_AXIS];
         if (counter_e > 0) {
-          counter_e -= current_block->step_event_count;
+          counter_e -= step_event_count;
           e_steps[current_block->active_extruder] += TEST(out_bits, E_AXIS) ? -1 : 1;
         }
       #endif //ADVANCE
@@ -740,7 +741,7 @@ ISR(TIMER1_COMPA_vect) {
 
       #define STEP_IF_COUNTER(axis, AXIS) \
         if (_COUNTER(axis) > 0) { \
-          _COUNTER(axis) -= current_block->step_event_count; \
+          _COUNTER(axis) -= step_event_count; \
           count_position[_AXIS(AXIS)] += count_direction[_AXIS(AXIS)]; \
           _APPLY_STEP(AXIS)(_INVERT_STEP_PIN(AXIS),0); \
         }
@@ -753,7 +754,7 @@ ISR(TIMER1_COMPA_vect) {
       #endif
 
       step_events_completed++;
-      if (step_events_completed >= current_block->step_event_count) break;
+      if (step_events_completed >= step_event_count) break;
     }
     // Calculate new timer value
     unsigned short timer;
@@ -816,7 +817,7 @@ ISR(TIMER1_COMPA_vect) {
     OCR1A = (OCR1A < (TCNT1 + 16)) ? (TCNT1 + 16) : OCR1A;
 
     // If current block is finished, reset pointer
-    if (step_events_completed >= current_block->step_event_count) {
+    if (step_events_completed >= step_event_count) {
       current_block = NULL;
       plan_discard_current_block();
     }
