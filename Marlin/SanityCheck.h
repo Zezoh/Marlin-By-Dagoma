@@ -74,6 +74,17 @@
 #endif
 
 /**
+ * Motion planner / command buffer invariants
+ */
+#if BLOCK_BUFFER_SIZE < 4 || (BLOCK_BUFFER_SIZE & (BLOCK_BUFFER_SIZE - 1))
+  #error BLOCK_BUFFER_SIZE must be a power of two and at least 4.
+#endif
+
+#if BUFSIZE < 2
+  #error BUFSIZE must be at least 2 to keep the command queue usable.
+#endif
+
+/**
  * Dual Stepper Drivers
  */
 #if ENABLED(Z_DUAL_STEPPER_DRIVERS) && ENABLED(Y_DUAL_STEPPER_DRIVERS)
