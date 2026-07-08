@@ -3729,16 +3729,17 @@ float triangle_sign(const float x, const float y, const short p1,
 }
 
 bool triangle_contains(const float x, const float y, const short t) {
-  bool b1, b2, b3;
-
   const short *triangle;
   triangle = probe_plan_mesh[t];
 
-  b1 = triangle_sign(x, y, triangle[0], triangle[1]) <= 0.0;
-  b2 = triangle_sign(x, y, triangle[1], triangle[2]) <= 0.0;
-  b3 = triangle_sign(x, y, triangle[2], triangle[0]) <= 0.0;
+  const float d1 = triangle_sign(x, y, triangle[0], triangle[1]);
+  const float d2 = triangle_sign(x, y, triangle[1], triangle[2]);
+  const float d3 = triangle_sign(x, y, triangle[2], triangle[0]);
+  const float tolerance = 0.0001f;
+  const bool has_neg = d1 < -tolerance || d2 < -tolerance || d3 < -tolerance;
+  const bool has_pos = d1 > tolerance || d2 > tolerance || d3 > tolerance;
 
-  return ((b1 == b2) && (b2 == b3));
+  return !(has_neg && has_pos);
 }
 
 #define PROBE_REGION_NUMBER 12
@@ -3766,6 +3767,9 @@ inline short triangle_index_in_region(const float x, const float y,
 };
 
 inline short region_index(const float x, const float y) {
+
+  if (fabsf(x) < 0.0001f)
+    return y >= 0.0f ? 7 : 4;
 
   // While all tri equations are just: y = a.x;
   float aTested = y / x;
@@ -3837,6 +3841,15 @@ inline short region_index(const float x, const float y) {
 }
 
 inline short triangle_index(const float x, const float y) {
+  // Prefer an exact triangle containment test. This avoids the old region-only
+  // shortcut selecting an outer triangle for points on the axes, especially
+  // X=0/Y=0 where y / x is undefined.
+  for (short t = 0; t < PROBE_MESH_NUMBER; t++) {
+    if (triangle_contains(x, y, t))
+      return t;
+  }
+
+  // Keep the region extrapolation path for print moves outside the probed mesh.
   short r = region_index(x, y);
   return triangle_index_in_region(x, y, r);
 }
