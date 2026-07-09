@@ -143,6 +143,12 @@ long position[NUM_AXIS]; // Rescaled from extern when axis_steps_per_unit are
 static float previous_speed[NUM_AXIS]; // Speed of previous path line segment
 static float
     previous_nominal_speed; // Nominal speed of previous path line segment
+static float previous_unit_vec[3]; // Unit vector of previous XYZ path segment
+static bool previous_move_has_xyz; // Whether previous block had XYZ movement
+
+#if ENABLED(DELTA)
+static float cartesian_position[3]; // Cartesian effector position for junctions
+#endif
 
 uint8_t g_uc_extruder_last_move[EXTRUDERS] = {0};
 
@@ -621,17 +627,19 @@ void check_axes_activity() {
 #endif
 }
 
-float junction_deviation = 0.1;
+float junction_deviation = 0.05;
 // Add a new linear movement to the buffer. steps[X_AXIS], _y and _z is the
 // absolute position in mm. Microseconds specify how many microseconds the move
 // should take to perform. To aid acceleration calculation the caller must also
 // provide the physical length of the line in millimeters.
 #if ENABLED(AUTO_BED_LEVELING_FEATURE) || ENABLED(MESH_BED_LEVELING)
 void plan_buffer_line(float x, float y, float z, const float &e,
-                      float feed_rate, const uint8_t extruder)
+                      float feed_rate, const uint8_t extruder,
+                      const float *cartesian_target)
 #else
 void plan_buffer_line(const float &x, const float &y, const float &z,
-                      const float &e, float feed_rate, const uint8_t extruder)
+                      const float &e, float feed_rate, const uint8_t extruder,
+                      const float *cartesian_target)
 #endif // AUTO_BED_LEVELING_FEATURE
 {
   // Calculate the buffer head after we push this byte
@@ -1026,52 +1034,73 @@ void plan_buffer_line(const float &x, const float &y, const float &z,
   block->acceleration = acc_st / steps_per_mm;
   block->acceleration_rate = (long)(acc_st * 16777216.0 / (F_CPU / 8.0));
 
-#if 0 // Use old jerk for now
-    // Compute path unit vector
-    double unit_vec[3];
-
+  // Compute maximum allowable entry speed at the junction using the
+  // centripetal-acceleration approximation from Grbl. This is smoother than the
+  // old classic-jerk test because corner speed changes continuously with the
+  // angle between path segments instead of switching abruptly at one jerk limit.
+  float unit_vec[3] = {0.0, 0.0, 0.0};
+#if ENABLED(DELTA)
+  float cartesian_delta[3], cartesian_millimeters = 0.0;
+  if (cartesian_target) {
+    cartesian_delta[X_AXIS] =
+        cartesian_target[X_AXIS] - cartesian_position[X_AXIS];
+    cartesian_delta[Y_AXIS] =
+        cartesian_target[Y_AXIS] - cartesian_position[Y_AXIS];
+    cartesian_delta[Z_AXIS] =
+        cartesian_target[Z_AXIS] - cartesian_position[Z_AXIS];
+    cartesian_millimeters =
+        sqrt(square(cartesian_delta[X_AXIS]) + square(cartesian_delta[Y_AXIS]) +
+             square(cartesian_delta[Z_AXIS]));
+  }
+  const bool has_xyz_move =
+      cartesian_target ? (cartesian_millimeters > 0.000001)
+                       : (bsx || bsy || bsz);
+  if (cartesian_target && has_xyz_move) {
+    unit_vec[X_AXIS] = cartesian_delta[X_AXIS] / cartesian_millimeters;
+    unit_vec[Y_AXIS] = cartesian_delta[Y_AXIS] / cartesian_millimeters;
+    unit_vec[Z_AXIS] = cartesian_delta[Z_AXIS] / cartesian_millimeters;
+  } else if (has_xyz_move) {
     unit_vec[X_AXIS] = delta_mm[X_AXIS] * inverse_millimeters;
     unit_vec[Y_AXIS] = delta_mm[Y_AXIS] * inverse_millimeters;
     unit_vec[Z_AXIS] = delta_mm[Z_AXIS] * inverse_millimeters;
-
-    // Compute maximum allowable entry speed at junction by centripetal acceleration approximation.
-    // Let a circle be tangent to both previous and current path line segments, where the junction
-    // deviation is defined as the distance from the junction to the closest edge of the circle,
-    // collinear with the circle center. The circular segment joining the two paths represents the
-    // path of centripetal acceleration. Solve for max velocity based on max acceleration about the
-    // radius of the circle, defined indirectly by junction deviation. This may be also viewed as
-    // path width or max_jerk in the previous grbl version. This approach does not actually deviate
-    // from path, but used as a robust way to compute cornering speeds, as it takes into account the
-    // nonlinearities of both the junction angle and junction velocity.
-    double vmax_junction = MINIMUM_PLANNER_SPEED; // Set default max junction speed
-
-    // Skip first block or when previous_nominal_speed is used as a flag for homing and offset cycles.
-    if ((block_buffer_head != block_buffer_tail) && (previous_nominal_speed > 0.0)) {
-      // Compute cosine of angle between previous and current path. (prev_unit_vec is negative)
-      // NOTE: Max junction velocity is computed without sin() or acos() by trig half angle identity.
-      double cos_theta = - previous_unit_vec[X_AXIS] * unit_vec[X_AXIS]
-                         - previous_unit_vec[Y_AXIS] * unit_vec[Y_AXIS]
-                         - previous_unit_vec[Z_AXIS] * unit_vec[Z_AXIS] ;
-      // Skip and use default max junction speed for 0 degree acute junction.
-      if (cos_theta < 0.95) {
-        vmax_junction = min(previous_nominal_speed, block->nominal_speed);
-        // Skip and avoid divide by zero for straight junctions at 180 degrees. Limit to min() of nominal speeds.
-        if (cos_theta > -0.95) {
-          // Compute maximum junction velocity based on maximum acceleration and junction deviation
-          double sin_theta_d2 = sqrt(0.5 * (1.0 - cos_theta)); // Trig half angle identity. Always positive.
-          vmax_junction = min(vmax_junction,
-                              sqrt(block->acceleration * junction_deviation * sin_theta_d2 / (1.0 - sin_theta_d2)));
-        }
-      }
-    }
+  }
+#else
+  const bool has_xyz_move = (bsx || bsy || bsz);
+  if (has_xyz_move) {
+    unit_vec[X_AXIS] = delta_mm[X_AXIS] * inverse_millimeters;
+    unit_vec[Y_AXIS] = delta_mm[Y_AXIS] * inverse_millimeters;
+    unit_vec[Z_AXIS] = delta_mm[Z_AXIS] * inverse_millimeters;
+  }
 #endif
 
-  // Start with a safe speed
-  float vmax_junction = max_xy_jerk / 2;
-  float vmax_junction_factor = 1.0;
+  float vmax_junction = MINIMUM_PLANNER_SPEED;
+  if ((moves_queued > 1) && (previous_nominal_speed > 0.0001)) {
+    if (has_xyz_move && previous_move_has_xyz) {
+      vmax_junction = min(previous_nominal_speed, block->nominal_speed);
+      float cos_theta = -previous_unit_vec[X_AXIS] * unit_vec[X_AXIS] -
+                        previous_unit_vec[Y_AXIS] * unit_vec[Y_AXIS] -
+                        previous_unit_vec[Z_AXIS] * unit_vec[Z_AXIS];
+      cos_theta = constrain(cos_theta, -1.0, 1.0);
+
+      // Near reversal: force a very low junction speed. Near straight: keep the
+      // nominal limit. Otherwise, compute a smooth angle-dependent cap.
+      if (cos_theta > 0.95) {
+        vmax_junction = MINIMUM_PLANNER_SPEED;
+      } else if (cos_theta > -0.95) {
+        const float sin_theta_d2 = sqrt(0.5 * (1.0 - cos_theta));
+        vmax_junction =
+            min(vmax_junction,
+                sqrt(block->acceleration * junction_deviation * sin_theta_d2 /
+                     (1.0 - sin_theta_d2)));
+      }
+    } else if (!has_xyz_move && !previous_move_has_xyz) {
+      vmax_junction = min(previous_nominal_speed, block->nominal_speed);
+    }
+  }
+
   float mz2 = max_z_jerk / 2, me2 = max_e_jerk / 2;
   float csz = current_speed[Z_AXIS], cse = current_speed[E_AXIS];
-  if (fabs(csz) > mz2)
+  if (!has_xyz_move && fabs(csz) > mz2)
     vmax_junction = min(vmax_junction, mz2);
   if (fabs(cse) > me2)
     vmax_junction = min(vmax_junction, me2);
@@ -1079,27 +1108,15 @@ void plan_buffer_line(const float &x, const float &y, const float &z,
   float safe_speed = vmax_junction;
 
   if ((moves_queued > 1) && (previous_nominal_speed > 0.0001)) {
-    float dsx = current_speed[X_AXIS] - previous_speed[X_AXIS],
-          dsy = current_speed[Y_AXIS] - previous_speed[Y_AXIS],
-          dsz = fabs(csz - previous_speed[Z_AXIS]),
+    float dsz = fabs(csz - previous_speed[Z_AXIS]),
           dse = fabs(cse - previous_speed[E_AXIS]),
-          jerk = sqrt(dsx * dsx + dsy * dsy);
-
-    //    if ((fabs(previous_speed[X_AXIS]) > 0.0001) ||
-    //    (fabs(previous_speed[Y_AXIS]) > 0.0001)) {
-    vmax_junction = block->nominal_speed;
-    //    }
-    if (jerk > max_xy_jerk)
-      vmax_junction_factor = max_xy_jerk / jerk;
+          vmax_junction_factor = 1.0;
     if (dsz > max_z_jerk)
       vmax_junction_factor = min(vmax_junction_factor, max_z_jerk / dsz);
     if (dse > max_e_jerk)
       vmax_junction_factor = min(vmax_junction_factor, max_e_jerk / dse);
 
-    vmax_junction =
-        min(previous_nominal_speed,
-            vmax_junction *
-                vmax_junction_factor); // Limit speed to max previous speed
+    vmax_junction *= vmax_junction_factor;
   }
   block->max_entry_speed = vmax_junction;
 
@@ -1125,7 +1142,19 @@ void plan_buffer_line(const float &x, const float &y, const float &z,
   // Update previous path unit_vector and nominal speed
   for (int i = 0; i < NUM_AXIS; i++)
     previous_speed[i] = current_speed[i];
+  if (has_xyz_move)
+    for (int i = 0; i < 3; i++)
+      previous_unit_vec[i] = unit_vec[i];
+  previous_move_has_xyz = has_xyz_move;
   previous_nominal_speed = block->nominal_speed;
+
+#if ENABLED(DELTA)
+  if (cartesian_target)
+    for (int i = 0; i < 3; i++)
+      cartesian_position[i] = cartesian_target[i];
+#else
+  UNUSED(cartesian_target);
+#endif
 
 #if ENABLED(ADVANCE)
   // Calculate advance rate
@@ -1216,10 +1245,21 @@ void plan_set_position(const float &x, const float &y, const float &z,
   st_set_position(nx, ny, nz, ne);
   previous_nominal_speed =
       0.0; // Resets planner junction speeds. Assumes start from rest.
+  previous_move_has_xyz = false;
 
   for (int i = 0; i < NUM_AXIS; i++)
     previous_speed[i] = 0.0;
 }
+
+#if ENABLED(DELTA)
+void plan_set_cartesian_position(const float &x, const float &y,
+                                 const float &z) {
+  cartesian_position[X_AXIS] = x;
+  cartesian_position[Y_AXIS] = y;
+  cartesian_position[Z_AXIS] = z;
+  previous_move_has_xyz = false;
+}
+#endif
 
 void plan_set_e_position(const float &e) {
   position[E_AXIS] = lround(e * axis_steps_per_unit[E_AXIS]);
