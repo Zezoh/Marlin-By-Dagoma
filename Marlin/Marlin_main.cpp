@@ -681,6 +681,9 @@ inline void sync_plan_position_delta() {
   calculate_delta(current_position);
   plan_set_position(delta[X_AXIS], delta[Y_AXIS], delta[Z_AXIS],
                     current_position[E_AXIS]);
+  plan_set_cartesian_position(current_position[X_AXIS],
+                              current_position[Y_AXIS],
+                              current_position[Z_AXIS]);
 }
 #endif
 
@@ -1821,7 +1824,8 @@ void prepare_move_raw() {
   calculate_delta(destination);
   plan_buffer_line(
       delta[X_AXIS], delta[Y_AXIS], delta[Z_AXIS], destination[E_AXIS],
-      (feedrate / 60) * (feedrate_multiplier / 100.0), active_extruder);
+      (feedrate / 60) * (feedrate_multiplier / 100.0), active_extruder,
+      destination);
   set_current_to_destination();
 }
 #endif
@@ -1920,7 +1924,8 @@ void handle_emergency_stop() {
 #if ENABLED(DELTA)
     calculate_delta(current_position);
     plan_buffer_line(delta[X_AXIS], delta[Y_AXIS], delta[Z_AXIS],
-                     current_position[E_AXIS], feedrate / 60, active_extruder);
+                     current_position[E_AXIS], feedrate / 60, active_extruder,
+                     current_position);
 #else
     line_to_current_position();
 #endif
@@ -6963,7 +6968,8 @@ millis_t last_debug_z_magic_timing = 0UL;
 #define RUNPLAN                                                                \
   calculate_delta(destination);                                                \
   plan_buffer_line(delta[X_AXIS], delta[Y_AXIS], delta[Z_AXIS],                \
-                   destination[E_AXIS], feedrate / 60.0, active_extruder);
+                   destination[E_AXIS], feedrate / 60.0, active_extruder,      \
+                   destination);
 #else
 #define SET_FEEDRATE_FOR_MOVE feedrate = homing_feedrate[X_AXIS];
 #define SET_FEEDRATE_FOR_EXTRUDER_MOVE                                         \
@@ -8807,7 +8813,8 @@ inline void gcode_D853() {
 #if ENABLED(DELTA)
     calculate_delta(destination);
     plan_buffer_line(delta[X_AXIS], delta[Y_AXIS], delta[Z_AXIS],
-                     destination[E_AXIS], feedrate / 60.0, active_extruder);
+                     destination[E_AXIS], feedrate / 60.0, active_extruder,
+                     destination);
 #else
     line_to_destination(feedrate);
 #endif
@@ -9945,7 +9952,7 @@ inline bool prepare_move_delta(float target[NUM_AXIS]) {
 
     plan_buffer_line(
         delta[X_AXIS], delta[Y_AXIS], delta[Z_AXIS], target[E_AXIS],
-        feedrate / 60 * feedrate_multiplier / 100.0, active_extruder);
+        feedrate / 60 * feedrate_multiplier / 100.0, active_extruder, target);
   }
   return true;
 }
@@ -10189,7 +10196,8 @@ void plan_arc(float target[NUM_AXIS], // Destination position
     adjust_delta(arc_target);
 #endif
     plan_buffer_line(delta[X_AXIS], delta[Y_AXIS], delta[Z_AXIS],
-                     arc_target[E_AXIS], feed_rate, active_extruder);
+                     arc_target[E_AXIS], feed_rate, active_extruder,
+                     arc_target);
 #else
     plan_buffer_line(arc_target[X_AXIS], arc_target[Y_AXIS], arc_target[Z_AXIS],
                      arc_target[E_AXIS], feed_rate, active_extruder);
@@ -10203,7 +10211,7 @@ void plan_arc(float target[NUM_AXIS], // Destination position
   adjust_delta(target);
 #endif
   plan_buffer_line(delta[X_AXIS], delta[Y_AXIS], delta[Z_AXIS], target[E_AXIS],
-                   feed_rate, active_extruder);
+                   feed_rate, active_extruder, target);
 #else
   plan_buffer_line(target[X_AXIS], target[Y_AXIS], target[Z_AXIS],
                    target[E_AXIS], feed_rate, active_extruder);

@@ -136,10 +136,12 @@ vector_3 plan_get_position();
 /**
  * Add a new linear movement to the buffer. x, y, z are the signed, absolute
  * target position in millimeters. Feed rate specifies the (target) speed of the
- * motion.
+ * motion. On DELTA, cartesian_target supplies the effector-space target used by
+ * junction-deviation math while x/y/z remain tower-space targets for stepping.
  */
 void plan_buffer_line(float x, float y, float z, const float &e,
-                      float feed_rate, const uint8_t extruder);
+                      float feed_rate, const uint8_t extruder,
+                      const float *cartesian_target = NULL);
 
 /**
  * Set the planner positions. Used for G92 instructions.
@@ -151,13 +153,19 @@ void plan_set_position(float x, float y, float z, const float &e);
 #else
 
 void plan_buffer_line(const float &x, const float &y, const float &z,
-                      const float &e, float feed_rate, const uint8_t extruder);
+                      const float &e, float feed_rate, const uint8_t extruder,
+                      const float *cartesian_target = NULL);
 void plan_set_position(const float &x, const float &y, const float &z,
                        const float &e);
 
 #endif // AUTO_BED_LEVELING_FEATURE || MESH_BED_LEVELING
 
 void plan_set_e_position(const float &e);
+
+#if ENABLED(DELTA)
+void plan_set_cartesian_position(const float &x, const float &y,
+                                 const float &z);
+#endif
 
 //===========================================================================
 //============================= public variables ============================
