@@ -129,6 +129,4 @@
   /** Total size of the buffer used to store the long filenames */
   #define LONG_FILENAME_LENGTH (FILENAME_LENGTH*MAX_VFAT_ENTRIES+1)
 #endif  // SdFatConfig_h
-
-
-#endif
+#endif  // SDSUPPORT

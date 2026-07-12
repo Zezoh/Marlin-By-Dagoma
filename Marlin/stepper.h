@@ -21,8 +21,8 @@
  */
 
 /**
-  stepper.h - stepper motor driver: executes motion plans of planner.c using the stepper motors
-  Part of Grbl
+  stepper.h - stepper motor driver: executes motion plans of planner.c using the
+  stepper motors Part of Grbl
 
   Copyright (c) 2009-2011 Simen Svale Skogsrud
 
@@ -47,11 +47,11 @@
 #include "stepper_indirection.h"
 
 #if ENABLED(ABORT_ON_ENDSTOP_HIT_FEATURE_ENABLED)
-  extern bool abort_on_endstop_hit;
+extern bool abort_on_endstop_hit;
 #endif
 
 #if ENABLED(EMERGENCY_STOP)
-  extern bool trigger_emergency_stop;
+extern bool trigger_emergency_stop;
 #endif
 
 // Initialize and start the stepper motor subsystem
@@ -61,8 +61,9 @@ void st_init();
 void st_synchronize();
 
 // Set current position in steps
-void st_set_position(const long& x, const long& y, const long& z, const long& e);
-void st_set_e_position(const long& e);
+void st_set_position(const long &x, const long &y, const long &z,
+                     const long &e);
+void st_set_e_position(const long &e);
 
 // Get current position in steps
 long st_get_position(AxisEnum axis);
@@ -70,29 +71,32 @@ long st_get_position(AxisEnum axis);
 // Get current axis position in mm
 float st_get_axis_position_mm(AxisEnum axis);
 
-// The stepper subsystem goes to sleep when it runs out of things to execute. Call this
-// to notify the subsystem that it is time to go to work.
+// The stepper subsystem goes to sleep when it runs out of things to execute.
+// Call this to notify the subsystem that it is time to go to work.
 void st_wake_up();
 
-
-void checkHitEndstops(); //call from somewhere to create an serial error message with the locations the endstops where hit, in case they were triggered
-void endstops_hit_on_purpose(); //avoid creation of the message, i.e. after homing and before a routine call of checkHitEndstops();
+void checkHitEndstops(); // call from somewhere to create an serial error
+                         // message with the locations the endstops where hit,
+                         // in case they were triggered
+void endstops_hit_on_purpose(); // avoid creation of the message, i.e. after
+                                // homing and before a routine call of
+                                // checkHitEndstops();
 
 void enable_endstops(bool check); // Enable/disable endstop checking
 
 void enable_endstops_globally(bool check);
 void endstops_not_homing();
 
-void checkStepperErrors(); //Print errors detected by the stepper
+void checkStepperErrors(); // Print errors detected by the stepper
 
 void finishAndDisableSteppers();
 
-extern block_t* current_block;  // A pointer to the block currently being traced
+extern block_t *current_block; // A pointer to the block currently being traced
 
 void quickStop();
 
 #if HAS_DIGIPOTSS
-  void digitalPotWrite(int address, int value);
+void digitalPotWrite(int address, int value);
 #endif
 void microstep_ms(uint8_t driver, int8_t ms1, int8_t ms2);
 void microstep_mode(uint8_t driver, uint8_t stepping);
@@ -102,13 +106,15 @@ void microstep_init();
 void microstep_readings();
 
 #if ENABLED(Z_DUAL_ENDSTOPS)
-  void In_Homing_Process(bool state);
-  void Lock_z_motor(bool state);
-  void Lock_z2_motor(bool state);
+void In_Homing_Process(bool state);
+void Lock_z_motor(bool state);
+void Lock_z2_motor(bool state);
 #endif
 
 #if ENABLED(BABYSTEPPING)
-  void babystep(const uint8_t axis, const bool direction); // perform a short step with a single stepper motor, outside of any convention
+void babystep(const uint8_t axis,
+              const bool direction); // perform a short step with a single
+                                     // stepper motor, outside of any convention
 #endif
 
 #endif

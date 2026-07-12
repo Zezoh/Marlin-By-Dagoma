@@ -448,6 +448,5 @@ static inline __attribute__((always_inline))
   }
 }
 #endif  // Sd2PinMap_h
+#endif  // SDSUPPORT
 
-
-#endif

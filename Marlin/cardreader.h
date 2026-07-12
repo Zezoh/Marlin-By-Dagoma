@@ -127,6 +127,6 @@ extern CardReader card;
 
 #define IS_SD_PRINTING (false)
 
-#endif //SDSUPPORT
+#endif  // SDSUPPORT
 
-#endif //__CARDREADER_H
+#endif  // __CARDREADER_H

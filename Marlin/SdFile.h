@@ -58,6 +58,4 @@ class SdFile : public SdBaseFile, public Print {
   void writeln_P(PGM_P str);
 };
 #endif  // SdFile_h
-
-
-#endif
+#endif  // SDSUPPORT

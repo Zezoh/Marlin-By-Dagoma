@@ -57,7 +57,7 @@ bool SdBaseFile::addCluster() {
 bool SdBaseFile::addDirCluster() {
   uint32_t block;
   // max folder size
-  if (fileSize_ / sizeof(dir_t) >= 0XFFFF) goto fail;
+  if (fileSize_ / sizeof(dir_t) >= 0xFFFF) goto fail;
 
   if (!addCluster()) goto fail;
   if (!vol_->cacheFlush()) goto fail;
@@ -210,7 +210,7 @@ fail:
 void SdBaseFile::dirName(const dir_t& dir, char* name) {
   uint8_t j = 0;
   for (uint8_t i = 0; i < 11; i++) {
-    if (dir.name[i] == ' ')continue;
+    if (dir.name[i] == ' ') continue;
     if (i == 8) name[j++] = '.';
     name[j++] = dir.name[i];
   }
@@ -405,7 +405,7 @@ bool SdBaseFile::make83Name(const char* str, uint8_t* name, const char** ptr) {
       uint8_t b;
       while ((b = pgm_read_byte(p++))) if (b == c) goto fail;
       // check size and only allow ASCII printable characters
-      if (i > n || c < 0X21 || c > 0X7E)goto fail;
+      if (i > n || c < 0x21 || c > 0x7E)goto fail;
       // only upper case allowed in 8.3 names - convert lower to upper
       name[i++] = (c < 'a' || c > 'z') ? (c) : (c + ('A' - 'a'));
     }
@@ -510,7 +510,7 @@ bool SdBaseFile::mkdir(SdBaseFile* parent, const uint8_t dname[11]) {
     d.firstClusterHigh = 0;
   }
   else {
-    d.firstClusterLow = parent->firstCluster_ & 0XFFFF;
+    d.firstClusterLow = parent->firstCluster_ & 0xFFFF;
     d.firstClusterHigh = parent->firstCluster_ >> 16;
   }
   // copy '..' to block
@@ -632,7 +632,7 @@ bool SdBaseFile::open(SdBaseFile* dirFile,
   // search for file
 
   while (dirFile->curPosition_ < dirFile->fileSize_) {
-    index = 0XF & (dirFile->curPosition_ >> 5);
+    index = 0xF & (dirFile->curPosition_ >> 5);
     p = dirFile->readDirCache();
     if (!p) goto fail;
 
@@ -737,7 +737,7 @@ bool SdBaseFile::open(SdBaseFile* dirFile, uint16_t index, uint8_t oflag) {
     goto fail;
   }
   // open cached entry
-  return openCachedEntry(index & 0XF, oflag);
+  return openCachedEntry(index & 0xF, oflag);
 fail:
   return false;
 }
@@ -807,7 +807,7 @@ bool SdBaseFile::openNext(SdBaseFile* dirFile, uint8_t oflag) {
   vol_ = dirFile->vol_;
 
   while (1) {
-    index = 0XF & (dirFile->curPosition_ >> 5);
+    index = 0xF & (dirFile->curPosition_ >> 5);
 
     // read entry into cache
     p = dirFile->readDirCache();
@@ -1063,7 +1063,7 @@ int16_t SdBaseFile::read(void* buf, uint16_t nbyte) {
   // amount left to read
   toRead = nbyte;
   while (toRead > 0) {
-    offset = curPosition_ & 0X1FF;  // offset in block
+    offset = curPosition_ & 0x1FF;  // offset in block
     if (type_ == FAT_FILE_TYPE_ROOT_FIXED) {
       block = vol_->rootDirStart() + (curPosition_ >> 9);
     }
@@ -1120,7 +1120,7 @@ fail:
 int8_t SdBaseFile::readDir(dir_t* dir, char* longFilename) {
   int16_t n;
   // if not a directory file or miss-positioned return an error
-  if (!isDir() || (0X1F & curPosition_)) return -1;
+  if (!isDir() || (0x1F & curPosition_)) return -1;
 
   //If we have a longFilename buffer, mark it as invalid. If we find a long filename it will be filled automaticly.
   if (longFilename != NULL) longFilename[0] = '\0';
@@ -1164,7 +1164,7 @@ dir_t* SdBaseFile::readDirCache() {
   if (!isDir()) goto fail;
 
   // index of entry in cache
-  i = (curPosition_ >> 5) & 0XF;
+  i = (curPosition_ >> 5) & 0xF;
 
   // use read to locate and cache block
   if (read() < 0) goto fail;
@@ -1513,7 +1513,7 @@ bool SdBaseFile::sync() {
     if (!isDir()) d->fileSize = fileSize_;
 
     // update first cluster fields
-    d->firstClusterLow = firstCluster_ & 0XFFFF;
+    d->firstClusterLow = firstCluster_ & 0xFFFF;
     d->firstClusterHigh = firstCluster_ >> 16;
 
     // set modify time if user supplied a callback date/time function
@@ -1738,7 +1738,7 @@ int16_t SdBaseFile::write(const void* buf, uint16_t nbyte) {
 
   while (nToWrite > 0) {
     uint8_t blockOfCluster = vol_->blockOfCluster(curPosition_);
-    uint16_t blockOffset = curPosition_ & 0X1FF;
+    uint16_t blockOffset = curPosition_ & 0x1FF;
     if (blockOfCluster == 0 && blockOffset == 0) {
       // start of new cluster
       if (curCluster_ == 0) {
@@ -1774,7 +1774,7 @@ int16_t SdBaseFile::write(const void* buf, uint16_t nbyte) {
       // full block - don't need to use cache
       if (vol_->cacheBlockNumber() == block) {
         // invalidate cache if block is in cache
-        vol_->cacheSetBlockNumber(0XFFFFFFFF, false);
+        vol_->cacheSetBlockNumber(0xFFFFFFFF, false);
       }
       if (!vol_->writeBlock(block, src)) goto fail;
     }
@@ -1821,6 +1821,4 @@ fail:
 #if ALLOW_DEPRECATED_FUNCTIONS && !defined(DOXYGEN)
   void (*SdBaseFile::oldDateTime_)(uint16_t& date, uint16_t& time) = 0;  // NOLINT
 #endif  // ALLOW_DEPRECATED_FUNCTIONS
-
-
-#endif
+#endif  // SDSUPPORT

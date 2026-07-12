@@ -50,7 +50,7 @@
   //------------------------------------------------------------------------------
   /** SPI receive a byte */
   static uint8_t spiRec() {
-    SPDR = 0XFF;
+    SPDR = 0xFF;
     while (!TEST(SPSR, SPIF)) { /* Intentionally left empty */ }
     return SPDR;
   }
@@ -59,11 +59,11 @@
   static inline __attribute__((always_inline))
   void spiRead(uint8_t* buf, uint16_t nbyte) {
     if (nbyte-- == 0) return;
-    SPDR = 0XFF;
+    SPDR = 0xFF;
     for (uint16_t i = 0; i < nbyte; i++) {
       while (!TEST(SPSR, SPIF)) { /* Intentionally left empty */ }
       buf[i] = SPDR;
-      SPDR = 0XFF;
+      SPDR = 0xFF;
     }
     while (!TEST(SPSR, SPIF)) { /* Intentionally left empty */ }
     buf[nbyte] = SPDR;
@@ -98,7 +98,7 @@
     uint8_t data = 0;
     // no interrupts during byte receive - about 8 us
     cli();
-    // output pin high - like sending 0XFF
+    // output pin high - like sending 0xFF
     fastDigitalWrite(SPI_MOSI_PIN, HIGH);
 
     for (uint8_t i = 0; i < 8; i++) {
@@ -132,7 +132,7 @@
     for (uint8_t i = 0; i < 8; i++) {
       fastDigitalWrite(SPI_SCK_PIN, LOW);
 
-      fastDigitalWrite(SPI_MOSI_PIN, data & 0X80);
+      fastDigitalWrite(SPI_MOSI_PIN, data & 0x80);
 
       data <<= 1;
 
@@ -172,16 +172,16 @@ uint8_t Sd2Card::cardCommand(uint8_t cmd, uint32_t arg) {
   for (int8_t s = 24; s >= 0; s -= 8) spiSend(arg >> s);
 
   // send CRC
-  uint8_t crc = 0XFF;
-  if (cmd == CMD0) crc = 0X95;  // correct crc for CMD0 with arg 0
-  if (cmd == CMD8) crc = 0X87;  // correct crc for CMD8 with arg 0X1AA
+  uint8_t crc = 0xFF;
+  if (cmd == CMD0) crc = 0x95;  // correct crc for CMD0 with arg 0
+  if (cmd == CMD8) crc = 0x87;  // correct crc for CMD8 with arg 0x1AA
   spiSend(crc);
 
   // skip stuff byte for stop read
   if (cmd == CMD12) spiRec();
 
   // wait for response
-  for (uint8_t i = 0; ((status_ = spiRec()) & 0X80) && i != 0XFF; i++) { /* Intentionally left empty */ }
+  for (uint8_t i = 0; ((status_ = spiRec()) & 0x80) && i != 0xFF; i++) { /* Intentionally left empty */ }
   return status_;
 }
 //------------------------------------------------------------------------------
@@ -318,7 +318,7 @@ bool Sd2Card::init(uint8_t sckRateID, uint8_t chipSelectPin) {
   #endif  // SOFTWARE_SPI
 
   // must supply min of 74 clock cycles with CS high.
-  for (uint8_t i = 0; i < 10; i++) spiSend(0XFF);
+  for (uint8_t i = 0; i < 10; i++) spiSend(0xFF);
 
   // command to go idle in SPI mode
   while ((status_ = cardCommand(CMD0, 0)) != R1_IDLE_STATE) {
@@ -332,16 +332,17 @@ bool Sd2Card::init(uint8_t sckRateID, uint8_t chipSelectPin) {
     type(SD_CARD_TYPE_SD1);
   }
   else {
-    // only need last byte of r7 response
-    for (uint8_t i = 0; i < 4; i++) status_ = spiRec();
-    if (status_ != 0XAA) {
+    // only need last byte of r7 response (check pattern 0xAA)
+    for (uint8_t i = 0; i < 3; i++) (void)spiRec(); // discard first 3 bytes of R7
+    uint8_t r7_byte = spiRec();
+    if (r7_byte != 0xAA) {
       error(SD_CARD_ERROR_CMD8);
       goto fail;
     }
     type(SD_CARD_TYPE_SD2);
   }
   // initialize card and send host supports SDHC if SD2
-  arg = type() == SD_CARD_TYPE_SD2 ? 0X40000000 : 0;
+  arg = type() == SD_CARD_TYPE_SD2 ? 0x40000000 : 0;
 
   while ((status_ = cardAcmd(ACMD41, arg)) != R1_READY_STATE) {
     // check for timeout
@@ -356,7 +357,7 @@ bool Sd2Card::init(uint8_t sckRateID, uint8_t chipSelectPin) {
       error(SD_CARD_ERROR_CMD58);
       goto fail;
     }
-    if ((spiRec() & 0XC0) == 0XC0) type(SD_CARD_TYPE_SDHC);
+    if ((spiRec() & 0xC0) == 0xC0) type(SD_CARD_TYPE_SDHC);
     // discard rest of ocr - contains allowed voltage range
     for (uint8_t i = 0; i < 3; i++) spiRec();
   }
@@ -395,7 +396,7 @@ bool Sd2Card::readBlock(uint32_t blockNumber, uint8_t* dst) {
       else
         error(SD_CARD_ERROR_CMD17);
 
-      if (--retryCnt) break;
+      if (!--retryCnt) break;
 
       chipSelectHigh();
       cardCommand(CMD12, 0); // Try sending a stop command, ignore the result.
@@ -462,7 +463,7 @@ static const uint16_t crctab[] PROGMEM = {
 static uint16_t CRC_CCITT(const uint8_t* data, size_t n) {
   uint16_t crc = 0;
   for (size_t i = 0; i < n; i++) {
-    crc = pgm_read_word(&crctab[(crc >> 8 ^ data[i]) & 0XFF]) ^ (crc << 8);
+    crc = pgm_read_word(&crctab[(crc >> 8 ^ data[i]) & 0xFF]) ^ (crc << 8);
   }
   return crc;
 }
@@ -472,7 +473,7 @@ static uint16_t CRC_CCITT(const uint8_t* data, size_t n) {
 bool Sd2Card::readData(uint8_t* dst, uint16_t count) {
   // wait for start block token
   uint16_t t0 = millis();
-  while ((status_ = spiRec()) == 0XFF) {
+  while ((status_ = spiRec()) == 0xFF) {
     if (((uint16_t)millis() - t0) > SD_READ_TIMEOUT) {
       error(SD_CARD_ERROR_READ_TIMEOUT);
       goto fail;
@@ -488,7 +489,7 @@ bool Sd2Card::readData(uint8_t* dst, uint16_t count) {
 #if ENABLED(SD_CHECK_AND_RETRY)
   {
     uint16_t calcCrc = CRC_CCITT(dst, count);
-    uint16_t recvCrc = spiRec() << 8;
+    uint16_t recvCrc = (uint16_t)spiRec() << 8;
     recvCrc |= spiRec();
     if (calcCrc != recvCrc) {
       error(SD_CARD_ERROR_CRC);
@@ -502,12 +503,12 @@ bool Sd2Card::readData(uint8_t* dst, uint16_t count) {
 #endif
   chipSelectHigh();
   // Send an additional dummy byte, required by Toshiba Flash Air SD Card
-  spiSend(0XFF);
+  spiSend(0xFF);
   return true;
 fail:
   chipSelectHigh();
   // Send an additional dummy byte, required by Toshiba Flash Air SD Card
-  spiSend(0XFF);
+  spiSend(0xFF);
   return false;
 }
 //------------------------------------------------------------------------------
@@ -589,7 +590,7 @@ bool Sd2Card::setSckRate(uint8_t sckRateID) {
 // wait for card to go not busy
 bool Sd2Card::waitNotBusy(uint16_t timeoutMillis) {
   uint16_t t0 = millis();
-  while (spiRec() != 0XFF) {
+  while (spiRec() != 0xFF) {
     if (((uint16_t)millis() - t0) >= timeoutMillis) goto fail;
   }
   return true;
@@ -715,4 +716,4 @@ fail:
   return false;
 }
 
-#endif
+#endif  // SDSUPPORT

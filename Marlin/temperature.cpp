@@ -17,28 +17,7 @@
  *
  * You should have received a copy of the GNU General Public License
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
- *
  */
-
-/**
-  temperature.cpp - temperature control
-  Part of Marlin
-
- Copyright (C) 2011 Camiel Gubbels / Erik van der Zalm
-
- This program is free software: you can redistribute it and/or modify
- it under the terms of the GNU General Public License as published by
- the Free Software Foundation, either version 3 of the License, or
- (at your option) any later version.
-
- This program is distributed in the hope that it will be useful,
- but WITHOUT ANY WARRANTY; without even the implied warranty of
- MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- GNU General Public License for more details.
-
- You should have received a copy of the GNU General Public License
- along with this program.  If not, see <http://www.gnu.org/licenses/>.
-*/
 
 #include "Marlin.h"
 #include "temperature.h"
@@ -50,10 +29,10 @@
 #endif
 
 //===========================================================================
-//================================== macros =================================
+//================================== Macros =================================
 //===========================================================================
 
-#ifdef K1 // Defined in Configuration.h in the PID settings
+#ifdef K1
   #define K2 (1.0-K1)
 #endif
 
@@ -62,7 +41,7 @@
 #endif
 
 //===========================================================================
-//============================= public variables ============================
+//========================== Public Variables ================================
 //===========================================================================
 
 int target_temperature[4] = { 0 };
@@ -78,9 +57,9 @@ float current_temperature_bed = 0.0;
 
 #if ENABLED(PIDTEMPBED)
   float bedKp = DEFAULT_bedKp;
-  float bedKi = (DEFAULT_bedKi* PID_dT);
+  float bedKi = (DEFAULT_bedKi * PID_dT);
   float bedKd = (DEFAULT_bedKd / PID_dT);
-#endif //PIDTEMPBED
+#endif
 
 #if ENABLED(FAN_SOFT_PWM)
   unsigned char fanSpeedSoftPwm[FAN_COUNT];
@@ -110,13 +89,12 @@ unsigned char soft_pwm_bed;
 #endif
 
 //===========================================================================
-//============================ private variables ============================
+//========================== Private Variables ===============================
 //===========================================================================
 
 static volatile bool temp_meas_ready = false;
 
 #if ENABLED(PIDTEMP)
-  //static cannot be external:
   static float temp_iState[HOTENDS] = { 0 };
   static float temp_dState[HOTENDS] = { 0 };
   static float pTerm[HOTENDS];
@@ -128,26 +106,24 @@ static volatile bool temp_meas_ready = false;
     static long lpq[LPQ_MAX_LEN];
     static int lpq_ptr = 0;
   #endif
-  //int output;
   static float pid_error[HOTENDS];
   static float temp_iState_min[HOTENDS];
   static float temp_iState_max[HOTENDS];
   static bool pid_reset[HOTENDS];
-#endif //PIDTEMP
+#endif
+
 #if ENABLED(PIDTEMPBED)
-  //static cannot be external:
   static float temp_iState_bed = { 0 };
   static float temp_dState_bed = { 0 };
   static float pTerm_bed;
   static float iTerm_bed;
   static float dTerm_bed;
-  //int output;
   static float pid_error_bed;
   static float temp_iState_min_bed;
   static float temp_iState_max_bed;
-#else //PIDTEMPBED
-  static millis_t  next_bed_check_ms;
-#endif //PIDTEMPBED
+#else
+  static millis_t next_bed_check_ms;
+#endif
 static unsigned char soft_pwm[HOTENDS];
 
 #if ENABLED(FAN_SOFT_PWM)
@@ -164,16 +140,16 @@ static unsigned char soft_pwm[HOTENDS];
     float Kd[HOTENDS] = ARRAY_BY_HOTENDS1((DEFAULT_Kd) / (PID_dT));
     #if ENABLED(PID_ADD_EXTRUSION_RATE)
       float Kc[HOTENDS] = ARRAY_BY_HOTENDS1(DEFAULT_Kc);
-    #endif // PID_ADD_EXTRUSION_RATE
-  #else //PID_PARAMS_PER_HOTEND
+    #endif
+  #else
     float Kp = DEFAULT_Kp;
     float Ki = (DEFAULT_Ki) * (PID_dT);
     float Kd = (DEFAULT_Kd) / (PID_dT);
     #if ENABLED(PID_ADD_EXTRUSION_RATE)
       float Kc = DEFAULT_Kc;
-    #endif // PID_ADD_EXTRUSION_RATE
-  #endif // PID_PARAMS_PER_HOTEND
-#endif //PIDTEMP
+    #endif
+  #endif
+#endif
 
 // Init min and max temp with extreme values to prevent false errors during startup
 static int minttemp_raw[HOTENDS] = ARRAY_BY_HOTENDS(HEATER_0_RAW_LO_TEMP , HEATER_1_RAW_LO_TEMP , HEATER_2_RAW_LO_TEMP, HEATER_3_RAW_LO_TEMP);
@@ -360,22 +336,6 @@ static void updateTemperaturesFromRawValues();
                 SERIAL_PROTOCOLPGM(MSG_KP); SERIAL_PROTOCOLLN(workKp);
                 SERIAL_PROTOCOLPGM(MSG_KI); SERIAL_PROTOCOLLN(workKi);
                 SERIAL_PROTOCOLPGM(MSG_KD); SERIAL_PROTOCOLLN(workKd);
-                /**
-                workKp = 0.33*Ku;
-                workKi = workKp/Tu;
-                workKd = workKp*Tu/3;
-                SERIAL_PROTOCOLLNPGM(" Some overshoot ");
-                SERIAL_PROTOCOLPGM(" Kp: "); SERIAL_PROTOCOLLN(workKp);
-                SERIAL_PROTOCOLPGM(" Ki: "); SERIAL_PROTOCOLLN(workKi);
-                SERIAL_PROTOCOLPGM(" Kd: "); SERIAL_PROTOCOLLN(workKd);
-                workKp = 0.2*Ku;
-                workKi = 2*workKp/Tu;
-                workKd = workKp*Tu/3;
-                SERIAL_PROTOCOLLNPGM(" No overshoot ");
-                SERIAL_PROTOCOLPGM(" Kp: "); SERIAL_PROTOCOLLN(workKp);
-                SERIAL_PROTOCOLPGM(" Ki: "); SERIAL_PROTOCOLLN(workKi);
-                SERIAL_PROTOCOLPGM(" Kd: "); SERIAL_PROTOCOLLN(workKd);
-                */
               }
             }
             #if HAS_PID_FOR_BOTH
@@ -462,7 +422,7 @@ static void updateTemperaturesFromRawValues();
     }
   }
 
-#endif // PIDTEMP
+#endif // HAS_PID_HEATING
 
 void updatePID() {
   #if ENABLED(PIDTEMP)
@@ -486,7 +446,6 @@ int getHeaterPower(int heater) {
 
 void setExtruderAutoFanState(int pin, bool state) {
   unsigned char newFanSpeed = (state != 0) ? EXTRUDER_AUTO_FAN_SPEED : 0;
-  // this idiom allows both digital and PWM fan outputs (see M42 handling).
   digitalWrite(pin, newFanSpeed);
   analogWrite(pin, newFanSpeed);
 }
@@ -494,7 +453,6 @@ void setExtruderAutoFanState(int pin, bool state) {
 void checkExtruderAutoFans() {
   uint8_t fanState = 0;
 
-  // which fan pins need to be turned on?
   #if HAS_AUTO_FAN_0
     if (current_temperature[0] > EXTRUDER_AUTO_FAN_TEMPERATURE)
       fanState |= 1;
@@ -530,7 +488,6 @@ void checkExtruderAutoFans() {
     }
   #endif
 
-  // update extruder auto fan states
   #if HAS_AUTO_FAN_0
     setExtruderAutoFanState(EXTRUDER_0_AUTO_FAN_PIN, (fanState & 1) != 0);
   #endif
@@ -625,7 +582,7 @@ float get_pid_output(int e) {
             cTerm[HOTEND_INDEX] = (lpq[lpq_ptr] / axis_steps_per_unit[E_AXIS]) * PID_PARAM(Kc, HOTEND_INDEX);
             pid_output += cTerm[HOTEND_INDEX];
           }
-        #endif //PID_ADD_EXTRUSION_RATE
+        #endif
 
         if (pid_output > PID_MAX) {
           if (pid_error[HOTEND_INDEX] > 0) temp_iState[HOTEND_INDEX] -= pid_error[HOTEND_INDEX]; // conditional un-integration
@@ -638,7 +595,7 @@ float get_pid_output(int e) {
       }
     #else
       pid_output = constrain(target_temperature[HOTEND_INDEX], 0, PID_MAX);
-    #endif //PID_OPENLOOP
+    #endif
 
     #if ENABLED(PID_DEBUG)
       SERIAL_ECHO_START;
@@ -652,7 +609,7 @@ float get_pid_output(int e) {
         SERIAL_ECHOPAIR(MSG_PID_DEBUG_CTERM, cTerm[HOTEND_INDEX]);
       #endif
       SERIAL_EOL;
-    #endif //PID_DEBUG
+    #endif
 
   #else /* PID off */
     pid_output = (current_temperature[HOTEND_INDEX] < target_temperature[HOTEND_INDEX]) ? PID_MAX : 0;
@@ -700,18 +657,18 @@ float get_pid_output(int e) {
       SERIAL_ECHO(iTerm_bed);
       SERIAL_ECHO(" dTerm ");
       SERIAL_ECHOLN(dTerm_bed);
-    #endif //PID_BED_DEBUG
+    #endif
 
     return pid_output;
   }
-#endif //PIDTEMPBED
+#endif // PIDTEMPBED
 
 /**
  * Manage heating activities for extruder hot-ends and a heated bed
  *  - Acquire updated temperature readings
  *  - Invoke thermal runaway protection
  *  - Manage extruder auto-fan
- *  - Apply filament width to the extrusion rate (may move)
+ *  - Apply filament width to the extrusion rate
  *  - Update the heated bed PID output value
  */
 void manage_heater() {
@@ -775,20 +732,18 @@ void manage_heater() {
     }
   #endif
 
-  // Control the extruder rate based on the width sensor
   #if ENABLED(FILAMENT_WIDTH_SENSOR)
     if (filament_sensor) {
       meas_shift_index = filwidth_delay_index1 - meas_delay_cm;
-      if (meas_shift_index < 0) meas_shift_index += MAX_MEASUREMENT_DELAY + 1;  //loop around buffer if needed
+      if (meas_shift_index < 0) meas_shift_index += MAX_MEASUREMENT_DELAY + 1;
 
-      // Get the delayed info and add 100 to reconstitute to a percent of
-      // the nominal filament diameter then square it to get an area
+      // Reconstitute to a percent of the nominal diameter then square for area
       meas_shift_index = constrain(meas_shift_index, 0, MAX_MEASUREMENT_DELAY);
       float vm = pow((measurement_delay[meas_shift_index] + 100.0) / 100.0, 2);
       NOLESS(vm, 0.01);
       volumetric_multiplier[FILAMENT_SENSOR_EXTRUDER_NUM] = vm;
     }
-  #endif //FILAMENT_WIDTH_SENSOR
+  #endif
 
   #if DISABLED(PIDTEMPBED)
     if (PENDING(ms, next_bed_check_ms)) return;
@@ -828,25 +783,22 @@ void manage_heater() {
         WRITE_HEATER_BED(LOW);
       }
     #endif
-  #endif //TEMP_SENSOR_BED != 0
+  #endif
 }
 
-#define PGM_RD_W(x)   (short)pgm_read_word(&x)
-// Derived from RepRap FiveD extruder::getTemperature()
-// For hot end temperature measurement.
+#define PGM_RD_W(x) (short)pgm_read_word(&x)
+
+// Convert raw ADC reading to temperature for hot end
 static float analog2temp(int raw, uint8_t e) {
-  #if ENABLED(TEMP_SENSOR_1_AS_REDUNDANT)
-    if (e > HOTENDS)
-  #else
-    if (e >= HOTENDS)
-  #endif
-    {
-      SERIAL_ERROR_START;
-      SERIAL_ERROR((int)e);
-      SERIAL_ERRORLNPGM(MSG_INVALID_EXTRUDER_NUM);
-      kill(PSTR(MSG_KILLED));
-      return 0.0;
-    }
+  // TEMP_SENSOR_1_AS_REDUNDANT uses a second lookup table for the redundant sensor,
+  // so validate against the actual table-map size instead of HOTENDS.
+  if (e >= COUNT(heater_ttbl_map)) {
+    SERIAL_ERROR_START;
+    SERIAL_ERROR((int)e);
+    SERIAL_ERRORLNPGM(MSG_INVALID_EXTRUDER_NUM);
+    kill(PSTR(MSG_KILLED));
+    return 0.0;
+  }
 
   #if ENABLED(HEATER_0_USES_MAX6675)
     if (e == 0) return 0.25 * raw;
@@ -875,8 +827,7 @@ static float analog2temp(int raw, uint8_t e) {
   return ((raw * ((5.0 * 100.0) / 1024.0) / OVERSAMPLENR) * (TEMP_SENSOR_AD595_GAIN)) + TEMP_SENSOR_AD595_OFFSET;
 }
 
-// Derived from RepRap FiveD extruder::getTemperature()
-// For bed temperature measurement.
+// Convert raw ADC reading to temperature for bed
 static float analog2tempBed(int raw) {
   #if ENABLED(BED_USES_THERMISTOR)
     float celsius = 0;
@@ -884,33 +835,31 @@ static float analog2tempBed(int raw) {
 
     for (i = 1; i < BEDTEMPTABLE_LEN; i++) {
       if (PGM_RD_W(BEDTEMPTABLE[i][0]) > raw) {
-        celsius  = PGM_RD_W(BEDTEMPTABLE[i - 1][1]) +
-                   (raw - PGM_RD_W(BEDTEMPTABLE[i - 1][0])) *
-                   (float)(PGM_RD_W(BEDTEMPTABLE[i][1]) - PGM_RD_W(BEDTEMPTABLE[i - 1][1])) /
-                   (float)(PGM_RD_W(BEDTEMPTABLE[i][0]) - PGM_RD_W(BEDTEMPTABLE[i - 1][0]));
+        celsius = PGM_RD_W(BEDTEMPTABLE[i - 1][1]) +
+                  (raw - PGM_RD_W(BEDTEMPTABLE[i - 1][0])) *
+                  (float)(PGM_RD_W(BEDTEMPTABLE[i][1]) - PGM_RD_W(BEDTEMPTABLE[i - 1][1])) /
+                  (float)(PGM_RD_W(BEDTEMPTABLE[i][0]) - PGM_RD_W(BEDTEMPTABLE[i - 1][0]));
         break;
       }
     }
 
-    // Overflow: Set to last value in the table
     if (i == BEDTEMPTABLE_LEN) celsius = PGM_RD_W(BEDTEMPTABLE[i - 1][1]);
-
     return celsius;
 
   #elif defined(BED_USES_AD595)
-
     return ((raw * ((5.0 * 100.0) / 1024.0) / OVERSAMPLENR) * (TEMP_SENSOR_AD595_GAIN)) + TEMP_SENSOR_AD595_OFFSET;
 
   #else
-
     UNUSED(raw);
     return 0;
 
   #endif
 }
 
-/* Called to get the raw values into the the actual temperatures. The raw values are created in interrupt context,
-    and this function is called from normal context as it is too slow to run in interrupts and will block the stepper routine otherwise */
+/**
+ * Convert raw ADC values to actual temperatures.
+ * Called from normal context (too slow for ISR).
+ */
 static void updateTemperaturesFromRawValues() {
   #if ENABLED(HEATER_0_USES_MAX6675)
     current_temperature_raw[0] = read_max6675();
@@ -927,7 +876,6 @@ static void updateTemperaturesFromRawValues() {
   #endif
 
   #if ENABLED(USE_WATCHDOG)
-    // Reset the watchdog after we know we have a temperature measurement.
     watchdog_reset();
   #endif
 
@@ -939,16 +887,13 @@ static void updateTemperaturesFromRawValues() {
 
 #if ENABLED(FILAMENT_WIDTH_SENSOR)
 
-  // Convert raw Filament Width to millimeters
   float analog2widthFil() {
     return current_raw_filwidth / 16383.0 * 5.0;
-    //return current_raw_filwidth;
   }
 
-  // Convert raw Filament Width to a ratio
   int widthFil_to_size_ratio() {
     float temp = filament_width_meas;
-    if (temp < MEASURED_LOWER_LIMIT) temp = filament_width_nominal;  //assume sensor cut out
+    if (temp < MEASURED_LOWER_LIMIT) temp = filament_width_nominal;
     else NOMORE(temp, MEASURED_UPPER_LIMIT);
     return filament_width_nominal / temp * 100;
   }
@@ -969,7 +914,6 @@ void tp_init() {
 
   // Finish init of mult hotends arrays
   for (int e = 0; e < HOTENDS; e++) {
-    // populate with the first value
     maxttemp[e] = maxttemp[0];
     #if ENABLED(PIDTEMP)
       temp_iState_min[e] = 0.0;
@@ -977,11 +921,11 @@ void tp_init() {
       #if ENABLED(PID_ADD_EXTRUSION_RATE)
         last_position[e] = 0;
       #endif
-    #endif //PIDTEMP
+    #endif
     #if ENABLED(PIDTEMPBED)
       temp_iState_min_bed = 0.0;
       temp_iState_max_bed = (PID_BED_INTEGRAL_DRIVE_MAX) / bedKi;
-    #endif //PIDTEMPBED
+    #endif
   }
 
   #if HAS_HEATER_0
@@ -1047,15 +991,13 @@ void tp_init() {
 
     OUT_WRITE(MAX6675_SS, HIGH);
 
-  #endif //HEATER_0_USES_MAX6675
+  #endif
 
   #ifdef DIDR2
     #define ANALOG_SELECT(pin) do{ if (pin < 8) SBI(DIDR0, pin); else SBI(DIDR2, pin - 8); }while(0)
   #else
     #define ANALOG_SELECT(pin) do{ SBI(DIDR0, pin); }while(0)
   #endif
-
-  // Set analog inputs
   ADCSRA = _BV(ADEN) | _BV(ADSC) | _BV(ADIF) | 0x07;
   DIDR0 = 0;
   #ifdef DIDR2
@@ -1096,8 +1038,7 @@ void tp_init() {
     pinMode(EXTRUDER_3_AUTO_FAN_PIN, OUTPUT);
   #endif
 
-  // Use timer0 for temperature measurement
-  // Interleave temperature interrupt with millies interrupt
+  // Use timer0 for temperature measurement (interleaved with millis interrupt)
   OCR0B = 128;
   SBI(TIMSK0, OCIE0B);
 
@@ -1160,7 +1101,7 @@ void tp_init() {
         bed_minttemp_raw -= OVERSAMPLENR;
       #endif
     }
-  #endif //BED_MINTEMP
+  #endif
   #ifdef BED_MAXTEMP
     while (analog2tempBed(bed_maxttemp_raw) > BED_MAXTEMP) {
       #if HEATER_BED_RAW_LO_TEMP < HEATER_BED_RAW_HI_TEMP
@@ -1169,7 +1110,7 @@ void tp_init() {
         bed_maxttemp_raw += OVERSAMPLENR;
       #endif
     }
-  #endif //BED_MAXTEMP
+  #endif
 }
 
 #if ENABLED(THERMAL_PROTECTION_HOTENDS)
@@ -1193,21 +1134,6 @@ void tp_init() {
   void thermal_runaway_protection(TRState* state, millis_t* timer, float temperature, float target_temperature, int heater_id, int period_seconds, int hysteresis_degc) {
 
     static float tr_target_temperature[HOTENDS + 1] = { 0.0 };
-
-    /**
-        SERIAL_ECHO_START;
-        SERIAL_ECHOPGM("Thermal Thermal Runaway Running. Heater ID: ");
-        if (heater_id < 0) SERIAL_ECHOPGM("bed"); else SERIAL_ECHOPGM(heater_id);
-        SERIAL_ECHOPGM(" ;  State:");
-        SERIAL_ECHOPGM(*state);
-        SERIAL_ECHOPGM(" ;  Timer:");
-        SERIAL_ECHOPGM(*timer);
-        SERIAL_ECHOPGM(" ;  Temperature:");
-        SERIAL_ECHOPGM(temperature);
-        SERIAL_ECHOPGM(" ;  Target Temp:");
-        SERIAL_ECHOPGM(target_temperature);
-        SERIAL_EOL;
-    */
 
     int heater_index = heater_id >= 0 ? heater_id : HOTENDS;
 
@@ -1250,7 +1176,6 @@ void disable_all_heaters() {
   for (int i = 0; i < HOTENDS; i++) setTargetHotend(0, i);
   setTargetBed(0);
 
-  // If all heaters go down then for sure our print job has stopped
   print_job_timer.stop();
 
   #define DISABLE_HEATER(NR) { \
@@ -1262,7 +1187,7 @@ void disable_all_heaters() {
   #if HAS_TEMP_HOTEND
     setTargetHotend(0, 0);
     soft_pwm[0] = 0;
-    WRITE_HEATER_0P(LOW); // Should HEATERS_PARALLEL apply here? Then change to DISABLE_HEATER(0)
+    WRITE_HEATER_0P(LOW);
   #endif
 
   #if HOTENDS > 1 && HAS_TEMP_1
@@ -1344,7 +1269,7 @@ void disable_all_heaters() {
     return (int)max6675_temp;
   }
 
-#endif //HEATER_0_USES_MAX6675
+#endif
 
 /**
  * Stages in the ISR loop
@@ -1389,7 +1314,7 @@ static void set_current_temp_raw() {
   temp_meas_ready = true;
 }
 
-#if ENABLED( Z_MIN_MAGIC )
+#if ENABLED(Z_MIN_MAGIC)
   float z_magic_threshold = Z_MAGIC_THRESHOLD;
   bool enable_z_magic_probe = false;
   bool enable_z_magic_tap = false;
@@ -1403,11 +1328,11 @@ static void set_current_temp_raw() {
     constexpr millis_t z_magic_calibration_rearm = 100UL;
   #endif
 
-  float z_magic_raw_value = 0; // Extern
-  float z_magic_previous = 0; // Extern
-  float z_magic_bias = 0; // Extern
-  float z_magic_bias_delta = 0; // Extern
-  bool z_magic_hit_flag = false; // Extern
+  float z_magic_raw_value = 0;
+  float z_magic_previous = 0;
+  float z_magic_bias = 0;
+  float z_magic_bias_delta = 0;
+  bool z_magic_hit_flag = false;
 
   #if DISABLED(LONG_PRESS_SUPPORT)
     millis_t z_magic_calibration_timeout;
@@ -1423,7 +1348,7 @@ static void set_current_temp_raw() {
     z_magic_hit_flag = false;
   }
 
-  inline void update_z_magic( ) {
+  inline void update_z_magic() {
     #if DISABLED(LONG_PRESS_SUPPORT)
       millis_t now = millis();
     #endif
@@ -1449,12 +1374,12 @@ static void set_current_temp_raw() {
     z_magic_bias_delta += z_magic_bias;
 
     #if ENABLED(LONG_PRESS_SUPPORT)
-      // FIX: Old Neva does not support bias accumulator detection
+      // FIX: Old board does not support bias accumulator detection
       if (!z_magic_hit_flag && z_magic_bias_delta < -fabsf(z_magic_threshold)) {
         z_magic_hit_flag = true;
       }
     #else
-      // FIX: Should work on both Magis and old Neva
+      // FIX: Should work on both board variants
       if (!z_magic_hit_flag && (z_magic_bias < -z_magic_bias_hit_threshold || fabsf(z_magic_bias_delta) > z_magic_bias_delta_hit_threshold)) {
         z_magic_hit_flag = true;
       }
@@ -1474,7 +1399,7 @@ static void set_current_temp_raw() {
 #endif
 
 /**
- * Timer 0 is shared with millies
+ * Timer 0 ISR (shared with millis)
  *  - Manage PWM to all the heaters and fan
  *  - Update the raw temperature values
  *  - Check new temperature values for MIN/MAX errors
@@ -1686,23 +1611,21 @@ ISR(TIMER0_COMPB_vect) {
       #if HAS_FAN2
         if (soft_pwm_fan[2] < pwm_count) WRITE_FAN2(0);
       #endif
-    #endif //FAN_SOFT_PWM
+    #endif
 
     pwm_count += _BV(SOFT_PWM_SCALE);
     pwm_count &= 0x7f;
 
-    // increment slow_pwm_count only every 64 pwm_count circa 65.5ms
     if ((pwm_count % 64) == 0) {
       slow_pwm_count++;
       slow_pwm_count &= 0x7f;
 
-      // EXTRUDER 0
       if (state_timer_heater_0 > 0) state_timer_heater_0--;
-      #if HOTENDS > 1    // EXTRUDER 1
+      #if HOTENDS > 1
         if (state_timer_heater_1 > 0) state_timer_heater_1--;
-        #if HOTENDS > 2    // EXTRUDER 2
+        #if HOTENDS > 2
           if (state_timer_heater_2 > 0) state_timer_heater_2--;
-          #if HOTENDS > 3    // EXTRUDER 3
+          #if HOTENDS > 3
             if (state_timer_heater_3 > 0) state_timer_heater_3--;
           #endif
         #endif
@@ -1741,7 +1664,7 @@ ISR(TIMER0_COMPB_vect) {
         START_ADC(TEMP_BED_PIN);
       #endif
       temp_state = MeasureTemp_BED;
-      #if ENABLED( Z_MIN_MAGIC )
+      #if ENABLED(Z_MIN_MAGIC)
         START_ADC(15);
       #endif
       break;
@@ -1750,7 +1673,7 @@ ISR(TIMER0_COMPB_vect) {
         raw_temp_bed_value += ADC;
       #endif
       temp_state = PrepareTemp_1;
-      #if ENABLED( Z_MIN_MAGIC )
+      #if ENABLED(Z_MIN_MAGIC)
         update_z_magic();
       #endif
       break;
@@ -1760,18 +1683,12 @@ ISR(TIMER0_COMPB_vect) {
         START_ADC(TEMP_1_PIN);
       #endif
       temp_state = MeasureTemp_1;
-      // #if ENABLED( Z_MIN_MAGIC )
-      //   START_ADC(15);
-      // #endif
       break;
     case MeasureTemp_1:
       #if HAS_TEMP_1
         raw_temp_value[1] += ADC;
       #endif
       temp_state = PrepareTemp_2;
-      // #if ENABLED( Z_MIN_MAGIC )
-      //   update_z_magic();
-      // #endif
       break;
 
     case PrepareTemp_2:
@@ -1779,7 +1696,7 @@ ISR(TIMER0_COMPB_vect) {
         START_ADC(TEMP_2_PIN);
       #endif
       temp_state = MeasureTemp_2;
-      #if ENABLED( Z_MIN_MAGIC )
+      #if ENABLED(Z_MIN_MAGIC)
         START_ADC(15);
       #endif
       break;
@@ -1788,7 +1705,7 @@ ISR(TIMER0_COMPB_vect) {
         raw_temp_value[2] += ADC;
       #endif
       temp_state = PrepareTemp_3;
-      #if ENABLED( Z_MIN_MAGIC )
+      #if ENABLED(Z_MIN_MAGIC)
         update_z_magic();
       #endif
       break;
@@ -1798,18 +1715,12 @@ ISR(TIMER0_COMPB_vect) {
         START_ADC(TEMP_3_PIN);
       #endif
       temp_state = MeasureTemp_3;
-      // #if ENABLED( Z_MIN_MAGIC )
-      //   START_ADC(15);
-      // #endif
       break;
     case MeasureTemp_3:
       #if HAS_TEMP_3
         raw_temp_value[3] += ADC;
       #endif
       temp_state = Prepare_FILWIDTH;
-      // #if ENABLED( Z_MIN_MAGIC )
-      //   update_z_magic();
-      // #endif
       break;
 
     case Prepare_FILWIDTH:
@@ -1817,21 +1728,20 @@ ISR(TIMER0_COMPB_vect) {
         START_ADC(FILWIDTH_PIN);
       #endif
       temp_state = Measure_FILWIDTH;
-      #if ENABLED( Z_MIN_MAGIC )
+      #if ENABLED(Z_MIN_MAGIC)
         START_ADC(15);
       #endif
       break;
     case Measure_FILWIDTH:
       #if ENABLED(FILAMENT_WIDTH_SENSOR)
-        // raw_filwidth_value += ADC;  //remove to use an IIR filter approach
-        if (ADC > 102) { //check that ADC is reading a voltage > 0.5 volts, otherwise don't take in the data.
-          raw_filwidth_value -= (raw_filwidth_value >> 7); //multiply raw_filwidth_value by 127/128
-          raw_filwidth_value += ((unsigned long)ADC << 7); //add new ADC reading
+        if (ADC > 102) { // Only accept readings above 0.5V
+          raw_filwidth_value -= (raw_filwidth_value >> 7);  // IIR filter: multiply by 127/128
+          raw_filwidth_value += ((unsigned long)ADC << 7);  // Add new ADC reading
         }
       #endif
       temp_state = PrepareTemp_0;
       temp_count++;
-      #if ENABLED( Z_MIN_MAGIC )
+      #if ENABLED(Z_MIN_MAGIC)
         update_z_magic();
       #endif
       break;
@@ -1839,20 +1749,13 @@ ISR(TIMER0_COMPB_vect) {
     case StartupDelay:
       temp_state = PrepareTemp_0;
       break;
-
-    // default:
-    //   SERIAL_ERROR_START;
-    //   SERIAL_ERRORLNPGM("Temp measurement error!");
-    //   break;
   } // switch(temp_state)
 
-  if (temp_count >= OVERSAMPLENR) { // 10 * 16 * 1/(16000000/64/256)  = 164ms.
-    // Update the raw values if they've been read. Else we could be updating them during reading.
+  if (temp_count >= OVERSAMPLENR) {
     if (!temp_meas_ready) set_current_temp_raw();
 
-    // Filament Sensor - can be read any time since IIR filtering is used
     #if ENABLED(FILAMENT_WIDTH_SENSOR)
-      current_raw_filwidth = raw_filwidth_value >> 10;  // Divide to get to 0-16384 range since we used 1/128 IIR filter approach
+      current_raw_filwidth = raw_filwidth_value >> 10;
     #endif
 
     temp_count = 0;
@@ -1877,7 +1780,7 @@ ISR(TIMER0_COMPB_vect) {
       #endif
       if (current_temperature_raw[1] GE1 maxttemp_raw[1]) max_temp_error(1);
       if (minttemp_raw[1] GE1 current_temperature_raw[1]) min_temp_error(1);
-    #endif // TEMP_SENSOR_1
+    #endif
 
     #if HAS_TEMP_2 && HOTENDS > 2
       #if HEATER_2_RAW_LO_TEMP > HEATER_2_RAW_HI_TEMP
@@ -1887,7 +1790,7 @@ ISR(TIMER0_COMPB_vect) {
       #endif
       if (current_temperature_raw[2] GE2 maxttemp_raw[2]) max_temp_error(2);
       if (minttemp_raw[2] GE2 current_temperature_raw[2]) min_temp_error(2);
-    #endif // TEMP_SENSOR_2
+    #endif
 
     #if HAS_TEMP_3 && HOTENDS > 3
       #if HEATER_3_RAW_LO_TEMP > HEATER_3_RAW_HI_TEMP
@@ -1897,7 +1800,7 @@ ISR(TIMER0_COMPB_vect) {
       #endif
       if (current_temperature_raw[3] GE3 maxttemp_raw[3]) max_temp_error(3);
       if (minttemp_raw[3] GE3 current_temperature_raw[3]) min_temp_error(3);
-    #endif // TEMP_SENSOR_3
+    #endif
 
     #if HAS_TEMP_BED
       #if HEATER_BED_RAW_LO_TEMP > HEATER_BED_RAW_HI_TEMP
@@ -1913,24 +1816,22 @@ ISR(TIMER0_COMPB_vect) {
 
   #if ENABLED(BABYSTEPPING)
     for (uint8_t axis = X_AXIS; axis <= Z_AXIS; axis++) {
-      int curTodo = babystepsTodo[axis]; //get rid of volatile for performance
-
+      int curTodo = babystepsTodo[axis];
       if (curTodo > 0) {
-        babystep(axis,/*fwd*/true);
-        babystepsTodo[axis]--; //fewer to do next time
+        babystep(axis, true);
+        babystepsTodo[axis]--;
       }
       else if (curTodo < 0) {
-        babystep(axis,/*fwd*/false);
-        babystepsTodo[axis]++; //fewer to do next time
+        babystep(axis, false);
+        babystepsTodo[axis]++;
       }
     }
-  #endif //BABYSTEPPING
+  #endif
 }
 
 #if ENABLED(PIDTEMP)
-  // Apply the scale factors to the PID values
   float scalePID_i(float i)   { return i * PID_dT; }
   float unscalePID_i(float i) { return i / PID_dT; }
   float scalePID_d(float d)   { return d / PID_dT; }
   float unscalePID_d(float d) { return d * PID_dT; }
-#endif //PIDTEMP
+#endif

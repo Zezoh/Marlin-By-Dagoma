@@ -60,7 +60,7 @@
  * has a distinct Github fork - the Source Code URL should just be the main
  * Marlin repository.
  */
-#define SOURCE_CODE_URL "https://github.com/dagoma3d/Marlin-By-Dagoma"
+#define SOURCE_CODE_URL "https://github.com/MarlinFirmware/Marlin"
 
 /**
  * Default generic printer UUID.
@@ -71,4 +71,4 @@
  * The WEBSITE_URL is the location where users can get more information such as
  * documentation about a specific Marlin release.
  */
-#define WEBSITE_URL "https://www.dagoma3d.com"
+#define WEBSITE_URL "http://marlinfw.org"

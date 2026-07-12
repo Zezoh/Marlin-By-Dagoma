@@ -85,17 +85,18 @@ void CardReader::lsDive(const char *prepend, SdFile parent, const char * const m
       char lfilename[FILENAME_LENGTH];
       createFilename(lfilename, p);
 
-      // Allocate enough stack space for the full path to a folder, trailing slash, and nul
-      boolean prepend_is_empty = (prepend[0] == '\0');
-      int len = (prepend_is_empty ? 1 : strlen(prepend)) + strlen(lfilename) + 1 + 1;
-      char path[len];
+      // Use fixed-size buffer for the full path to a folder, trailing slash, and nul
+      char path[MAXPATHNAMELENGTH];
+      bool prepend_is_empty = (prepend[0] == '\0');
 
       // Append the FOLDERNAME12/ to the passed string.
       // It contains the full path to the "parent" argument.
       // We now have the full path to the item in this folder.
-      strcpy(path, prepend_is_empty ? "/" : prepend); // root slash if prepend is empty
-      strcat(path, lfilename); // FILENAME_LENGTH-1 characters maximum
-      strcat(path, "/");       // 1 character
+      path[0] = '\0';
+      strncat(path, prepend_is_empty ? "/" : prepend, MAXPATHNAMELENGTH - 1);
+      strncat(path, lfilename, MAXPATHNAMELENGTH - strlen(path) - 1);
+      strncat(path, "/", MAXPATHNAMELENGTH - strlen(path) - 1);
+      path[MAXPATHNAMELENGTH - 1] = '\0'; // ensure null-termination
 
       // Serial.print(path);
 
@@ -486,15 +487,21 @@ void CardReader::getStatus() {
 }
 
 void CardReader::write_command(char *buf) {
+  if (buf == NULL || buf[0] == '\0') return;
   char* begin = buf;
   char* npos = 0;
   char* end = buf + strlen(buf) - 1;
 
   file.writeError = false;
   if ((npos = strchr(buf, 'N')) != NULL) {
-    begin = strchr(npos, ' ') + 1;
-    end = strchr(npos, '*') - 1;
+    char* space_pos = strchr(npos, ' ');
+    char* star_pos = strchr(npos, '*');
+    if (space_pos != NULL && star_pos != NULL) {
+      begin = space_pos + 1;
+      end = star_pos - 1;
+    }
   }
+  if (end == NULL || end < buf) return; // safety: abort if end is invalid
   end[1] = '\r';
   end[2] = '\n';
   end[3] = '\0';
@@ -556,11 +563,7 @@ void CardReader::checkautostart(bool force) {
   #endif
 
   char autoname[10];
-  #if ENABLED(DISABLE_DAGAUTO_START)
-    sprintf_P(autoname, PSTR("auto%i.g"), autostart_index);
-  #else
-    sprintf_P(autoname, PSTR("dagoma%i.g"), autostart_index);
-  #endif
+  sprintf_P(autoname, PSTR("auto%i.g"), autostart_index);
   for (int8_t i = 0; i < (int8_t)strlen(autoname); i++) autoname[i] = tolower(autoname[i]);
 
   dir_t p;
@@ -570,11 +573,7 @@ void CardReader::checkautostart(bool force) {
   bool found = false;
   while (root.readDir(p, NULL) > 0) {
     for (int8_t i = 0; i < (int8_t)strlen((char*)p.name); i++) p.name[i] = tolower(p.name[i]);
-      #if ENABLED(DISABLE_DAGAUTO_START)
         if (p.name[9] != '~' && strncmp((char*)p.name, autoname, 5) == 0) {
-      #else
-        if (p.name[9] != '~' && strncmp((char*)p.name, autoname, 7) == 0) {
-      #endif
           openAndPrintFile(autoname);
           found = true;
         }
@@ -707,4 +706,4 @@ void CardReader::printingHasFinished() {
   }
 }
 
-#endif //SDSUPPORT
+#endif  // SDSUPPORT

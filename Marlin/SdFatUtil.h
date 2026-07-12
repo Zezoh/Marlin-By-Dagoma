@@ -35,7 +35,6 @@
  * \file
  * \brief Useful utility functions.
  */
-#include "Marlin.h"
 #include "MarlinSerial.h"
 /** Store and print a string in flash memory.*/
 #define PgmPrint(x) SerialPrint_P(PSTR(x))
@@ -51,7 +50,5 @@ namespace SdFatUtil {
 }
 
 using namespace SdFatUtil;  // NOLINT
-#endif  //#define SdFatUtil_h
-
-
-#endif
+#endif  // SdFatUtil_h
+#endif  // SDSUPPORT

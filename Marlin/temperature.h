@@ -17,28 +17,7 @@
  *
  * You should have received a copy of the GNU General Public License
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
- *
  */
-
-/**
-  temperature.h - temperature controller
-  Part of Marlin
-
-  Copyright (c) 2011 Erik van der Zalm
-
-  Grbl is free software: you can redistribute it and/or modify
-  it under the terms of the GNU General Public License as published by
-  the Free Software Foundation, either version 3 of the License, or
-  (at your option) any later version.
-
-  Grbl is distributed in the hope that it will be useful,
-  but WITHOUT ANY WARRANTY; without even the implied warranty of
-  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-  GNU General Public License for more details.
-
-  You should have received a copy of the GNU General Public License
-  along with Grbl.  If not, see <http://www.gnu.org/licenses/>.
-*/
 
 #ifndef TEMPERATURE_H
 #define TEMPERATURE_H
@@ -49,26 +28,22 @@
   #include "stepper.h"
 #endif
 
-// public functions
-void tp_init();  //initialize the heating
-void manage_heater(); //it is critical that this is called periodically.
+// Public interface
+void tp_init();
+void manage_heater();
 
 #if ENABLED(FILAMENT_WIDTH_SENSOR)
-  // For converting raw Filament Width to milimeters
   float analog2widthFil();
-
-  // For converting raw Filament Width to an extrusion ratio
   int widthFil_to_size_ratio();
 #endif
 
 #if HOTENDS == 1
-  #define HOTEND_INDEX  0
+  #define HOTEND_INDEX 0
 #else
-  #define HOTEND_INDEX  e
+  #define HOTEND_INDEX e
 #endif
 
-// low level conversion routines
-// do not use these routines and variables outside of temperature.cpp
+// Temperature state variables
 extern int target_temperature[4];
 extern float current_temperature[4];
 #if ENABLED(SHOW_TEMP_ADC_VALUES)
@@ -85,26 +60,25 @@ extern float current_temperature_bed;
   extern unsigned char soft_pwm_bed;
 #endif
 
+// PID parameters
 #if ENABLED(PIDTEMP)
-
   #if ENABLED(PID_PARAMS_PER_HOTEND)
-    extern float Kp[HOTENDS], Ki[HOTENDS], Kd[HOTENDS];  // one param per hotend
+    extern float Kp[HOTENDS], Ki[HOTENDS], Kd[HOTENDS];
     #if ENABLED(PID_ADD_EXTRUSION_RATE)
       extern float Kc[HOTENDS];
     #endif
-    #define PID_PARAM(param, e) param[e] // use macro to point to array value
+    #define PID_PARAM(param, e) param[e]
   #else
-    extern float Kp, Ki, Kd;  // one param per hotend - saves 20 or 36 bytes of ram (inc array pointer)
+    extern float Kp, Ki, Kd;
     #if ENABLED(PID_ADD_EXTRUSION_RATE)
       extern float Kc;
     #endif
-    #define PID_PARAM(param, e) param // use macro to point directly to value
-  #endif // PID_PARAMS_PER_HOTEND
+    #define PID_PARAM(param, e) param
+  #endif
   float scalePID_i(float i);
   float scalePID_d(float d);
   float unscalePID_i(float i);
   float unscalePID_d(float d);
-
 #endif
 
 #if ENABLED(PIDTEMPBED)
@@ -115,16 +89,13 @@ extern float current_temperature_bed;
   extern volatile int babystepsTodo[3];
 #endif
 
-//high level conversion routines, for use outside of temperature.cpp
-//inline so that there is no performance decrease.
-//deg=degreeCelsius
-
+// Inline temperature accessors (degrees Celsius)
 FORCE_INLINE float degHotend(uint8_t e) { return current_temperature[HOTEND_INDEX]; }
 FORCE_INLINE float degBed() { return current_temperature_bed; }
 
 #if ENABLED(SHOW_TEMP_ADC_VALUES)
-FORCE_INLINE float rawHotendTemp(uint8_t e) { return current_temperature_raw[HOTEND_INDEX]; }
-FORCE_INLINE float rawBedTemp() { return current_temperature_bed_raw; }
+  FORCE_INLINE float rawHotendTemp(uint8_t e) { return current_temperature_raw[HOTEND_INDEX]; }
+  FORCE_INLINE float rawBedTemp() { return current_temperature_bed_raw; }
 #endif
 
 FORCE_INLINE float degTargetHotend(uint8_t e) { return target_temperature[HOTEND_INDEX]; }
@@ -152,6 +123,7 @@ FORCE_INLINE bool isCoolingHotend(uint8_t e) {
 }
 FORCE_INLINE bool isCoolingBed() { return target_temperature_bed < current_temperature_bed; }
 
+// Per-hotend convenience routines
 #define HOTEND_ROUTINES(NR) \
   FORCE_INLINE float degHotend##NR() { return degHotend(NR); } \
   FORCE_INLINE float degTargetHotend##NR() { return degTargetHotend(NR); } \
@@ -196,7 +168,8 @@ FORCE_INLINE void autotempShutdown() {
   #endif
 }
 
-#if ENABLED( Z_MIN_MAGIC )
+// Z-probe magic (piezo-based bed leveling)
+#if ENABLED(Z_MIN_MAGIC)
   extern float z_magic_threshold;
   extern float z_magic_raw_value;
   extern float z_magic_previous;
